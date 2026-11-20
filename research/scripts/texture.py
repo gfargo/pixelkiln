@@ -9,6 +9,9 @@ env:   SKIP=north-east,north-west   views to leave out (drawn tilted)
        LEVEL=0.9                    where the surface is cut: 0.5 is half a voxel outside the voxel centres, near 1 is through them
        COVER=touch|centre           a rendered pixel is covered when the shape touches it, or only when it covers its centre
        EXTRA=<dir>                  repaired in-between views to take colour from as well (see stage 3)
+       FLAT=6                       paint the texture as this many flat materials and light it in the renderer; 0 is off
+       OVERLAY=0.4                  with FLAT: put sprite pixels back where the surface faces the view at least this squarely
+       AGREE=90, DEV=0              with OVERLAY: how far views may disagree, and how far a pixel must differ from its flat colour
        TAG=carved                   added to the output file names
        FACES=30000                  triangle budget after simplifying
        MODE=best|vote|blend         one view per texel; the view nearest the consensus of all that see it; or a blend snapped to the palette
@@ -16,12 +19,13 @@ env:   SKIP=north-east,north-west   views to leave out (drawn tilted)
        SNAP=0                       how far, in sprite pixels, a texel may reach for the nearest pixel inside the sprite
        EDGE=0                       a depth jump, in sprite pixels, that marks a contour to keep colour away from; 0 turns it off
        SMOOTH=2                     rounds of agreeing with neighbouring texels on which view to use
+       TURNS=0,45,...               which eighth-turns of the mesh the fit may start from; 0 when the mesh is known to face south
 
 Needs numpy, scipy, pillow, trimesh, xatlas, fast-simplification.
 Writes <name>.texture.png, <name>.views.png, <name>.textured.glb, <name>.textured.png (a sheet:
 sprites, the model from the same eight directions, the model from the eight in between) and prints scores.
 """
-import json, os, sys, math
+import warnings, json, os, sys, math
 import numpy as np
 from PIL import Image
 import trimesh, xatlas, fast_simplification
@@ -115,17 +119,29 @@ if camera:
     if camera["elevation"] == 0:
         for v in range(8): cam_off[v][1] = math.floor(centre[v][1] + cam_off[v][1] + 0.5) - centre[v][1]
 coarse = []
+# A bare, symmetric figure looks the same from the front and the back in outline. TURNS=0 says the mesh already faces the way the south sprite does.
+TURNS = [int(t) // 45 for t in os.environ.get("TURNS", "0,45,90,135,180,225,270,315").split(",")]
 if has_mesh:
     height = np.mean([np.ptp(np.nonzero(alpha[v].any(1))[0]) + 1 for v in USE])
     extent = verts.max(0) - verts.min(0)
     best, best_s, tried = None, -1, []
+    start = [0.0, 0.0, 0.0]
+    if camera:
+        # A part of a character (a helmet, a cape) is not at the middle of the camera's frame. Start it where
+        # its sprites are: the point in space whose picture in each view is the middle of that view's drawing.
+        rows, want = [], []
+        for v in USE:
+            az, th0 = v * math.pi / 4, camera["elevation"]; bx, by = bbox_centre(alpha[v])
+            rows.append([math.cos(az), -math.sin(az), 0]); want.append(bx - centre[v][0] - cam_off[v][0])
+            rows.append([math.sin(az) * math.sin(th0), math.cos(az) * math.sin(th0), math.cos(th0)]); want.append(-(by - centre[v][1] - cam_off[v][1]))
+        start = [float(c) for c in np.linalg.lstsq(np.array(rows), np.array(want), rcond=None)[0]]
     for mirror in (1, -1):
-        for turn in range(8):
+        for turn in TURNS:
             for deg in ([math.degrees(camera["elevation"])] if camera else (0, 10, 20, 30)):
                 th = math.radians(deg)
                 depth = max(extent[0], extent[2])
                 s0 = height / (extent[1] * math.cos(th) + depth * math.sin(th))
-                p = {"yaw": turn * math.pi / 4, "mirror": mirror, "theta": th, "sc": [s0, s0, s0], "shift": [0, 0, 0],
+                p = {"yaw": turn * math.pi / 4, "mirror": mirror, "theta": th, "sc": [s0, s0, s0], "shift": list(start),
                      "off": [list(o) for o in cam_off] if camera else [[0, 0] for _ in range(8)]}
                 s = iou(p); tried.append((round(s * 100, 1), mirror, turn * 45, round(deg)))
                 # A silhouette cannot tell an object from its mirror image, so a mirrored fit has to win clearly.
@@ -229,7 +245,7 @@ p_alpha = [im[:, :, 3] > 127 for im in p_img]; NP = len(p_img)
 dense, dense_face = trimesh.sample.sample_surface(wmesh, 600000, seed=11)
 dense = np.asarray(dense)
 Z = 3  # depth buffer cells per sprite pixel
-weights = np.full((len(P), NP), -np.inf); colours = np.zeros((len(P), NP, 3), np.uint8)
+weights = np.full((len(P), NP), -np.inf); colours = np.zeros((len(P), NP, 3), np.uint8); risk = np.zeros((len(P), NP), bool)
 for v in range(NP):
     az = p_az[v]; cam = to_camera(az, fit["theta"])
     ox, oy = p_org[v]
@@ -269,6 +285,12 @@ for v in range(NP):
     # Outline pixels never give colour: the render draws its own outline.
     w = np.where(opaque & visible & (facing > 0.15) & ~outline & ~(jump[pyc, pxc] & (EDGE > 0)), facing - np.where(near_ok, 0.08 * snap, 0), -np.inf)
     weights[:, v] = w; colours[:, v] = rgba[:, :3]
+    # For OVERLAY: a texel that lands on the sprite's rim, or beside a jump in the mesh's depth, is one a
+    # small misfit would colour from the wrong surface.
+    with np.errstate(invalid="ignore"):
+        step = np.zeros((size, size), bool)
+        for nb in (dp[:-2, 1:-1], dp[2:, 1:-1], dp[1:-1, :-2], dp[1:-1, 2:]): step |= ~(np.abs(nb - depth) <= 2.5)
+    risk[:, v] = step[pyc, pxc] | rim[pyc, pxc]
 owner = weights.argmax(1); seen = np.isfinite(weights.max(1))
 # Neighbouring texels should take their colour from the same sprite where they can, or the surface speckles
 # at every boundary between two views. Each texel moves to the view most of its neighbours in 3D use.
@@ -307,6 +329,48 @@ if GAP > 0:
         stray = lum < med - GAP
         choice = near[np.arange(len(P)), np.abs(nl - med[:, None]).argmin(1)]
         texel[stray] = texel[choice[stray]]
+# Flatten: every sprite was shaded by hand, each a little differently, and that painted-on light is what makes
+# the stitched surface blotchy. FLAT=<k> sorts the texels into k materials by colour (mostly hue, a little
+# brightness), lets neighbours on the surface agree, and paints each material one flat colour. Light is then
+# added by the renderer, the same from every side.
+FLAT = int(os.environ.get("FLAT", "0"))
+detail = texel.copy()
+if FLAT > 0:
+    rgb = texel / 255.0; mx, mn = rgb.max(1), rgb.min(1); lum = rgb @ np.array([0.299, 0.587, 0.114])
+    sat = (mx - mn) / np.maximum(mx, 1e-6)
+    hue = np.arctan2(math.sqrt(3) * (rgb[:, 1] - rgb[:, 2]), 2 * rgb[:, 0] - rgb[:, 1] - rgb[:, 2])
+    feat = np.stack([np.cos(hue) * sat, np.sin(hue) * sat, float(os.environ.get("FLAT_LIGHT", "0.45")) * lum], 1)
+    cen = feat[rng.choice(len(feat), 1)]
+    while len(cen) < FLAT:  # spread the starting centres out
+        d2 = ((feat[:, None, :] - cen[None]) ** 2).sum(2).min(1); cen = np.vstack([cen, feat[rng.choice(len(feat), p=d2 / d2.sum())]])
+    for _ in range(25):
+        lab = ((feat[:, None, :] - cen[None]) ** 2).sum(2).argmin(1)
+        cen = np.stack([feat[lab == k].mean(0) if (lab == k).any() else cen[k] for k in range(FLAT)])
+    near = cKDTree(P).query(P, k=min(25, len(P)))[1]
+    for _ in range(int(os.environ.get("FLAT_SMOOTH", "3"))):
+        votes = np.stack([(lab[near] == k).sum(1) for k in range(FLAT)], 1); lab = votes.argmax(1)
+    for k in range(FLAT):
+        m = lab == k
+        if not m.any(): continue
+        # The material's lit colour: a real texel about three quarters of the way up its brightness range.
+        order = np.argsort(lum[m]); texel[m] = texel[m][order[int(len(order) * 0.72)]]
+# Overlay: the flat materials are a clean base with no detail. The sprites' own pixels go back on top only
+# where they can be trusted: the surface faces the view squarely (OVERLAY is how squarely, 0 to 1), it is not
+# at a rim or a depth jump, the views that see it agree within AGREE, and the pixel differs from its
+# material's flat colour by at least DEV, so soft painted shading stays out and eyes and trim come back.
+OVERLAY = float(os.environ.get("OVERLAY", "0"))
+kept = np.zeros(len(P), bool)
+if FLAT > 0 and OVERLAY > 0:
+    ar = np.arange(len(P)); own = weights[ar, owner]; ok = np.isfinite(weights); cnt = ok.sum(1)
+    cand = np.where(ok[:, :, None], colours.astype(np.float64), np.nan)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore"); mid = np.nan_to_num(np.nanmedian(cand, axis=1))
+    spread = np.abs(colours[ar, owner].astype(np.float64) - mid).sum(1)
+    agree = np.where(cnt >= 2, spread <= float(os.environ.get("AGREE", "90")), own >= 0.8)
+    sure = seen & (own >= OVERLAY) & ~risk[ar, owner] & agree
+    kept = sure & (np.abs(detail - texel).sum(1) >= float(os.environ.get("DEV", "0")))
+    texel[kept] = detail[kept]
+    print(f"overlay: {kept.mean():.0%} of texels carry sprite detail, {sure.mean():.0%} were trusted")
 tex = np.zeros((R, R, 4), np.uint8); tex[used, :3] = texel.astype(np.uint8); tex[used, 3] = 255
 # Pad the islands so sampling at their edges does not pick up empty texels.
 flat_used = np.argwhere(used); pad = np.argwhere(~used)
@@ -327,14 +391,29 @@ textured.export(f"{out}/{name}{TAG}.textured.glb")
 bary = rng.dirichlet((1, 1, 1), 900000); pick = rng.choice(len(uv_faces), 900000, p=wmesh.area_faces / wmesh.area_faces.sum())
 r_pos = np.einsum("ij,ijk->ik", bary, world[vmap][uv_faces][pick]); r_uv = np.einsum("ij,ijk->ik", bary, uvs[uv_faces][pick])
 tx, ty = np.clip((r_uv[:, 0] * R).astype(int), 0, R - 1), np.clip((r_uv[:, 1] * R).astype(int), 0, R - 1)
-r_rgb = tex[ty, tx, :3].astype(np.int64); r_key = (r_rgb[:, 0] << 16) | (r_rgb[:, 1] << 8) | r_rgb[:, 2]
+r_rgb = tex[ty, tx, :3].astype(np.int64)
+TOON = os.environ.get("TOON", "1" if FLAT > 0 else "0") == "1"
+# Light the model with normals from a smoothed copy of it: the carved surface is bumpy at the scale of a
+# voxel, and bands of light drawn from the raw normals break up into noise.
+soft = wmesh.copy(); trimesh.smoothing.filter_taubin(soft, iterations=int(os.environ.get("SOFT", "40")))
+soft_normals = np.asarray(soft.vertex_normals)
+r_nrm = np.einsum("ij,ijk->ik", bary, soft_normals[vmap][uv_faces][pick]); r_nrm /= np.linalg.norm(r_nrm, axis=1, keepdims=True) + 1e-9
+def keys(rgb): return (rgb[:, 0] << 16) | (rgb[:, 1] << 8) | rgb[:, 2]
+def toon(az, theta):
+    """Three flat bands of light from the upper left of the camera, the usual sprite lighting."""
+    cam = to_camera(az, theta); right = np.array([math.cos(az), -math.sin(az), 0.0]); up = np.cross(right, -cam)
+    light = cam * 0.55 - right * 0.5 + up * 0.67; light /= np.linalg.norm(light)
+    lit = r_nrm @ light
+    band = np.where(lit > 0.35, 1.0, np.where(lit > -0.1, 0.8, 0.62))
+    return keys(np.clip(r_rgb * band[:, None], 0, 255).astype(np.int64))
+r_key = keys(r_rgb)
 def render(az, theta, ox, oy):
     u, s, d = project(r_pos, az, theta)
     px, py = np.floor(u + ox).astype(int), np.floor(-s + oy).astype(int)
     ok = (px >= 0) & (py >= 0) & (px < size) & (py < size)
     covered = np.zeros(size * size, bool); hit = ok & centre_hit(u + ox, -s + oy); covered[py[hit] * size + px[hit]] = True
     ok &= covered[np.clip(py, 0, size - 1) * size + np.clip(px, 0, size - 1)]
-    cell = py[ok] * size + px[ok]; dd = d[ok]; key = r_key[ok]
+    cell = py[ok] * size + px[ok]; dd = d[ok]; key = (toon(az, theta) if TOON else r_key)[ok]
     zmin = np.full(size * size, np.inf); np.minimum.at(zmin, cell, dd)
     front = dd <= zmin[cell] + 1.2
     combo, counts = np.unique(cell[front] * (1 << 24) + key[front], return_counts=True)

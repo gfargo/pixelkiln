@@ -40,7 +40,7 @@ const KINDS: Array<[string, string, string]> = [
   ["An anchors file", "Committed JSON, one entry per frame", "Nobody: it records where the joints already are"],
   ["PixelLab's stored 3D skeleton", "Your PixelLab account, with a v3 character", "PixelLab, from a template or a sentence"],
   ["An OpenPose map", "A committed PNG per frame", "You, or a script"],
-  ["A 3D rig", "The research's model files", "Motion data, retargeted"],
+  ["A 3D rig", "A .glb from the 3D research: 21 humanoid bones, a thumb and one finger chain a hand, plus chains for a cape", "Stock animations carried over from a library; a cape's swing stored in each"],
 ];
 
 export function SkeletonsSection() {
@@ -186,7 +186,7 @@ export function SkeletonsSection() {
                 The 3D research builds a mesh from the eight drawn directions, binds it to a skeleton and drives
                 it with motion. It is research, not a command yet, and the notes show every step.
               </p>
-              <TrackedLink className="text-link" id="skeletons_use_3d" section="skeletons" href="/docs/research-3d">3D research notes</TrackedLink>
+              <TrackedLink className="text-link" id="skeletons_use_3d" section="skeletons" href="/3d">See the 3D characters</TrackedLink>
             </li>
           </ol>
         </div>

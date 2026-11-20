@@ -2,7 +2,7 @@
 
 This is a research note, not a feature: nothing here is a PixelKiln command, and the scripts are rough. PixelKiln already generates an object or a character from eight directions. This note records every attempt to turn those eight pictures into a 3D model: what was tried, with what, and what came out.
 
-Last updated 16 November 2026.
+Last updated 17 November 2026.
 
 ## Summary
 
@@ -22,6 +22,39 @@ Last updated 16 November 2026.
 | 12 | Carved shape cut back to the mesh | Our script | No better than carving alone | Drop. |
 | 13 | Have an image model redraw the model's rough renders | PixelLab `edit_image`, `inpaint_image`, `correct_pixelart` | Clean sprites at angles the generator never drew: sixteen directions from eight, for 10 generations | Keep. This is the best result so far, and it changes what the 3D model is for. |
 | 14 | Paint the redrawn views back onto the model | Our script | Smoother, still muddy | Drop for now. The model is a guide, not the final picture. |
+| 15 | Flatten the texture to a few materials and light it in the renderer | Our script | No blotches, and no detail either | Partly. The lighting is worth keeping; the flattening loses too much. |
+| 16 | Put the skeleton in the mesh, skin it, add a walk, export a rigged `.glb` | Our script | Valid glTF with 15 bones and a walk, for both characters | Keep. This is the first file here a 3D game can import and animate. |
+| 17 | Install Hunyuan3D's paint stage on the RTX 3060 | Second ComfyUI, community node | Runs in 12 GB after one patch; about 40 seconds a pass | Keep. |
+| 18 | Flat base with trusted sprite pixels laid back on top | Our script | Eyes and trim return; the tearing does not change | Drop. The tearing is in the shape, not the shading. |
+| 19 | Use the Hunyuan3D mesh for the knight, not the carved shape | Hunyuan3D-2mv | Real horns, separate arms and legs; the same texturing reads far better | Keep for complex characters. No gain on the bare character. |
+| 20 | Paint the mesh with the paint stage, once per sprite direction | Hunyuan3D-2 paint | Each sprite redrawn to fit the mesh; a clean texture from every side | Keep. The best texture in this note. |
+| 21 | Redraw the character in an A-pose before meshing | PixelLab character state | Arms clear of the body in all eight views, for 10 generations a character | Keep. The mesh and the rig both need it. |
+| 22 | Round the pixel edges off the pictures the mesh model sees | Our script, Hunyuan3D-2mv | The bare character goes from a figure made of boxes to a sculpted body with a face | Keep. The largest gain in shape since step 8. |
+| 23 | Bake the painted views on this machine, with side views and colour correction | Our script | 24 views from 8 passes, no visible seams; the rim and colour-matching ideas made it worse | Keep the side views and the correction. Drop the other two. |
+| 24 | Measure skin weights through the inside of the mesh | Our script | The cape hangs from the shoulders, not the legs; the walk lowers the arms | Keep. |
+| 25 | Carry the sprites' palette in the file and snap to it when drawing | Our script, a shader in the viewer | Renders at sprite size read as sprites; the colour score still prefers the stitched texture | Keep the look. The score is the wrong judge. |
+| 26 | A leaner bare body, with each item drawn as its own layer | PixelLab v3 character, PixelKiln layers | A slim figure in underwear and four clean item layers; the mesh is still stocky | Keep. The mesh inherits the sprite's four-heads-tall build. |
+| 27 | Mesh each item on its own, or mesh the body wearing it and cut the item out | Hunyuan3D-2mv, our scripts | Alone, thin items collapse into slabs; cut from the worn mesh, all four hold their shape | Cut from the worn mesh. |
+| 28 | The body and four items as separate meshes on one skeleton | Our script | One .glb, items switch on and off, all walk together | Keep. Painted in step 29. |
+| 29 | Paint the body and each worn mesh before cutting the item out | Hunyuan3D paint stage, our bake | Clean armour, cape and skin in place of speckle; colours drift cooler and the gold is duller | Keep. The colour drift is handled in step 30. |
+| 30 | Hide the skin under what is worn, and bake each item in its own colours | Our script | The body is six pieces, each hidden while its item is on; orange flecks in the walk turned out to be dulled gold snapped to skin colour, and are gone | Keep. |
+| 31 | Draw the character as sprite cards on the skeleton, with no textured mesh shown | Our script, three.js | Crisp drawn pixels from any angle, walking, with items that switch off | Keep as a second way to show a character. Eight directions and open joints are the limits. |
+| 32 | Redraw the sprites large with a local image model, and paint from those | SDXL with a tile control model, Hunyuan3D paint stage | Painted armour with real detail in place of enlarged pixels; 768 pixel views fit in 12 GB | Keep. The eight redraws do not agree on details, and colours move. |
+| 33 | Make the redraws agree: one sheet for all eight, or each alone with the sprite's colours held | SDXL with a tile control model | Holding colours fixes the drift and keeps the detail; the one-sheet redraw agrees but is soft | Keep the colour hold. Drop the sheet. |
+| 34 | Mesh from redrawn pictures in place of smoothed sprites | SDXL redraw, Hunyuan3D-2mv | A round skull, a face, ears, arms and legs with shape, where there were flat facets | Keep. The largest gain in the mesh since step 22. |
+| 35 | Rebuild the body and all four items from redrawn pictures, end to end | SDXL redraw, Hunyuan3D-2mv and its paint stage, our scripts | A sculpted body and detailed helm, armour and cape on the same skeleton; one sleeve short, a gap at the hip, a teal fur collar | Keep as the viewer's model. The item masks still come from the sprites and no longer fit exactly. |
+| 36 | Move each item's edge to where the paint puts it, and stop the bake shifting colours | Our scripts | Skin scraps and the hip gap are gone; the collar is grey again, the helm black, the underwear grey | Keep. One sleeve still ends at mid forearm. |
+| 37 | Open the parts model in a game engine | Godot 4.7.2, headless | Ten skinned meshes, fifteen named bones, the walk, and each body piece's hide list all arrive | Keep. The first check outside three.js. |
+| 38 | A second painter, MV-Adapter | MV-Adapter on SDXL, our own guide pictures | It runs and its front view is sharp and faithful; one pass takes 11 minutes and overfills the 12 GB card; the sides it invents are wrong | Drop on this card. Keep the scripts. |
+| 39 | Sprites drawn at 256 pixels at the source | PixelLab v3 character and four states | An adult-proportioned figure and four worn versions, each agreeing across eight directions | Keep. The best source art so far; not yet meshed. |
+| 40 | Rebuild everything from the 256 pixel sprites | PixelLab, SDXL redraw, Hunyuan3D-2mv and its paint stage, our scripts | An adult-proportioned, painted body and four detailed items on one skeleton; imports into Godot | Keep as the viewer's model. Still 80,000 triangles and one home-made skeleton. |
+| 41 | Thin every part and bake the paint and a normal map onto the light mesh | Our script | 16,496 triangles for 79,819 and 2.1 MB for 6.3, with no visible loss in an unlit render | Keep. The viewer's model is the light one. |
+| 42 | A standard humanoid skeleton | Our script, Godot's humanoid profile | Twenty-one bones; every bone Godot's profile requires is found by name, under the right parent | Keep. No stock animation has been put on it yet. |
+| 43 | Put stock animations on the skeleton | Quaternius's Universal Animation Library (CC0), our script | Eleven library animations play on the knight: idle, walk, jog, sprint, sword attack, death and others | Keep. The character now moves like a game character. |
+| 44 | Paint views from above and below as well | Hunyuan3D paint stage, our bake | The dark streaks on arm tops, shoulders and heads are gone | Keep. The viewer's model is rebuilt with it. |
+| 45 | Bones for the cape, and a simulation that swings them | Our scripts | Twelve cape bones in three chains; the cape streams in a sprint, hangs in an idle and falls in a roll, baked into every animation | Keep. It works in any engine with no physics set up. |
+| 46 | Put the first body's items on a second, heavier body | PixelLab, our scripts | The same four items fit a much broader man, after reshaping each to his bones and thickness | Keep. Scaling by ratio failed; adding the difference in thickness works. |
+| 47 | Finger bones, and a sword in the hand | PixelLab, Hunyuan3D-2mv, Quaternius's library, our scripts | A thumb and one finger chain a hand, found on the mesh; the library's fists and sword grip carry over; a generated sword sits in the closed right hand | Keep for 256 pixel sources. A 64 pixel hand and a hand drawn as a fist get no finger bones. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -334,7 +367,7 @@ Top pair of rows: directions 1 to 8 as rendered from the model, then after `edit
 
 The redrawn in-between views are a clean, recognisable knight. They are also a little squat next to the drawn ones: the carve loses some of the horns' height and the head sits lower, and the redraw keeps the model's proportions. Editing by reference cleaned less than editing by instruction here.
 
-The sixteen directions are on the website as a viewer that turns the character, on the [paperdoll page](https://pixelkiln.griffen.codes/paperdoll#turnaround), with a switch to the raw model.
+The sixteen directions are on the website as a viewer that turns the character, on the [3D characters page](https://pixelkiln.griffen.codes/3d#turnaround), with a switch to the raw model.
 
 **Verdict.** Keep, and change direction. The 3D model does not have to look good. It has to put the right shapes and rough colours in the right place from any angle, and an image model does the drawing. Eight new directions cost 10 generations.
 
@@ -352,6 +385,862 @@ Slightly smoother, still blotchy, and the score against the sprites got worse (c
 
 **Verdict.** Drop for now. Sixteen separate drawings disagree as much as eight did. A texture stitched from separate drawings of a 64-pixel figure comes out muddy however the stitching is done, which is the lesson of steps 9 to 14 together.
 
+## 15. Flat materials and light from the renderer
+
+**Question.** The blotches on the stitched texture are each sprite's own hand-drawn shading. If the texture is reduced to flat colour and the light is added by the renderer instead, the same from every side, do they go?
+
+**Setup.** `FLAT=<k>` in `texture.py` sorts the texels into k materials by colour (mostly hue, a little brightness), lets neighbours on the surface agree, and paints each material one colour taken from its lit side. The render then adds three flat bands of light from the upper left, using normals from a smoothed copy of the mesh, since the carved surface is bumpy at the scale of a voxel and raw normals break the bands into noise. `TOON=1` adds the same light without flattening.
+
+**Result.** Each pair of rows is the model from the eight drawn directions and the eight between. Top pair: the bare character as two materials. Middle pair: the knight as nine materials. Bottom pair: the knight with its full stitched texture and the same light.
+
+![Flat materials with toon lighting, and the full texture with the same lighting](../website/public/research/3d/flat-toon.png)
+
+- **The blotches are gone, and so is everything else.** The bare character is a clean clay figure with no face or muscle. The knight keeps its cape and fur and loses its trim, eyes and armour detail; skin and gold run together as orange patches.
+- **Black armour came out brown at five materials** and dark grey at nine. Sorting by hue has little to work with on dark, unsaturated colours.
+- **The full texture with renderer light (bottom pair) reads best of the three.** The light gives the form a consistent shape that helps hide the stitching.
+
+**Verdict.** Keep the lighting, drop the flattening as a default. Flat colour would suit a simple object or a deliberately flat style. For a character, the detail has to come from somewhere better than eight disagreeing drawings, which is what step 17 is for.
+
+## 16. A skeleton in the mesh
+
+**Question.** Can the carved, textured character leave here as something a 3D game can animate?
+
+**Setup.** [`scripts/rig.py`](../research/scripts/rig.py).
+
+- **Bones.** The 18 joints from step 6 become fifteen bones named the way engines name a humanoid: Hips, Spine, Head, and Upper Arm, Lower Arm, Hand, Upper Leg, Lower Leg, Foot on each side. For the knight, the joints estimated on the bare character were triangulated again in the knight's own frame (mean error 1.4 pixels).
+- **Skin weights.** Each vertex follows up to four bones, weighted by how close it is to each. Distance alone would bind an arm hanging at the side to the spine, so a bone is penalised when the straight line from the vertex to it leaves the body.
+- **A walk.** One nine-key loop: thighs and upper arms swing against each other, knees bend on the back swing.
+- **The file.** A `.glb` in metres, y up, 1.8 m tall, with the texture inside it set to hard pixel edges, the skin, and the animation named `Walk`.
+
+**Result.** Which bone each part of the surface follows most, from four sides:
+
+![Skin weights on the bare character, one colour per bone](../website/public/research/3d/rig-weights.png)
+
+The walk, posed here with the file's own bones and weights and drawn from the front, three-quarters and side. Top three rows: the bare character. Bottom three: the knight.
+
+![Eight frames of the walk for both characters from three angles](../website/public/research/3d/rig-walk.png)
+
+- **Both files pass the Khronos glTF validator** with no errors or warnings.
+- **Sizes:** the bare character is 7,571 vertices and 10,460 triangles in 562 KB; the knight is 10,433 vertices and 15,120 triangles.
+- **They load and play in three.js**, which is what the viewer on the [3D characters page](https://pixelkiln.griffen.codes/3d#mesh) uses. They were not opened in Blender, Unity, Godot or Unreal here.
+- **The knight's cape follows the legs,** because it is bound to the nearest bones like everything else. A cape wants bones of its own or cloth simulation.
+- **Dark patches open up on the inner thighs** as the legs part: that surface was never seen by any sprite and was filled in.
+- **The hands, feet and head are single bones.** There are no fingers, toes, jaw or eyes.
+
+**Verdict.** Keep. The rig is the part of this note closest to the goal: characters that can be animated and imported into 3D games. The mesh and skeleton are sound. The texture is what is holding the result back.
+
+## 17. Hunyuan3D's paint stage, installed
+
+**Question.** Hunyuan3D has a second stage that textures a mesh from a reference image, consistently from every side. Can it run on the RTX 3060 used in step 8?
+
+**Setup.** The ComfyUI already on that machine could not run it: its built-in Hunyuan3D nodes make shapes only, and the community node that adds the paint stage, [ComfyUI-Hunyuan3DWrapper](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper), ships its compiled renderer for Python 3.12, where that install is Python 3.13. So a second ComfyUI went in beside the first, which was not touched:
+
+- Python 3.12 in its own virtual environment, PyTorch 2.6.0 for CUDA 12.6, and the node's renderer wheel built for that pair.
+- ComfyUI pinned to v0.3.27. The current release needs a newer PyTorch than the wheel was built for and fails on start.
+- The paint model, `hunyuan3d-paint-v2-0`, which the node downloads on first use: 9.2 GB. The delight model was not used; the sprites carry no photographic lighting to remove.
+
+**Result.**
+
+- **The prebuilt renderer has no GPU code for this card.** It fails with "no kernel image is available for execution on the device": the wheel was compiled for a newer GPU generation. The same library has a CPU path that gives the same result, so one line in `custom_rasterizer/render.py` was changed to move its inputs to the CPU and its outputs back. Rasterising a 1024-pixel view on the CPU takes well under a second. No compiler or CUDA toolkit was installed.
+- **It fits in 12 GB.** A full pass, six views at 512 pixels and 25 steps, takes about 40 seconds once the model is loaded, and about two minutes cold.
+- **Given one front view, it invents the rest, and gets the back wrong.** The six views it painted for the knight from the south sprite alone: front, side, back, side, top, bottom. The back has a second face and chest where the cape should be.
+
+![Six views painted from one front reference; the back view shows a second face](../website/public/research/3d/paint-single-reference.png)
+
+**Verdict.** Keep. It runs, it is fast, and its front view is the first picture in this note that is both faithful to the sprite and fitted to the mesh. Step 20 uses that.
+
+## 18. A flat base with the sprites laid back on top
+
+**Question.** Step 15's flat materials were clean and featureless. If the flat texture is the base, and the sprites' own pixels are put back only where they can be trusted, is the result both clean and detailed?
+
+**Setup.** `OVERLAY=<0 to 1>` in `texture.py`, with `FLAT`. A texel takes its sprite colour back when the surface faces the view at least that squarely, it is not on the sprite's rim or beside a jump in depth, the views that see it agree within `AGREE`, and its colour differs from the flat material by at least `DEV` (so soft painted shading stays out and eyes and trim come back).
+
+**Result.** On the carved knight, 58% of texels were trusted. Colour error: 22.5 for the full stitched texture, 30.6 flat, 24.6 with the overlay.
+
+- **The eyes, belt and gold trim come back** over a cleaner cape.
+- **The torn areas look the same as before.** They sit exactly where the overlay trusts the sprites least, so they fall back to flat patches of the wrong material.
+- **The flat row shows why.** With the detail gone, the carved knight is a lump: arms fused to the torso, legs fused together, horns reduced to stubs. Eight silhouettes cannot carve the gap between an arm and the body. No way of laying colour on that shape gives a clean arm.
+
+**Verdict.** Drop. The tearing is in the shape, not the shading. This sent the work back to the mesh, in step 19.
+
+## 19. The generated mesh for the knight
+
+**Question.** Step 11 found the carved shape better than the Hunyuan3D mesh for bulky subjects. Is that still true for a character with horns, a cape and limbs?
+
+**Setup.** The knight's south, west, north and east sprites through the Hunyuan3D-2mv graph from step 8 (147 seconds), then the same staged texturing, fitted into the carve's camera.
+
+**Result.** The drawn sprite, then the model from the front, a drawn diagonal and three in-between directions. Row 1: carved shape. Row 2: generated mesh. Row 3: generated mesh, flat. Row 4: generated mesh with step 18's overlay.
+
+![The knight on the carved shape and on the generated mesh, with full, flat and overlaid textures](../website/public/research/3d/mesh-source-overlay.png)
+
+- **The generated mesh has what carving cannot give:** curved horns, arms away from the body, two legs, a cape that hangs behind.
+- **The same texturing reads far better on it,** though it scores lower on shape (82% against 87%), because the model's proportions are its own.
+- **On the bare character there is no gain.** Shape 86.8% against 90.5%, colour error 36.3 against 34.5, and more stray dark specks. A simple body carves well.
+- **The rig script needed one fix for it.** Horns that reach past the carved hull were following the arm bones; everything above the ears is now bound to the head.
+
+**Verdict.** Keep, for anything with parts that stand away from the body. The carved shape stays the better choice for simple, solid subjects, and its camera is still what fits the mesh to the sprites.
+
+## 20. The paint stage, once for each sprite
+
+**Question.** Step 17's model paints a faithful, well-fitted front and a wrong everything else. There are eight sprites. Can each one be the front?
+
+**Setup.** [`scripts/hunyuan3d_paint_turn.py`](../research/scripts/hunyuan3d_paint_turn.py). For each of the eight directions the mesh is turned to face the camera, that direction's sprite is the reference, the model paints its six views, and only the first is kept. Asked for one view alone the model returns grey noise; it was trained to paint six together. The eight kept views are then baked onto the unturned mesh with the node's own baking, each from the angle it was painted at, and the gaps are filled. About six minutes for a character.
+
+**Result.** Top row: the eight sprites. Middle: the mesh turned to face each. Bottom: what the model painted.
+
+![Eight sprites, the mesh turned to each, and the eight painted views](../website/public/research/3d/paint-turn-views.png)
+
+Every painted view is its sprite, redrawn to sit exactly on the mesh: the cape is on the back, the emblem is on the chest, the arms are where the mesh's arms are. This is the image-model redraw of step 13 with one thing added, which is that the model is told the shape.
+
+The baked result against the stitched texture of step 10, on the same meshes, drawn large from the front, an in-between angle, a diagonal, the side, an in-between angle and the back. Top of each pair: stitched. Bottom: painted.
+
+![Stitched and painted textures on the knight and the bare character from six angles](../website/public/research/3d/paint-vs-stitched.png)
+
+- **The tearing is gone.** Armour, belt, face and limbs are continuous from every angle, including the ones no sprite was drawn from.
+- **The scores do not show it.** At sprite size, against the drawn sprites, the painted knight scores a colour error of 37.8 where the stitched one scores 31.1. The painted texture is a redraw, not a copy, and a render of it shrunk to 80 pixels picks up noise the stitched texture, made at that size, does not. The measure rewards copying pixels; step 13 met the same limit.
+- **It is no longer pixel art on the surface.** The views are 512 pixels with soft-edged blocks. The texture is 1024 pixels, shrunk to 512 in the rigged files.
+- **Light rims on the cape's edges,** where the grey ground of a painted view was baked onto the silhouette.
+- **Seams where two views meet,** most visible on the bare character's arms and head, as blocks that do not line up.
+- **Both characters were rigged again from the painted meshes** and pass the glTF validator: 23,565 vertices and 2.0 MB for the knight, 21,327 vertices and 1.9 MB for the bare character. These are the files in the viewer on the [3D characters page](https://pixelkiln.griffen.codes/3d#mesh).
+- **Licence.** The paint model is published with the shape model, under the same Tencent licence and regional exclusion. The source files of its renderer name a non-commercial licence in their headers. Which terms apply to textures made with it was not settled here: treat these as a research result, and read the licence before shipping one in a game.
+
+**Verdict.** Keep. A generated mesh, fitted to the sprites' camera, painted once per sprite and rigged is the best route found so far from eight sprites to an animated 3D character.
+
+## 21. An A-pose, drawn by the generator
+
+**Question.** Every mesh so far was made from a character standing with its arms at its sides, so the arms fuse to the body or sit against it, and the rig has to guess where one ends and the other begins. 3D characters are modelled with the arms held out for this reason. Can the generator redraw ours that way?
+
+**Setup.** PixelLab's `create_character_state` on each character, with the edit "standing in an A-pose: both arms straight and held out to the sides, 45 degrees away from the body, hands open and well clear of the hips, legs straight and slightly apart with a clear gap between them", and the palette locked to the source. The knight is a composite of paperdoll layers, not a PixelLab character, so its eight sprites were first imported as one with `create_character` (a reference image plus seven direction images; nothing is generated). Cost: 10 generations for each state, 0.25 for the import.
+
+**Result.** Each pair is the character as it was and its A-pose.
+
+![The knight and the bare character, standing and in an A-pose, in eight directions](../website/public/research/3d/apose-sprites.png)
+
+- **The character survives.** Helmet, horns, fur, cape, emblem and palette are the same; only the pose moved.
+- **The eight views do not agree on the pose.** The knight's back view came out as a T-pose, arms level, while the other seven have them at 45 degrees. Triangulating the joints shows it: about 1.8 pixels of mean error on both characters, against 1.3 to 1.4 standing, and 4.5 at the wrists.
+- **The generated mesh tolerates it.** Carving needs the views to agree; the mesh model reads four views as hints, and built one consistent pose from them.
+
+**Verdict.** Keep. It is cheap, and steps 22 and 24 depend on it.
+
+## 22. Smooth pictures for the mesh model
+
+**Question.** The first A-pose mesh of the bare character came out as a figure made of boxes, with a cube for a head. Why?
+
+**Setup.** Since step 8 the four input pictures have been the 64 pixel sprites enlarged with hard edges, so every sprite pixel is a square eight pixels wide. Here they are enlarged with bicubic filtering instead, and the outline is cut through a blurred copy of the transparency so the stair steps round off. Nothing else changes. The fit in [`scripts/texture.py`](../research/scripts/texture.py) also gained `TURNS=0`: a bare, symmetric figure has the same outline from the front and the back, and the fit put this one in backwards until it was told the mesh already faces the way the south sprite does.
+
+**Result.** Each pair is the mesh from hard-edged inputs, then from smooth ones. Top pair: the bare character. Bottom pair: the knight.
+
+![Meshes from hard-edged and from smoothed inputs, for both characters](../website/public/research/3d/mesh-hard-vs-smooth.png)
+
+- **The model took the squares literally.** Given blocks, it built a block figure, 0.56 units deep where the smooth one is 0.61, with flat panels for a chest. Given a smooth picture it sculpts a head with a brow, ears, a chest, hands with fingers.
+- **The knight changes less,** because its hard-edged mesh was already recognisable, but the cape gains folds and the limbs round off.
+- **This was true all along.** The bare character's mesh in steps 8 and 19 was the block figure; step 19's finding that the generated mesh was "no gain" for it was measured on that.
+
+**Verdict.** Keep. One resize, and the largest gain in shape since step 8.
+
+## 23. Baking the painted views here, with side views
+
+**Question.** Step 20 left three faults in the texture: light rims on the cape, seams where two views meet, and only eight views to cover the whole surface. Baking was done inside the paint node, which offers no control over any of them.
+
+**Setup.** [`scripts/bake.py`](../research/scripts/bake.py) does the bake on this machine in seconds. It finds where the mesh sits in each painted view from the node's own render of it (the two agree on 99% of pixels), then gives each texel a blend of the views that see it, weighted by how squarely the surface faces each view. Four things were tried on top:
+
+- **Side views.** The paint model always paints six views at once, and step 20 threw five away. With `SPREAD=22` in [`scripts/hunyuan3d_paint_turn.py`](../research/scripts/hunyuan3d_paint_turn.py) two of the six cameras sit 22 degrees to either side of the sprite's own, and those are kept too: 24 views from the same eight passes, at no extra time.
+- **Colour correction.** Each painted view is moved back to its sprite's mean and spread per channel, because the model redraws the sprite a little lighter and warmer than it is.
+- **Rims.** Give a view no weight within a few pixels of its outline or of a jump in depth.
+- **Colour matching.** Shift each view's colour so views agree where they overlap.
+
+**Result.** The knight from the front, a diagonal, the side and the back. Top: eight views, colour corrected. Middle: 24 views. Bottom: eight views with the rim rule.
+
+![The knight baked from eight views, from 24 views, and with the rim rule](../website/public/research/3d/bake-settings.png)
+
+- **Side views smooth the joins.** With 24 views no two neighbours are more than 23 degrees apart, and the cape and collar lose the blocks that did not line up.
+- **The rim rule made it worse.** It pushes good views out near every edge and what replaces them is a view from the side, which has only its dark outline to offer there: speckles on the legs and helmet. The light rims of step 20 are gone without it. They came from the node's bake, not from the views.
+- **Colour matching made it worse too.** The sprites are lit from the front, so back views are darker on purpose. Matching them moved colours by up to 34 levels, and the bare character's colour error went from 36.5 to 38.5.
+- **Colour correction is a small gain:** colour error 37.4 to 36.5 on the bare character.
+
+The result against step 20's, each pair the old model then the new, from the front, a diagonal, the side and the back:
+
+![Step 20's painted models and the new ones, for both characters](../website/public/research/3d/apose-painted.png)
+
+**Verdict.** Keep the local bake, the side views and the colour correction. Rims and matching are still in the script, off.
+
+## 24. Skin weights measured through the mesh
+
+**Question.** Step 16 bound each vertex to the nearest bones in a straight line, with a penalty when the line left the carved shape. The cape, which hangs beside the legs, followed the legs. And the rest pose is now an A-pose, so a walk that only swings the arms walks with them held out.
+
+**Setup.** Three changes to [`scripts/rig.py`](../research/scripts/rig.py), used when it is given `-` in place of the carved voxels:
+
+- **The mesh is filled in** on a grid of half sprite pixels, and distance from a vertex to a bone is the shortest path through the inside of the body. A cape is a long way from a leg by that measure: up to the collar and back down.
+- **Elbows, wrists, knees and ankles move to the middle of the mesh's own limbs.** The joints were found on the sprites and the mesh is a redraw of them.
+- **The walk lowers the arms first,** turning each upper arm from where it rests to hanging 12 degrees out from straight down, and swings them from there.
+
+**Result.** Top row: which bone owns each part, by straight-line distance. Second row: through the mesh. Below: the walk from the front, three-quarters and the side.
+
+![Skin weights by straight line and through the mesh, and the knight's walk](../website/public/research/3d/rig-through-the-mesh.png)
+
+- **The cape is one piece now,** owned by the spine at the top and the hips below, where the straight-line weights cut it into strips that followed each leg bone.
+- **It is also rigid.** A leg swinging back passes through it. It wants bones of its own.
+- **Both files pass the glTF validator** with no errors or warnings: 1.8 MB for the knight, 1.7 MB for the bare character.
+
+**Verdict.** Keep.
+
+## 25. The pixel look, in the renderer
+
+**Question.** The painted texture is a 512 pixel painting. Drawn small it should still read as pixel art, in the sprites' colours. Does that belong in the texture or in the renderer?
+
+**Setup.**
+
+- *In the file.* `PALETTE=<dir>:<name>` in `rig.py` stores 24 of the sprites' colours on the material, as glTF extras. The colours are picked by spreading them across everything the sprites use. Pillow's median cut was tried first and gave the knight eight near-blacks and no gold.
+- *In the viewer.* The pixel look draws the scene into a small picture, then onto the screen with each pixel moved to the nearest stored colour and a dark line drawn inside the outline.
+- *In the score.* [`scripts/render.py`](../research/scripts/render.py) gained `SAMPLE=mean`: each sprite-size pixel is the average of the surface under it, then snapped to the palette, which is what a renderer that filters its texture shows. Before, it took the commonest single colour, which is noise on a detailed texture.
+
+**Result.** The bare character at sprite size. Row 1: the drawn sprites. Row 2: the stitched texture of step 10. Rows 3 and 4: the painted texture from the drawn directions and from the eight between.
+
+![The bare character at sprite size: sprites, stitched texture, painted texture](../website/public/research/3d/sprite-size-hero.png)
+
+The knight: sprites, the painted model from the same directions, and from the eight between.
+
+![The knight at sprite size: sprites and the painted model](../website/public/research/3d/sprite-size-knight.png)
+
+| | Stitched | Painted, commonest colour | Painted, averaged and snapped |
+|---|---|---|---|
+| Bare character, colour error | 30.0 | 36.7 | 35.1 |
+| Knight, colour error | 30.7 | 37.3 | 36.7 |
+
+- **The painted renders are shaded like sprites,** with a face and a lit side, in directions nobody drew. The stitched ones are flat.
+- **The score still says the opposite.** It compares pixel against pixel, and the mesh's arms are not where the sprite's arms are (the outlines agree 83% and 78%), so a clean shaded arm one pixel over scores worse than a flat smear in the right place.
+- **Snapping the texture itself was not pursued.** The texture's islands lie at every angle on the surface, so texture pixels cannot line up with screen pixels. The renderer is the place for it.
+
+**Verdict.** Keep the palette in the file and the snap in the renderer. The score needs replacing before it can steer anything.
+
+## 26. A body made to be dressed
+
+**Question.** Steps 19 to 25 meshed the knight with its armour on, as one piece. A game that swaps gear needs the reverse: one bare body, and each item a mesh of its own that any body can wear. That starts with a body. The bare character used so far also read as an infant once meshed: short, round and unclothed.
+
+**Setup.**
+
+- *The body.* PixelLab's v3 character at 64 pixels, through a PixelKiln manifest, with the base prompt from the [paperdoll guide](./PAPERDOLL.md) plus the pose: "bald adult human figure with adult proportions, slim and lean with a small head, broad shoulders and long legs ... standing straight in an A-pose with both arms held straight and out to the sides at 45 degrees". 2 generations.
+- *The items.* Five PixelKiln `layer` assets over the body's eight directions: underwear, leg armour, a cuirass, a horned helm and a cape. Each is one masked inpaint that returns only the pixels it added. 10 generations each. The helm's first job failed at PixelLab and passed on a retry.
+- *The joints.* `pixelkiln anchors`, 0.8 generations for the eight views.
+
+**Result.** Row 1 is the body, rows 2 to 5 the layers for underwear, leg armour, cuirass and cape, and row 6 the body wearing the first three.
+
+![The bare body in eight directions, four item layers, and the body dressed](../website/public/research/3d/parts-layers.png)
+
+- **The arms came out level in all eight views,** a T-pose and not the 45 degrees asked for. The views agree with each other, which step 21 could not get from an edit.
+- **The layers are clean.** Nothing but the item in each, in every direction.
+
+The body in underwear, meshed from smoothed inputs (step 22) and textured by stitching (step 10):
+
+![The body mesh from five directions](../website/public/research/3d/parts-body.png)
+
+- **It no longer reads as an infant,** but it is stockier than the sprite. The sprite is about four heads tall, as pixel characters are so that a face fits in a dozen pixels, and the mesh model fills that build out. The outline matches the sprites 82.1%.
+
+**Verdict.** Keep the body. An adult's seven or eight heads would need a sprite too tall to be a game sprite, so the build is the style's, not a fault to fix here.
+
+## 27. An item as its own mesh: alone, or cut from the body wearing it
+
+**Question.** What is the best way to get a mesh of one item that fits the body?
+
+**Setup.** Two routes, on the same four items.
+
+- *Alone.* The item's layer, with no body, enlarged to fill the picture ([`scripts/smooth_inputs.py`](../research/scripts/smooth_inputs.py) with `FILL=1`), meshed by Hunyuan3D-2mv.
+- *Cut from the worn mesh.* The body wearing that one item is meshed. A second set of sprites with the same outline is painted green where the item's layer has a pixel and magenta elsewhere. Texturing the mesh from those says which triangles are the item, and [`scripts/cut_item.py`](../research/scripts/cut_item.py) keeps them.
+
+Every mesh is fitted in the body's camera frame, so each lands where it is worn. `texture.py` now starts a fit at the point in space where the item's sprites are, since a helm is nowhere near the middle of the frame.
+
+The cut for the helm: the worn mesh, the same mesh textured from the mask sprites, and what is kept.
+
+![The body wearing the helm, the same mesh in green and magenta, and the helm alone](../website/public/research/3d/parts-cut-helm.png)
+
+**Result.** Left: each item meshed alone. Right: each cut from the worn mesh. Rows are helm, cuirass, leg armour, cape.
+
+![Four items meshed alone, and the same four cut from the body wearing them](../website/public/research/3d/parts-alone-vs-cut.png)
+
+| Item | Outline match, alone | Outline match, worn | Triangles kept by the cut |
+|---|---|---|---|
+| Helm | 71.2% | 74.9% | 8,992 of 29,999 |
+| Cuirass | 76.5% | 81.4% | 10,811 |
+| Leg armour | 62.5% | 82.3% | 11,830 |
+| Cape | 61.7% | 84.3% | 15,427 |
+
+The two outline columns are not like for like: alone, the mesh is compared with the item's layer, and worn, the whole dressed figure with its sprites.
+
+- **Alone, the model does not know what it is looking at.** The leg armour became two flat boards and the cape three separate slabs. The helm became a box with horns, and the cuirass a solid torso.
+- **Worn, the body tells it.** The leg armour wraps two legs, the cape hangs as one sheet from a collar, and the helm is round.
+- **The cut is ragged at the edges** and leaves a fringe of skin-coloured triangles where an outline pixel was shared. Each cut also leaves 25 to 40 loose pieces, most of them crumbs.
+- **A cut item is a shell.** It has no inside, which is what a game wants from clothing.
+
+**Verdict.** Cut from the worn mesh. It costs one mesh per item either way, about two minutes each.
+
+## 28. A character assembled from parts
+
+**Question.** Do a body and items made separately go together, and move together?
+
+**Setup.** [`scripts/rig.py`](../research/scripts/rig.py) gained `ITEMS`: a list of item meshes to put on the body's skeleton.
+
+- *Fit.* An item is drawn one pixel outside the body and meshed from a different run, so parts of it land inside the body's mesh: the first helm showed the face through its front. Each item vertex closer than 0.6 sprite pixels to the skin is moved out along the body's surface direction until it is that far above it. Triangles buried deep in the body that face inward are dropped.
+- *Weights.* An item vertex takes the bone distances of the nearest point inside the body (step 24), so tight armour moves as the skin under it does. A slot can name the bones it may follow: the helm follows the head only, the cape the hips and spine only.
+- *File.* One .glb with five meshes on one skeleton and one walk. The viewer shows a switch per mesh.
+
+**Result.**
+
+![The body wearing all four items, from five directions](../website/public/research/3d/parts-assembled.png)
+
+- **It reads as the knight,** from parts that were never meshed together. Nothing pokes through in the rest pose.
+- **Items come off one at a time** in the viewer on the [3D characters page](https://pixelkiln.griffen.codes/3d#mesh), and the body under them is whole.
+- **The file is 3.6 MB:** five meshes of up to 30,000 triangles and five 256 pixel textures. It passes the glTF validator with no errors or warnings.
+- **The textures are the stitched ones of step 10,** noisy on the armour. Step 29 paints them.
+
+Not checked: whether skin shows through armour at the extremes of the walk, an item on a second body, two items in the same slot, and any engine other than three.js.
+
+**Verdict.** Keep. This is the shape a game can use: a body, a rack of items, one skeleton.
+
+## 29. Painting the parts
+
+**Question.** Step 28's textures are stitched from the sprites and noisy. Does the paint stage of steps 20 and 23 work on parts?
+
+**Setup.** The body and each of the four worn meshes went through `hunyuan3d_paint_turn.py` with `SPREAD=22` and `bake.py` at 1024 pixels, exactly as in step 23, each with its own sprites as references. The item is cut out afterwards with the same mask as before: painting changes the texture and not the triangles, so `cut_item.py` takes the painted mesh and the mask mesh from step 27 unchanged. About 40 seconds a direction, five to six minutes a mesh.
+
+**Result.** The body, stitched and then painted:
+
+![The body with a stitched texture and with a painted one](../website/public/research/3d/parts-body-painted.png)
+
+The assembled character, stitched and then painted:
+
+![The assembled knight with stitched textures and with painted ones](../website/public/research/3d/parts-painted.png)
+
+- **The speckle is gone.** The armour has plates and trim, the cape has folds, the helm is one metal, and the body's black outline flecks are gone.
+- **Colours drift.** The helm and underwear turn blue-grey, and the gold is duller with the chest crest fainter. Step 23's colour correction is on and does not hold them. The viewer's palette snap pulls them part of the way back.
+- **Painting the worn mesh paints the item in context,** so the cuirass is shaded as something on a chest. The price is that each item's texture is 1024 pixels of which the item uses a third.
+- **Orange flecks appear on the leg armour during the walk** in the viewer with the pixel look on. They were first taken for skin showing through. Step 30 shows they are not.
+- **The file grew to 5.6 MB** with five 512 pixel textures. It passes the glTF validator with no errors or warnings.
+
+**Verdict.** Keep the painted parts.
+
+## 30. Hiding the skin under an item
+
+**Question.** Games hide the body under clothing so that skin cannot show through it in motion. Can the file say which skin each item hides?
+
+**Setup.** `rig.py` now writes the body as one mesh per set of items that cover it.
+
+- *Covered.* A body vertex is covered by an item when the item's surface is within 1.2 sprite pixels of it (`COVER`). A triangle is hidden by the item only when its corners and all their neighbours are covered, which leaves a rim of skin under the item's edge.
+- *Loose items.* A third field in an item's entry, `loose`, marks one that hides nothing. The cape is loose: it swings away from the back it hangs behind.
+- *In the file.* Each body piece is a node whose extras carry `"hiddenBy": ["Cuirass"]`. A piece is hidden while any item in its list is worn. The pieces share one material and texture.
+
+**Result.** The body came out as six pieces:
+
+| Piece | Triangles |
+|---|---|
+| Never hidden (face, neck, hands, edges) | 6,359 |
+| Under the leg armour | 9,222 |
+| Under the cuirass | 8,988 |
+| Under both | 1,602 |
+| Under the helm | 3,714 |
+| Under the cuirass and the helm | 115 |
+
+- **It works in the viewer.** With everything worn, 79% of the body is not drawn. Taking the cuirass and helm off brings the chest and head back.
+- **The orange flecks of step 29 were still there,** which showed they were never skin. With the pixel look off there were none. The paint stage had dulled the gold trim, and the viewer's palette snap moved the dulled gold to the nearest stored colour, which was a skin tone.
+- **Baking each item in its own colours fixes that.** `bake.py` already had `PALETTE`; each worn mesh is baked snapped to the 32 colours of that item's own layer, so the item carries no colour its sprite lacks. Top row: before. Bottom row: after. The helm is steel again and not blue.
+
+![The assembled knight before and after baking each item in its own sprite colours](../website/public/research/3d/parts-own-colours.png)
+
+- **The gold is darker than the sprite's** after the snap, closer to olive on the arms. The paint stage's drift is reduced, not undone.
+- **The file is 5.4 MB.**
+
+Not checked: whether the rim of skin kept under an item's edge is enough when a limb bends far, and whether an engine reads the extras (three.js does; Godot and Unity each have their own way).
+
+**Verdict.** Keep both. A wrong guess about the flecks cost a step, and the test that settled it was turning the pixel look off.
+
+## 31. Sprite cards on the skeleton
+
+**Question.** Steps 26 to 30 show a painted mesh, and every flaw in the paint is on screen. The Cor Mundi Studios short (see [what other people are doing](#what-other-people-are-doing)) shows the sprites themselves, as a flat card per body part moved by a rig, with a mesh underneath that is never seen. Do the pieces made so far add up to that?
+
+**Setup.** No new art and no generations.
+
+- *Cutting.* [`scripts/cards.py`](../research/scripts/cards.py) draws the body mesh into each of the eight sprite views, coloured by the bone that owns each point (`rig.py` writes that with `SKIN=<file>`). Every sprite pixel takes the bone of the mesh under it, or of the nearest pixel that has one. Each sprite and each item layer is then cut into one piece per bone, reaching two pixels into its neighbours to cover the joints. The helm goes whole on the head and the cape whole on the spine.
+- *The sheet.* 259 pieces from five layers pack into one 512 by 128 picture of 45 KB, with a list of where each piece is and how far its corner is from its bone's joint.
+
+![The packed pieces: capes and helms whole, then bodies, limbs and armour cut by bone](../website/public/research/3d/cards-atlas.png)
+
+- *Drawing.* In the viewer each bone carries a card turned to face the camera. The camera's direction is taken into the bone's own frame, and the card shows the piece from the drawn view that best matches it. A view is preferred when it sees the bone as end-on or as side-on as the camera now does: an arm drawn sticking out sideways and then lowered by the walk is seen side-on from the character's side, so it uses the front view's arm, turned to hang down. The plain "nearest direction" rule picked the side view's arm, which is a foreshortened stub.
+- *Order.* Cards sit at their bones, so the near arm is in front of the body and the far arm behind it with no rule. Item layers sit a few millimetres nearer the camera than the body. The cape moves behind or in front with the side the camera is on.
+- *Motion.* The same fifteen bones and walk as the mesh. The file that carries them is the body mesh with a 64 pixel texture, 1.3 MB, most of which a real use would drop.
+
+**Result.** Front, side and back standing, and the side walking, in the viewer with the pixel look on:
+
+![The knight drawn as sprite cards, from the front, side, back, and walking](../website/public/research/3d/cards-viewer.png)
+
+- **It is the sprite, in motion, from any angle.** The emblem, the trim and the helm's eyes are the drawn pixels, with none of the paint stage's blur or colour drift.
+- **Items switch on and off** as layers, as in the 2D builder, and the walk moves all of them.
+- **It worked on the first run,** which says the camera fit, the joints and the bone ownership from the earlier steps agree with each other.
+- **Between the eight directions the picture is one of the eight,** turned to face the camera, so the character snaps from view to view as it turns.
+- **Pieces are rotated pictures,** so a lowered arm is the raised arm's pixels on a slant, and the joints overlap or open a little as limbs swing.
+- **There is no lighting.** The short lights its cards from the hidden mesh; that was not tried.
+
+Not checked: sixteen directions (step 13 could supply them), any engine other than three.js, and poses far from the drawn one.
+
+**Verdict.** Keep, beside the painted mesh and not instead of it. The cards are sharper today; the mesh is the only one that can be lit, seen from above, or posed freely.
+
+## 32. Larger references, redrawn locally
+
+**Question.** The goal from here is the best painted surface, not pixel art. The survey says the reference picture is the first cap: the paint stage has been shown a 46 pixel figure enlarged with hard edges. Can the sprites be redrawn large, for nothing, and does the paint improve?
+
+**Setup.**
+
+- *Redraw.* [`scripts/redraw.py`](../research/scripts/redraw.py) cuts the figure out of each sprite, enlarges it smoothly to 1024 pixels and has SDXL redraw it on the ComfyUI already used for meshes. The checkpoint (`sd_xl_base_1.0`) and a tile control model (`controlnet-union-sdxl-promax`) were already on the machine, so nothing was downloaded and no generations were spent. About 25 seconds a direction.
+- *Settings.* A tile control held at 0.8 for every step, with the model allowed to change half the picture, returned the blurry enlargement unchanged. Letting the model change 90% while the control applies at 0.6 for the first half of the steps gives a redraw that keeps the layout. Left to right: the sprite, a cautious setting, the setting kept, and an anime checkpoint that flattened it.
+
+![The sprite and three redraws of it](../website/public/research/3d/hd-redraw-settings.png)
+
+- *Paint.* The body wearing the cuirass, the same mesh as step 29, painted from the eight redraws and baked at 2048 pixels. Once with 512 pixel views as before, once with 768.
+
+**Result.** The eight redraws:
+
+![Eight redrawn directions of the body wearing the cuirass](../website/public/research/3d/hd-redraws.png)
+
+The mesh painted from the sprites (step 29), from the redraws at 512 pixel views, and from the redraws at 768:
+
+![The same mesh painted from sprites, from redraws, and from redraws with larger views](../website/public/research/3d/hd-painted.png)
+
+- **The paint now has things in it:** plate edges, a collar, a crest with a shape, a face with brows and ears. Before, it was the sprite's pixels enlarged.
+- **768 pixel views fit in 12 GB** and are a little sharper, at about 110 seconds a direction against 40.
+- **The redraws do not agree with each other.** Each direction is redrawn alone, so the crest, the shoulder plates and the face differ from view to view, and the bake averages them. The back view came back still pixelated.
+- **Colours move.** The black armour became grey steel and the skin paler. Nothing ties a redraw to the sprite's palette.
+- **The mesh is now the limit you see.** Flat facets show on the head and limbs under a detailed texture.
+
+Not done: the other items, the bare body, and the assembled model in the viewer, which still carries step 30's textures.
+
+**Verdict.** Keep. The largest gain in texture quality so far, for no cost but GPU time. The next gains are in making the eight redraws agree and in a smoother mesh.
+
+## 33. Making the redraws agree
+
+**Question.** Step 32's eight redraws each invent their own details and their own colours. Two fixes were tried.
+
+**Setup.** Both are options of [`scripts/redraw.py`](../research/scripts/redraw.py).
+
+- *One sheet* (`SHEET=1`). All eight figures are put on one 2048 by 1024 picture and redrawn together, so the model sees one character from eight angles. Each figure is then enlarged and sharpened alone, with the model allowed to change 35%.
+- *Colours held* (`COLOUR=1`, now the default). The redraw's broad colour is swapped for the sprite's, region by region: a blurred copy of the redraw is taken out and a blurred copy of the enlarged sprite put in, leaving only the redraw's detail. The blur is a fortieth of the picture wide.
+
+**Result.** The same mesh painted from: step 32's redraws; redraws made alone with colours held; one-sheet redraws with colours held.
+
+![The mesh painted from three sets of redraws](../website/public/research/3d/hd-painted-agree.png)
+
+- **Holding the colours is the fix.** The armour is black again and the skin is the sprite's, with the plates, crest and face of step 32 intact. Because every view now shares the sprite's colours, the views also disagree less where they meet.
+- **The sheet agrees and loses the rest.** At a quarter of the pixels a figure, the model drew a soft suit with gold swirls in place of plates, and a child's face. The sharpening pass cannot put back a design that was never drawn.
+
+**Verdict.** Keep the colour hold, drop the sheet. Details still differ between directions; the bake blends them.
+
+## 34. A mesh from redrawn pictures
+
+**Question.** The mesh model has been shown the sprites, enlarged smoothly (step 22). Its meshes have a faceted skull and lumpy limbs. Is that the model, or the pictures it is given?
+
+**Setup.** The bare body's front, left, back and right sprites were redrawn at 1024 pixels as in step 32, with `OUTLINE=own`. By default a redraw is cut with the sprite's own enlarged outline, which keeps its stair steps: a head drawn in a dozen pixels has corners. `OUTLINE=own` keeps the outline the model drew, taking as ground whatever is near the ground colour and joined to the picture's border. The four redraws went to Hunyuan3D-2mv with nothing else changed.
+
+Top: what the mesh model was given before. Bottom: the redraws.
+
+![The four smoothed sprites, and the four redraws, given to the mesh model](../website/public/research/3d/hd-mesh-inputs.png)
+
+**Result.** Top: the mesh of step 26. Bottom: the mesh from the redraws.
+
+![The body mesh from smoothed sprites and from redrawn pictures](../website/public/research/3d/hd-mesh.png)
+
+- **It was the pictures.** The new mesh has a round skull, a brow, nose and ears, a chest, shoulder blades, arms that taper, calves. The old one is a figure of flat panels.
+- **The redraw's outline matters as much as its inside.** The model builds what the outline shows, and the sprite's outline is a staircase.
+- **The back view's outline is still partly stepped,** where the redraw kept the sprite's edge.
+
+Not done: fitting this mesh to the sprites, painting it, the worn meshes, or anything in the viewer. The redraws are no longer pixel for pixel on the sprites, so the fit of step 9 and the item cut of step 27 need checking against them.
+
+**Verdict.** Keep. Next is to rebuild the body and items from redrawn pictures end to end.
+
+## 35. Everything rebuilt from redrawn pictures
+
+**Question.** Steps 32 to 34 each improved one piece. Does the whole chain of steps 26 to 30 still hold when it starts from redrawn pictures?
+
+**Setup.** One script ran, for the bare body and for the body wearing each of the four items:
+
+1. `redraw.py` on all eight directions, with the model's own outline and a white ground (`OUTLINE=own GROUND=255`). 25 to 45 seconds a direction.
+2. Hunyuan3D-2mv on the front, left, back and right redraws. About two minutes a mesh.
+3. `texture.py` to fit each mesh into the body's camera, against the sprites as before.
+4. The paint stage from the eight redraws with 768 pixel views, and `bake.py` at 2048 pixels. About 15 minutes a mesh.
+5. `cut_item.py` with the mask sprites of step 27, then `rig.py` as in step 30.
+
+About two hours of GPU time, unattended, and no generations.
+
+Two faults in our own scripts surfaced and were fixed:
+
+- **The cut was throwing away good triangles.** It drops loose crumbs by counting connected triangles, but the unwrap splits vertices along its seams, so every patch of the unwrap counted as a separate piece and small patches were dropped as crumbs. It now joins vertices that are in the same place first. The four items went from 25 to 60 "pieces" each to 1 to 3. Steps 27 to 30 had this fault too; their holes were blamed on a ragged cut.
+- **`rig.py` gained `ALIGN`,** which slides an item until it is evenly spaced round the body. Here it moved items less than half a sprite pixel, so the separate fits already agree; it is kept as a safeguard.
+
+**Result.** The bare body, before and after:
+
+![The body of step 29 and the body rebuilt from redrawn pictures](../website/public/research/3d/rebuilt-body.png)
+
+The cape, leg armour and helm, cut from their rebuilt worn meshes:
+
+![The rebuilt cape, leg armour and helm on their own](../website/public/research/3d/rebuilt-items.png)
+
+The assembled character with hidden skin left out, step 30 above and the rebuild below:
+
+![The assembled knight of step 30 and the rebuild](../website/public/research/3d/rebuilt-assembled.png)
+
+- **The body is sculpted and painted,** with a face, ears, muscle and a round skull. Dark smears run along the tops of the arms, where the redraws' outlines were baked in.
+- **The helm and leg armour are the best pieces so far:** plates, rivets, trim and a visor, on smooth shapes.
+- **One sleeve of the cuirass ends at mid forearm,** and there is bare skin at one hip between the cuirass and the leg armour. The item masks are still the sprites' layers, and a redrawn figure is not pixel for pixel where the sprite was, so the mask lands a pixel or two off on the new mesh.
+- **The fur collar is teal.** This was first put down to the colour hold of step 33 not reaching outside the sprite. Step 36 shows the redraw is grey and the bake is what turns it teal.
+- **The cuts carry scraps of skin** at the hands and neck, for the same reason as the short sleeve.
+- **The file is 6.0 MB** with 512 pixel textures (10.8 MB at 1024), and passes the glTF validator with no errors or warnings.
+
+In the viewer the rebuilt model loads, walks, and its items switch off. It is shown smooth by default now, with the pixel look as a switch.
+
+**Verdict.** Keep as the viewer's model. The next fault to fix is the masks: they should be made from the redraws, not the sprites.
+
+## 36. Item edges from the paint, and a colour fault in the bake
+
+**Question.** Step 35 left three faults: skin where an item should be, scraps of skin on the items, and a teal collar. Are the masks to blame, as supposed?
+
+**Setup.**
+
+- *Edges.* [`scripts/cut_item.py`](../research/scripts/cut_item.py) takes the bare body's painted mesh as `BODY`. The mask from the sprites still says roughly where the item is. Within three sprite pixels of the mask's edge the paint decides: a triangle painted as skin is left out, and a triangle is taken in when it is not skin and is painted unlike the bare body at the same place. Skin is learned from the body's own texture, as a spread of colour with brightness left out. Both meshes are in the same frame, so "the same place" is the nearest point of the body.
+- *Why two tests.* The first version took in anything near the edge that was not skin, and the cuirass grew a skirt of underwear. The underwear is on both meshes, so comparing against the body leaves it alone.
+- *Colour.* The collar was traced from sprite to redraw to painted view to texture. It is grey in all but the last.
+
+**Result.** The cuirass cut with the sprite mask alone, and with the edge moved:
+
+![The cuirass cut by the sprite mask, and with its edge moved to where the paint puts it](../website/public/research/3d/masks-cuirass.png)
+
+The assembled character: step 35 with the new edges, the same with the bake corrected, and the bare body.
+
+![The assembled knight with new edges, then with the bake's colour shift off, and the bare body](../website/public/research/3d/masks-and-colour.png)
+
+- **The scraps of hand and neck are gone,** and so is the bare patch at the hip. Each cut moved about a thousand triangles each way.
+- **The teal was `bake.py`'s `TONE`,** not the redraw. `TONE` moves each painted view's colours to match its reference's average, one channel at a time. It was added in step 23, when the references were sprites, as a small gain. A painted view of the back shows more red cape than its reference does, so matching averages takes red out of everything else and grey fur goes teal. With it off the collar is grey, the helm is black and not blue, and the underwear is grey. The blue cast noted in steps 29 and 32 was the same fault. `TONE` is now off unless asked for.
+- **One cuirass sleeve still ends at mid forearm.** The worn mesh's arm is thinner than the body's there, and the edge rule only reaches three pixels.
+
+**Verdict.** Keep both. The viewer's model is rebuilt with them, 6.0 MB.
+
+## 37. The model in a game engine
+
+**Question.** Every check so far has been three.js or the glTF validator. Does a game engine read the file the way it was meant?
+
+**Setup.** The viewer's `parts.glb` of step 36 in an empty Godot 4.7.2 project, imported headless (`--headless --import`), then a script that loads the scene and lists what it finds.
+
+**Result.**
+
+- **It imports with no errors or warnings.**
+- **One skeleton of fifteen bones,** with their names: Hips, Spine, Head, and upper, lower and end bones for each arm and leg.
+- **Ten meshes, all skinned to it:** six pieces of body and four items, 79,216 triangles in all.
+- **The walk arrives** as an animation named Walk, 0.9 seconds, eight tracks.
+- **The hide lists survive.** Godot puts each node's glTF extras in its metadata, so `"hiddenBy": ["Cuirass"]` can be read by a script, as in step 30.
+
+Not checked: how it looks drawn in Godot (this ran with no screen), Godot's humanoid retargeting against these bone names, Unity, and Unreal.
+
+**Verdict.** Keep. The file is a working rigged character in one engine. What it lacks to be an asset is in the survey below: triangle count, unwrap, a standard skeleton, materials.
+
+## 38. A second painter: MV-Adapter
+
+**Question.** The survey named MV-Adapter as the likeliest local step up from Hunyuan3D's paint stage. Does it run on a 12 GB card, and is it better?
+
+**Setup.**
+
+- *Install.* A clone of [MV-Adapter](https://github.com/huanngzh/MV-Adapter) in its own folder and Python 3.12 environment on the same machine, with PyTorch 2.6 and diffusers 0.31, and three downloads: SDXL base in half precision, a fixed VAE, and the adapter `mvadapter_ig2mv_sdxl`. Its requirements list nvdiffrast, which needs a compiler, and CV-CUDA, which is Linux only; the machine is Windows with neither. Both were left out.
+- *What replaces them.* The model is guided by six pictures of where the mesh's surface is and which way it faces. [`scripts/mvadapter_paint_turn.py`](../research/scripts/mvadapter_paint_turn.py) draws those itself, with MV-Adapter's own six cameras, and [`scripts/mvadapter_remote.py`](../research/scripts/mvadapter_remote.py) runs only the model. The bake is `bake.py`, as for the other painter.
+- *Run.* The body wearing the cuirass, turned to face the front, with the front redraw of step 35 as the reference. 30 steps.
+
+**Result.** The reference, the four views round the figure that the model painted, and one of the guide pictures:
+
+![A reference picture, four views painted by MV-Adapter, and a guide picture](../website/public/research/3d/mvadapter-views.png)
+
+- **It works with our guide pictures.** The painted front view sits on the mesh and follows the reference closely: plates, crest, face.
+- **It does not fit.** At 768 pixels it filled all 12 GB and made no progress in 25 minutes. Its option to keep parts of the model off the GPU failed inside its own reference step. At 640 pixels it finished one pass in 689 seconds with 12.9 GB in use, more than the card has, so part of it ran from ordinary memory. Hunyuan3D's paint stage takes 110 seconds for a pass at 768.
+- **The sides it invents are wrong,** as with the other painter in step 17: a black head from the side and the back, and the chest's crest repeated on the back. The one-direction-at-a-time trick would discard them, at eight passes and an hour and a half a mesh.
+
+Not done: a bake from its views, its smaller SD2.1 variant, or a comparison against Hunyuan3D on the same finished mesh.
+
+**Verdict.** Drop on this card. Its front view is no better than what step 35 has, and it is six times slower. The scripts stay for a machine with 16 GB or more.
+
+## 39. Sprites drawn larger at the source
+
+**Question.** Steps 32 to 36 enlarge 64 pixel sprites with an image model that redraws each direction alone. The generator that drew the sprites can draw them four times larger itself. Is that a better start?
+
+**Setup.** PixelLab's v3 character at 256 pixels, with step 26's body prompt, underwear included and a T-pose asked for: 9 generations. Then four states of that character, one for each item ("wearing a black steel plate cuirass ...", and so on), which keep the same figure and redraw all eight directions.
+
+**Result.** The bare body, then the cuirass, leg armour, cape and helm:
+
+![Five sets of eight directions at 256 pixels: the body and four worn versions](../website/public/research/3d/sprites-256.png)
+
+- **The figure is an adult,** about seven heads tall, where the 64 pixel one is four. Step 26 put the squat build down to the style; it was the size. At 64 pixels a face needs a quarter of the height.
+- **The eight directions agree,** in pose and in detail, because one model drew them together. That is what step 33 could not get from redraws.
+- **Each worn version is the same figure in the same pose,** so comparing it with the bare one says where the item is.
+- **These are whole figures, not layers.** The items are not separate pictures as in step 26.
+- **The helm's horns are short.** A state cannot have a canvas larger than 256 pixels, and the head is near the top.
+
+Not done: meshing, painting or rigging from these.
+
+**Verdict.** Keep. Rebuild from these next.
+
+## 40. Everything rebuilt from the 256 pixel sprites
+
+**Question.** Step 39's sprites are larger, adult in build and agree across directions. Does the chain of steps 35 and 36 give a better character from them?
+
+**Setup.** The same script as step 35, with these differences:
+
+- *Sources.* The five 256 pixel sets of step 39. They are redrawn at 1024 pixels by `redraw.py` with its usual settings; a gentler setting that let the model change little kept the pixel edges. Left to right: the sprite, the gentle redraw, the one used.
+
+![A 256 pixel sprite and two redraws of it](../website/public/research/3d/redraw-256.png)
+
+- *Fitting.* Carving and fitting ran on half-size copies, 128 pixels, to keep the carve to a few seconds. Distances given in sprite pixels were scaled to match: items sit 1.5 above the skin, skin counts as covered within 3, and an item's edge may move 7.
+- *Masks.* There are no item layers here, only worn figures. A pixel is the item where the worn sprite differs from the bare one by more than 70 across red, green and blue, tidied and with specks under 150 pixels dropped. Step 36's edge rule does the rest.
+- *Joints.* PixelLab's skeleton estimate on the eight bare sprites, 0.8 generations.
+
+About two hours of GPU time, unattended.
+
+**Result.** The assembled character with hidden skin left out, and the bare body:
+
+![The rebuilt knight and the bare body from five directions](../website/public/research/3d/rebuilt-256.png)
+
+The four items on their own:
+
+![The cuirass, leg armour, cape and helm cut from their worn meshes](../website/public/research/3d/rebuilt-256-items.png)
+
+- **The body is an adult.** Long legs, a small head, shoulders, a face, with muscle painted and shaped. Compare step 36's.
+- **The armour reads as armour:** separate plates on the legs, a shaped helm with a visor, trim that follows edges.
+- **The fits are no worse:** the meshes match the sprites' outlines 81 to 86%.
+- **The masks needed the edge rule.** It took in 1,000 to 4,300 triangles an item, most on the cape, and left out up to 900 of skin.
+- **Dark streaks run along the tops of the arms** on the bare body, and the cape has a few pinholes.
+- **In the viewer it loads, walks and its items switch off.** Seen there with the cuirass and helm off: the head, chest and arms come back whole.
+- **In Godot 4.7.2 it imports as before:** fifteen bones, ten skinned meshes, 79,819 triangles, the walk.
+- **The file is 6.3 MB** with 512 pixel textures, 11.4 MB with 1024. It passes the glTF validator with no errors or warnings.
+
+Not checked: the walk from every side, whether items clip at the extremes of the stride, the pixel look on this model.
+
+**Verdict.** Keep as the viewer's model. The look is no longer the weakest part. What separates this from an asset is now in the survey: triangle count, unwrap, skeleton, materials.
+
+## 41. A light mesh with the paint and relief baked on
+
+**Question.** The survey's first gap is triangle count: step 40's model is about 30,000 triangles a part, spread evenly, in an unwrap of hundreds of pieces. How much can go without the picture changing?
+
+**Setup.** [`scripts/thin.py`](../research/scripts/thin.py), on the body and on each cut item of step 40.
+
+- *Thin.* The mesh's split vertices are joined, then it is reduced to a target count with quadric decimation: 6,000 triangles for the body, 3,000 for the cuirass and the leg armour, 2,500 for the cape, 2,000 for the helm.
+- *Unwrap.* A fresh xatlas unwrap of the light mesh, told to grow each piece four times as readily as its default, with six pixels of padding.
+- *Bake.* Every texel of the light mesh takes the colour of the nearest point on the dense mesh that faces the same way, from three million points sampled on it. Facing the same way keeps the two sides of the cape from swapping.
+- *Relief.* The same lookup gives the dense mesh's smooth normal, stored against the light mesh's own normal and tangent as a normal map in the OpenGL convention glTF asks for. `rig.py` writes matching tangents, and now keeps the normals a part arrives with.
+- *File.* `rig.py` gained `JPEG`: textures as JPEG at a given quality. Colour is 1024 pixels for the body and 512 for items, normal maps 512, quality 90.
+
+The body's colour texture and normal map after thinning:
+
+![The light body's colour texture and its normal map](../website/public/research/3d/thin-maps.png)
+
+**Result.** The assembled character, dense above and light below, drawn unlit:
+
+![The dense and the light model from five directions](../website/public/research/3d/thin-dense-vs-light.png)
+
+| | Dense (step 40) | Light |
+|---|---|---|
+| Triangles, body and four items | 79,819 | 16,496 |
+| Unwrap pieces, body | not counted | 157 |
+| File | 6.3 MB | 2.1 MB |
+
+- **The two are hard to tell apart** in an unlit render. The fur collar is a little softer.
+- **It takes seconds:** about seven for the body.
+- **In the viewer it loads and walks,** lit with the normal map. In Godot 4.7.2 it imports with the same skeleton and walk.
+- **It passes the glTF validator** with no errors or warnings.
+- **The normal map is nearly flat,** with facet-sized speckle. The dense mesh has little relief the light one lacks, and what it has is partly the generator's noise. A real gain here needs relief from somewhere else, such as a normal map drawn from the paint.
+- **The unwrap is still many pieces,** 44 to 224 a part. It is automatic, and no artist would call it clean.
+
+Not checked: the lit look beside the dense model, how the light mesh bends at elbows and knees compared with the dense one, and a hand-made or quad retopology.
+
+**Verdict.** Keep. A fifth of the triangles and a third of the file for no visible cost.
+
+## 42. A standard humanoid skeleton
+
+**Question.** The skeleton of step 16 has fifteen bones. Engines put stock animations on a character by matching its bones to a standard humanoid. Is ours one?
+
+**Setup.** `rig.py` now builds twenty-one bones unless told `BONES=15`. The six added are the ones a standard humanoid has besides: Chest, Neck, a Shoulder for each arm and Toes for each foot. They are placed from the joints already known: the spine is split in three, the neck runs from the neck joint to under the ears, each shoulder from near the neck to the shoulder joint, and the toes from the ball of the foot forward. The names are those Unity's and Godot's humanoid profiles use. Weights come as before, measured through the mesh.
+
+The check is Godot's own `SkeletonProfileHumanoid`, which lists 56 bones (fingers, eyes and jaw among them) and marks which are required. A script asks whether each is in the imported skeleton by name, and whether it hangs from the parent the profile gives.
+
+**Result.**
+
+- **All seventeen bones the profile requires are found,** by name, with no mapping written.
+- **Four optional ones are found too:** Chest, Neck and both Toes.
+- **Every bone found hangs from the parent the profile expects.**
+- **The walk still plays.** The thinned body on the new skeleton:
+
+![The light body walking on the twenty-one bone skeleton](../website/public/research/3d/humanoid-walk.png)
+
+Not done: putting a stock animation on it. That needs an animation library to test with, which means a download, and Godot's retargeting also resets each bone's rest direction, which was not run. Fingers, eyes and jaw are not built. Unity and Unreal were not tried.
+
+**Verdict.** Keep. The names and the tree are right for one engine's profile. Whether a stock animation looks right on it is the next test.
+
+## 43. Stock animations on the skeleton
+
+**Question.** Step 42 says the skeleton has the right names. Does an animation made for another character look right on it?
+
+**Setup.**
+
+- *The library.* [Quaternius's Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html), standard edition: 43 animations on a 65 bone humanoid named as Unreal's mannequin is (`pelvis`, `spine_01`, `upperarm_l`), as one .glb. CC0. A 15 MB download from itch.io. It is not in this repository.
+- *The problem.* The two skeletons differ in bone count, proportions and rest pose, and the library's bones carry rotations at rest where ours carry none. Keyframes cannot be copied.
+- *The method.* [`scripts/retarget.py`](../research/scripts/retarget.py) pairs our 21 bones with 21 of the library's. For each bone at each moment it takes the library bone's turn away from its rest pose, in world space, and gives it to our bone. Before that, each of our limbs is turned to point the way the library's points at rest, so the two rest poses need not agree. The hips also travel, by the library's hip movement scaled to our hip height (1.023 here). Sampled 30 times a second.
+- *The viewer* gained a picker for whatever animations a file carries.
+
+**Result.** Idle, walk, jog, sword attack and death, in the viewer:
+
+![The knight in five stock animations](../website/public/research/3d/stock-animations.png)
+
+- **They read as what they are.** The idle stands with arms at the sides, the walk and jog stride, the attack lunges, the death falls and lies on the ground.
+- **Eleven animations add 220 KB** to the file, which is 2.3 MB with them.
+- **The armour and cape follow** through all of them, since items are skinned to the same bones.
+- **It passes the glTF validator** with no errors or warnings.
+
+Not checked: feet sliding on the ground, hands (the character has no finger bones, so a grip is a flat hand), the cape through a roll, the animations in Godot, and the other 32 in the library.
+
+**Verdict.** Keep. A standard skeleton plus a retarget gives the character a library of motion for nothing.
+
+## 44. Views from above and below
+
+**Question.** Since step 23 the body has had dark smears along the tops of its outstretched arms, and dark patches on shoulders and the top of the head. Why, and can the painter fix them?
+
+**Setup.**
+
+- *The cause.* Every camera in a paint pass is level with the character. Nothing looks down on the top of a level arm, so its texels are seen only edge-on, where a painted view shows the figure's dark outline.
+- *The fix.* Each pass paints six views and three were kept (the sprite's, and one to each side). Two of the spare cameras now look from 45 degrees above and below the sprite's direction: `TOP=45` in `hunyuan3d_paint_turn.py`, five views kept a pass, forty a mesh. The paint node takes only 20, 45 or 90 degrees; 40 fails.
+- *The bake.* `bake.py` reads each view's tilt. It tries the tilt both ways up when it places a view, as it already does for mirroring, and keeps the one that matches the node's own render.
+
+A pass for the south sprite: the level view, the view from above, the view from below, and the node's render of the mesh from above.
+
+![A level painted view, one from above, one from below, and the mesh seen from above](../website/public/research/3d/top-views-painted.png)
+
+**Result.** The body seen from 35 degrees above, before and after:
+
+![The body from above with level views only, and with views from above and below](../website/public/research/3d/top-views-body.png)
+
+The assembled character from the same height, before and after:
+
+![The assembled knight from above, before and after](../website/public/research/3d/top-views-assembled.png)
+
+- **The smears are gone** from the arms and shoulders, and the top of the head is skin.
+- **The model invents the top views plausibly:** the reference shows a front, and it paints the same figure seen from above.
+- **Time is unchanged,** about 110 seconds a direction, since the six views were being painted anyway.
+- **The viewer's model is rebuilt from these textures,** thinned and animated as in steps 41 to 43: 16,498 triangles, 2.3 MB, valid, and it imports into Godot 4.7.2 with twelve animations.
+- **Godot found a clash.** It drops a trailing `_Loop` from animation names, so the library's `Walk_Loop` collided with our own `Walk`. `retarget.py` now renames ours `First_Walk`.
+
+Not checked: the rebuilt model in the browser, and undersides such as the soles and under the chin.
+
+**Verdict.** Keep. `TOP=45` should be the usual setting.
+
+## 45. A cape that swings
+
+**Question.** The cape has been one stiff sheet since step 24, turning with the spine. Can it hang and swing like cloth, in a file any engine can play?
+
+**Setup.**
+
+- *Bones.* `CHAINS="Cape=3x4"` in `rig.py` gives the item called Cape three columns of four links, named `Cape1_1` to `Cape3_4`, each column hung from the chest. The top fifth of the item, the fur collar, stays on the body. Below it each vertex follows the two links it lies between in the two columns it lies between, so the sheet bends smoothly down and across with at most four bones a vertex.
+- *Motion.* Engines swing such bones live with spring bones, each its own way, and glTF has no standard for it. [`scripts/sway.py`](../research/scripts/sway.py) does it once and stores the answer: for every animation in the file it simulates each chain as a string of points and writes the result as rotation keys for the cape bones.
+- *The simulation.* The top point is pinned to the chest. The rest fall under gravity, keep nine tenths of their speed each step, keep their distance from the point above, are pulled slightly towards where they hang at rest, and are pushed out of capsules round the legs and the trunk. Four steps a frame at thirty frames a second. A looping animation is run three times round and the last pass kept, so the end meets the start.
+
+**Result.** In the viewer: idle, two frames of the sprint from the side, and the roll.
+
+![The cape hanging in an idle, streaming behind a sprint, and falling during a roll](../website/public/research/3d/cape-sway.png)
+
+| Animation | How far the cape's hem swings from rest |
+|---|---|
+| Idle, sword idle, walk | 4 to 6 cm |
+| First walk | 13 cm |
+| Sprint, jog | 38 and 42 cm |
+| Roll, death | 48 and 49 cm |
+| Jump start | 71 cm |
+| Sword attack | 92 cm |
+
+- **It reads as cloth.** The cape trails a sprint, settles in an idle, and hangs towards the ground through a roll.
+- **The legs no longer pass through it** in the frames looked at; the capsules hold it off them.
+- **It costs 12 bones and about 130 KB** of keys over twelve animations. The file is 2.5 MB and passes the glTF validator with no errors or warnings.
+- **Godot 4.7.2 imports it:** 33 bones, twelve animations, and the humanoid profile still finds its seventeen.
+
+Not checked: the cape against the arms, which have no capsules; every frame of every animation; and how a live spring bone set-up in an engine compares. The stiffness and damping were set by eye in two tries.
+
+**Verdict.** Keep. Baking the swing into the animations is the portable choice; an engine's own cloth can replace it where wanted, since the bones are there.
+
+## 46. The same items on a second body
+
+**Question.** Parts are separate so that they can be reused. Every item so far has been worn only by the body it was cut on. Does one fit another body?
+
+**Setup.**
+
+- *The body.* PixelLab's v3 character at 256 pixels: "heavyset and broad with a barrel chest, a thick waist, wide shoulders, thick strong arms and thick legs". It came back with the arms down, which fuses them to the trunk when meshed, so a state of it was asked for in a T-pose and used. 9 generations, then 10 to 25 for the state (not read back), and 1.6 for joints, 0.8 of them wasted on the arms-down drawing.
+
+![The second body in eight directions, in a T-pose](../website/public/research/3d/second-body-sprites.png)
+
+- *His mesh.* Redrawn, meshed, painted with views from above and below, thinned and rigged as in steps 40 to 44. Nothing was drawn or meshed for him but his own body.
+- *The items.* The thinned cuirass, leg armour, cape and helm of step 44, made on the first body. [`scripts/refit.py`](../research/scripts/refit.py) describes each point of an item against the first body's bones, as how far along a bone and how far out from it, and puts it the same share of the way along the second body's bone. `rig.py` then fits the item to his skin and gives it his weights, as for any item.
+- *How far out.* The second body's limbs are measured as thicker than the first's, by the typical distance of each bone's own vertices from its line: 3.0 sprite pixels at a typical bone.
+
+**Result.** The first try scaled each point's distance from the bone by the ratio of the two bodies' thickness, about two here:
+
+![The items scaled by the ratio of thickness: a collar blown up, a torn cape, bent horns](../website/public/research/3d/second-body-scaled.png)
+
+- **Scaling by ratio fails for anything that stands off the body.** The fur collar, already well clear of the shoulders, doubled in size. The cape tore as it was pushed back to the skin, and the helm's horns bent, pulled at by the neck and shoulder bones.
+
+The second try moves each point out by the difference in thickness, so an item keeps its clearance from the skin, and describes the helm against the head alone and the cape against the trunk alone (`ONLY`). The bare body above, dressed below:
+
+![The second body bare, and wearing the first body's four items](../website/public/research/3d/second-body.png)
+
+- **All four items fit.** The cuirass spans the barrel chest, the leg armour wraps the thick legs, the collar sits on the shoulders at its own size, and the helm keeps its shape.
+- **The items moved 6 to 13 sprite pixels** typically to get there, on a figure about 117 tall.
+- **It animates like the first:** the same twelve motions, the cape on its chains. In the viewer it loads, walks, and is the "Second body" model.
+- **It is one file of 2.4 MB,** 16,495 triangles, valid, and imports into Godot 4.7.2 with 33 bones.
+- **The cuirass is stretched,** not remade: its trim lines are wider apart on him, and the crest is larger.
+- **The forearm guards stop short of the wrists,** as on the first body.
+
+Not checked: a body that differs in height more than build, a woman's build, a child's, and whether hidden skin is right under every item on him.
+
+**Verdict.** Keep. One set of items, two bodies, for the cost of one more body. This is the claim the design rests on, and it holds for a body this different.
+
+## 47. Finger bones, and a sword in the hand
+
+**Question.** The skeleton stopped at the hand, so a grip was a flat hand and nothing could be held (steps 42 and 43). Do the hands of a mesh from 256 pixel sprites carry enough to close round a handle, and can a separately made item be put in one?
+
+**Setup.**
+
+- *What the mesh has.* The first body's hand is a mitten: the four fingers as one slab, and a thumb standing apart. That matches what the [skeletons guide](./SKELETONS.md) measured on the sprites: a 256 pixel hand carries a wrist, knuckles, a fingertip and a thumb, and no more.
+- *Finding the bones.* `rig.py` measures each hand on the filled mesh. Going back from the fingertips the hand is one piece, then two once the thumb's tip is passed, then one again at the web between thumb and fingers. The web is taken as 58% of the hand's length back from the fingertips, which gives the wrist, the knuckles at 56% and three finger joints. The thumb's line runs from near the wrist to its tip.
+- *The bones.* Three for the thumb and three for the fingers' one chain, a hand, under the names Godot's and Unity's humanoid profiles give the thumb and the middle finger. A seventh, `LeftGrip` or `RightGrip`, carries no skin: it marks where a grip goes, just under the palm.
+- *Motion.* The animation library poses its fingers: fists in the walk and idle, a closed right hand and an open left in the sword animations (read from its file). `retarget.py` now turns a hand as a whole so that its palm faces the way the library's does, then carries the library's thumb and middle finger over.
+- *The sword.* One PixelLab object, a longsword upright in eight directions at 128 pixels, for 25 generations. Its front, left, back and right went to Hunyuan3D-2mv (six and a half minutes), the mesh was coloured from the eight sprites and thinned from 29,999 triangles to 1,499.
+
+![A longsword in eight directions](../website/public/research/3d/sword-sprites.png)
+
+- *Holding it.* A new kind of item in `rig.py`, `Sword=sword.glb:RightHand:held`. The item's longest line is laid across the palm, leaving on the thumb's side. Its grip, half way between one end and the guard (the widest place near an end), goes to the hand's grip point. It is made half the body's height long and follows the hand bone alone.
+
+**Result.** The left hand at rest with its bones, from above and from the front, and closed by the library's idle:
+
+![A hand with a thumb chain and a finger chain, and the same hand closed into a fist](../website/public/research/3d/hand-bones.png)
+
+- **The hands were found** on the first body: 9.9 and 10.8 sprite pixels long, on a figure 113 tall. The wrist joint estimated on the sprites sat in the palm, and moved 2.0 and 2.7 pixels back.
+- **A fist closes** with a tunnel between fingers and thumb, which is where a handle goes.
+- **The sword is held.** In the library's sword attack the knight lunges with the blade forward, the grip in his closed right hand between pommel and guard:
+
+![The dressed knight lunging with the sword, and the hand on the grip](../website/public/research/3d/held-sword.png)
+
+- **It is one file of 2.6 MB,** 17,997 triangles, valid, with the sword as a sixth separate mesh. The viewer loads it, plays the sword attack, and lists the sword among the things worn.
+- **Godot 4.7.2 imports it** with 47 bones: 21 for the body, 14 for the hands, 12 for the cape. Its humanoid profile finds the twelve finger bones by name, as optional bones.
+- **The 64 pixel body gets none.** Its hand has no thumb apart, and `rig.py` says so and leaves the skeleton as it was.
+- **Nor does the second body** of step 46: PixelLab drew his hands as closed fists. A held item needs the finger bones' measurements, so he cannot be given the sword yet.
+- **`refit.py` now uses the bones two bodies share,** since one may have finger bones and the other not. The helm it gives the second body is unchanged; the cuirass differs by 3 pixels at most, at the wrists that moved.
+
+Flaws:
+
+- **The sword's colour has black patches,** where the sprites' outlines were projected onto it.
+- **The grip is thicker than the fist's tunnel** and the pommel is large: the sword is scaled by its length alone.
+- **The two hands differ in length** by a pixel, since each is measured on its own.
+- **The closed hand is coarse.** A hand is about fifty triangles a bone after thinning, so knuckles crease unevenly.
+- **The fingers stay closed when the sword is taken off** in the viewer: the grip is part of each animation.
+
+Not checked: the left hand holding something, two-handed grips, a shield, the held sword in Godot's own renderer, and whether Godot's or Unity's retargeting drives a one-chain hand sensibly.
+
+**Verdict.** Keep, for the painted path. A thumb and one chain is what the mesh shows, and it is enough to hold a sword through a stock attack.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -365,19 +1254,40 @@ So nobody repeats them:
 - Intersecting the carved shape with the generated mesh (step 12).
 - `correct_pixelart` on a torn render (step 13).
 - Projecting image-model redraws back onto the model (step 14).
+- Flattening a character's texture to a few materials (step 15).
+- Laying trusted sprite pixels over a flat base (step 18).
+- Asking the paint stage for a single view (step 20): grey noise.
+- Letting the paint stage invent the sides from one front reference (step 17).
+- Enlarging sprites with hard pixel edges for the mesh model (step 22): it builds a figure out of boxes.
+- Keeping painted views away from their own outlines, and shifting views to agree in colour (step 23).
+- Median cut for a sprite palette (step 25): most of the colours go to near-blacks.
 
 Two bugs worth remembering, because both produced plausible wrong pictures: glTF's axes turned into ours by swapping two of them is a mirror image, which silhouettes cannot detect; and a mesh whose faces point inward gets no texture at all, only fill.
 
 ## What is next
 
+- **Hold the paint stage's colours** to the sprites' (step 29): the gold dulls and the dark metal turns blue.
+- **A smaller file.** Repack each cut item's texture to the part it uses, and thin the meshes.
+- **Tidy the cut's edge,** which is ragged and carries a fringe of skin colour.
+- **More bodies.** Step 46 puts the items on one heavier man. A much shorter or taller body, and other builds, are untested.
+- **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Steps 33 to 35 continue it. Step 36 fixes the item edges and a colour fault. Still to do: the short sleeve, a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture and the file shrinks.
+- **Towards game-ready** (see the survey below): a smaller file; sprites drawn at 256 pixels at the source; a thinned mesh with the paint and a normal map baked onto it; a standard humanoid skeleton and stock animations; metal and roughness; bones and springs for the cape.
+- **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Carve them separately, upright, and place them on the model the way the paperdoll layers place them on the sprite.
+- **Held items.** Step 47 puts a sword in the right hand. Still to do: a hand drawn as a fist, the left hand, a shield, two hands on one grip, and a handle sized to the hand.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
 - **Remove baked shading.** The sprites are drawn lit from one side, and that light is now painted on the model.
-- **Use the rig.** The skeleton from step 6 has not been attached to a mesh.
+- **Open the rigged file in real engines.** Blender, Godot, Unity and Unreal each have their own expectations of a humanoid.
+- **More animations, and bones for capes and held items.**
+- **Bones for the cape,** now that it is one piece (step 24), and a check that a leg swinging back does not pass through it.
+- **A pose the eight views agree on.** The knight's A-pose has one view in a T-pose (step 21). Drawing the pose from a skeleton, not a sentence, might fix it.
+- **A score that forgives a pixel of offset** (step 25), so a clean render is not marked below a smear.
+- **A licence-clean route.** TRELLIS or TripoSG for the mesh, MV-Adapter for the paint, UniRig for the bones. Their licences were not checked here.
+- **Paint the carved shape too,** for the simple subjects where carving beats the generated mesh.
+- **Sprite normal maps.** PixelLab can draw a normal map for a sprite. Baked onto the mesh the same way, it would add surface relief the low-polygon mesh lacks. Not tried.
 - Can the eight-view input of the hosted Hunyuan3D 3.1 use all eight sprites? (Unverified; see below.)
 
 ## What other people are doing
@@ -410,6 +1320,42 @@ No report was found of any of these being tested on pixel art.
 
 **The Discord pipeline.** The thread that started this described: build the character from tubes or capsules, or generate a mesh with Hunyuan or Meshy; unwrap it "as a folded piece of paper"; retexture the unwrapped image with an image model; carve hair and clothes as separate pieces; remove baked shadows and highlights; render with a toon or pixel shader. None of it could be checked against a public source. Step 7 here tested the tubes part, steps 9 to 11 the unwrap and texture part, and step 13 the image model, on the rendered views and not on the unwrapped texture.
 
+**Painting a mesh you already have.** From a second survey on 17 November 2026, for step 29's question of how to get a better texture. Nothing here was run; figures are as their sources give them, and several sources disagree.
+
+| Option | Runs where | What it takes | Licence | Fit for a 12 GB card |
+|---|---|---|---|---|
+| Hunyuan3D-Paint 2.0 | Local, installed (step 17) | One reference per pass, 512 pixel views | Tencent community licence, regional limits | Runs today |
+| [MV-Adapter](https://github.com/huanngzh/MV-Adapter), image to texture | Local, has ComfyUI nodes | A mesh and a reference image; 768 pixel views on SDXL, then RealESRGAN upscaling and LaMa inpainting | Apache-2.0 | README suggests the SD2.1 variant under 10 GB and SDXL above 16 GB |
+| [Hunyuan3D 2.1](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1) paint | Local | Reference image; base colour, metal and roughness maps | Tencent community licence, regional limits | Official figure is 21 GB for texture. [A low-memory route exists](https://github.com/kijai/ComfyUI-Hunyuan3DWrapper/issues/165) by offloading; no 12 GB report was found |
+| [TRELLIS.2](https://docs.comfy.org/tutorials/3d/trellis2), texture only | Local, native in ComfyUI | A mesh and one image | MIT | Claims range from 6 GB in a low-memory mode to 24 GB. *Unverified.* One image only, so the back is invented (the fault of step 17) |
+| [Meshy Retexture](https://docs.meshy.ai/api/retexture) | Hosted, paid | An uploaded mesh and reference images; 2K to 8K textures | Closed | No card needed. About 10 credits a task. *Unverified pricing.* |
+| UniTEX, MaterialMVP, MVPainter, RomanTex | Research code | Mesh and reference image | Not checked | Not checked |
+
+- **The reference is the first cap, whichever painter is used.** Every option paints what its reference shows, and ours is a 64 to 80 pixel sprite enlarged with hard edges. A redraw of each direction as a large, detailed picture would raise the ceiling for all of them.
+- **MV-Adapter is the likeliest local step up:** larger views, a permissive licence, and it sits on SDXL, so style models and edge or depth guides apply.
+- **The turn-per-sprite trick of step 20 should carry over** to any painter that takes a reference and a mesh, since it only decides which way the mesh faces. It does not carry over to TRELLIS.2, which paints the whole surface at once.
+
+**From a painted mesh to a game-ready asset.** From a third survey on 17 November 2026. The model of step 36 looks right and is not yet what a studio would call an asset. This lists what is missing, and what exists for each gap. Nothing here was run; most sources are vendor pages or the authors' own papers, and are marked where a claim could not be checked.
+
+| Gap | Where the model stands | What exists |
+|---|---|---|
+| Triangle count and edge flow | 16,496 triangles after thinning (step 41), from 79,819; still no loops at the joints | [AutoRemesher](https://www.cgchannel.com/2026/07/get-free-retopology-tool-autoremesher-and-its-blender-bridge/) (free, MIT, all-quad, a target count); QuadriFlow in Blender; [CurioMesh](https://github.com/CurioCrafter/CurioMesh) (GPLv3, Blender). Guides put a rigged game character at 10,000 to 100,000 triangles. Then the paint is baked from the dense mesh onto the light one, with a normal map for the lost relief |
+| Unwrap | Hundreds of small pieces from xatlas, and each item's texture mostly empty | A fresh unwrap of the light mesh with few seams; one packed texture per character or per item |
+| Skeleton | Twenty-one bones under standard humanoid names, matched by Godot's profile (step 42); a thumb and one finger chain a hand where the mesh shows a thumb (step 47) | A standard humanoid skeleton so that stock animations fit. [Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) rigs an uploaded humanoid in a T-pose for free and has a large animation library; it wants one joined mesh, and is described as unmaintained. Open models: [UniRig](https://dl.acm.org/doi/abs/10.1145/3730930) (MIT code; its checkpoints and data have their own terms), [Puppeteer](https://arxiv.org/pdf/2508.10898), RigAnything, Anymate (Apache-2.0). No memory figures were found for any of them. *Unverified.* |
+| Animation | Eleven stock animations retargeted from a CC0 library (step 43), and one walk made by formula | Mixamo's library; [HY-Motion 1.0](https://arxiv.org/abs/2512.23464) (Tencent, open weights, text to human motion, a community licence). Its skeleton and export formats were not checked |
+| Materials | Base colour only, with the redraw's lighting painted in | Roughness and metal maps: Hunyuan3D 2.1's paint stage (21 GB), MaterialMVP, and 2026 work that estimates materials from several views together ([ReLi3D](https://arxiv.org/abs/2603.19753), Intrinsic Image Fusion). A crude start costs nothing: metal and rough values per item |
+| Parts | Cut from a worn mesh by a sprite mask and a colour test (steps 27 and 36) | Generators that make parts natively: [Hunyuan3D-Part](https://x.com/TencentHunyuan/status/1971491034044694798) (open, segments a mesh into parts and regenerates each whole), [OmniPart](https://arxiv.org/pdf/2507.06165) (planned from 2D part masks, which the paperdoll layers are), PartCrafter. None was checked for clothing or for a 12 GB card |
+| References that agree | Eight directions redrawn one at a time (step 33); sprites at 256 pixels from the generator (step 39) | Models that turn one picture into consistent views: Qwen-Image-Edit with a multiple-angles LoRA, a Flux Kontext turnaround LoRA. Or draw the sprites larger at the source: PixelLab's v3 character goes to 256 pixels, four times step 26's |
+| Cloth | The cape hangs from twelve bones and its swing is baked into each animation (step 45) | A chain of bones down the cape with spring physics in the engine, or the engine's cloth |
+| Delivery | A 2.1 MB .glb that imports into Godot (steps 37 and 41) | Import tests in Godot, Unity and Unreal; mesh and texture compression (meshopt, KTX2); levels of detail |
+| A yardstick | None | [Meshy's API](https://docs.meshy.ai/api/pricing) takes an uploaded mesh and sells each step: retexture 10 credits, remesh 5, rigging 5 with a walk and a run, an animation 3. One character through all of it would show what a paid pipeline returns. A paid plan is said to be needed for the API. *Unverified.* |
+
+- **The largest gaps are not in the paint.** A studio would reject this model first for its triangle count, its unwrap and its home-made skeleton, and only then look at the texture.
+- **A standard skeleton is worth more than any one animation,** because it makes every stock animation usable.
+- **Several gaps close with no new model:** thinning the mesh and re-baking, a normal map from the dense mesh, values for metal and roughness, compression, an engine import test.
+
+**Sprite cards on a 3D skeleton.** [A short from Cor Mundi Studios](https://www.youtube.com/shorts/84clZXpwRc0) (28 seconds, read from its transcript on 17 November 2026) shows a 2.5D player character in Unreal Engine 5. Each body part is a flat card with its own sprite sheet in sixteen directions. Under the cards is a 3D mesh that is not what the player sees: it carries the lighting and the bones, and the bones tell each card where to be and which direction to show. The picture stays hand-drawn pixels and the motion comes from a rig. Step 31 tries it with eight directions and no lighting.
+
 No public tool was found that takes several directional pixel sprites and returns a mesh.
 
 ## Cost so far
@@ -419,6 +1365,13 @@ No public tool was found that takes several directional pixel sprites and return
 - Hunyuan3D: nothing but about two minutes of GPU time per mesh, after a 4.93 GB download.
 - Staged texturing: nothing. About six seconds a mesh on a laptop.
 - Image-model redraws in steps 13 and 14: 50.1 generations for six calls.
+- The paint stage: no generations. A 9.2 GB download, then about six minutes of GPU time per character.
+- The rebuild of step 40: 0.8 generations for joints, and about two hours of GPU time.
+- The 256 pixel body and four states in step 39: 9 generations for the body; the states are quoted at 10 to 25 each and were not read back.
+- A-poses in step 21: 20 generations for the two states, 0.25 for importing the knight, 1.6 for sixteen joint estimates.
+- The body and its five layers in step 26: 52.8 generations (2 for the body, 10 for each layer, 0.8 for the joints), read from the balance before and after.
+- The sword of step 47: 25 generations for the eight directions, and six and a half minutes of GPU time for its mesh.
+- Nine meshes in step 27: about two minutes of GPU time each. Five paint runs in step 29: five to six minutes each.
 
 ## Running the scripts
 
@@ -446,6 +1399,59 @@ python3 research/scripts/texture.py <folder> <name> <mesh.glb> <out-folder>
 # The same stages on the carved shape: export the carve, then texture it. MODE=vote lets the views vote.
 DUMP=1 node --experimental-strip-types research/scripts/carve.ts <folder> <name> <out-folder>
 MODE=vote VOX=<out-folder>/<name>.vox CAMERA=<out-folder>/<name>.camera.json python3 research/scripts/texture.py <folder> <name> - <out-folder>
+
+# A rigged, animated .glb. The rig file comes from carve.ts run with an anchors file.
+python3 research/scripts/rig.py <name.textured.glb> <name.rig.json> <name.vox> <name.camera.json> <out.glb> <preview.png>
+
+# Texture a mesh with Hunyuan3D's paint stage, one pass per sprite direction. Needs the second ComfyUI of step 17.
+python3 research/scripts/hunyuan3d_paint_turn.py <name.textured.glb> <folder> <name> <out-folder>
+
+# The same, keeping two side views from each pass and leaving the bake to bake.py.
+SPREAD=22 STAGE=paint python3 research/scripts/hunyuan3d_paint_turn.py <name.textured.glb> <folder> <name> <out-folder>
+python3 research/scripts/bake.py <name.textured.glb> <out-folder>/<name>.views.json <bake-folder> <name>
+
+# Rig a mesh through its own inside, with the sprites' palette stored in the file.
+PALETTE=<folder>:<name> TEX=512 python3 research/scripts/rig.py <name.baked.glb> <name.rig.json> - - <out.glb> <preview.png>
+
+# A character from parts (steps 26 to 28). Sprites and layers share one canvas size; the camera is the body's.
+python3 research/scripts/smooth_inputs.py <art> <base> <in> worn base,<underwear-layer>,<item-layer>
+python3 research/scripts/hunyuan3d.py <in> worn <mesh-folder>
+TURNS=0 CAMERA=<body.camera.json> python3 research/scripts/texture.py <sprites> <worn> <mesh-folder>/worn-mv.glb <tex>
+TURNS=0 CAMERA=<body.camera.json> python3 research/scripts/texture.py <sprites> <mask> <mesh-folder>/worn-mv.glb <tex>
+python3 research/scripts/cut_item.py <tex>/<worn>.textured.glb <tex>/<mask>.textured.glb <item.glb>
+ITEMS="Helm=<helm.glb>:Head;Cape=<cape.glb>:Hips,Spine;Cuirass=<cuirass.glb>" python3 research/scripts/rig.py <body.textured.glb> <body.rig.json> - - <out.glb>
+
+# Sprite cards (step 31): the bone that owns each vertex, then the sprites cut into pieces per bone.
+SKIN=<skin.npz> python3 research/scripts/rig.py <body.textured.glb> <body.rig.json> - - <skeleton.glb>
+LAYERS="Body=<body>;Cape=<cape>:Spine:behind;Helm=<helm>:Head" python3 research/scripts/cards.py <skin.npz> <body.camera.json> <sprites> <out-prefix>
+
+# Redraw sprites large with a local image model, then paint from the redraws with larger views (step 32).
+python3 research/scripts/redraw.py <sprites> <name> <redraw-folder> "<what the character is>"
+VIEW=768 SPREAD=22 STAGE=paint python3 research/scripts/hunyuan3d_paint_turn.py <name.textured.glb> <redraw-folder> <name> <out-folder>
+python3 research/scripts/bake.py <name.textured.glb> <out-folder>/<name>.views.json <bake-folder> <name> 2048
+
+# A light copy of a painted part, with its paint and a normal map baked on (step 41), then rigged small.
+TEX=512 python3 research/scripts/thin.py <painted.glb> <light.glb> 3000
+ITEMS="Helm=<helm-light.glb>:Head" JPEG=90 TEX_NORMAL=512 python3 research/scripts/rig.py <body-light.glb> <body.rig.json> - - <out.glb>
+
+# Add stock animations from a humanoid library to a rigged character (step 43).
+python3 research/scripts/retarget.py <character.glb> <library.glb> <out.glb>
+
+# Give a hanging item chains of bones, then swing them through every animation (step 45).
+CHAINS="Cape=3x4" ITEMS="Cape=<cape.glb>:Hips,Spine,Chest:loose" python3 research/scripts/rig.py <body.glb> <body.rig.json> - - <character.glb>
+python3 research/scripts/sway.py <animated.glb> <out.glb>
+
+# Reshape an item made on one body for another (step 46). The skin files come from rig.py with SKIN=<file>.
+ONLY=Head python3 research/scripts/refit.py <helm.glb> <first.skin.npz> <second.skin.npz> <helm-for-second.glb>
+
+# Draw textured meshes large, one row each.
+python3 research/scripts/look.py <sheet.png> <a.glb> <b.glb>
+
+# The paint stage as published: one front reference, six invented views.
+python3 research/scripts/hunyuan3d_paint.py <mesh.glb> <reference.png> <out-folder> <name>
+
+# Render any textured mesh from sixteen directions at sprite size and score it.
+python3 research/scripts/render.py <textured.glb> <folder> <name> <sheet.png>
 
 # Score the second row of a sheet against the first.
 python3 research/scripts/score.py <sheet.png>

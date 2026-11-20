@@ -108,6 +108,13 @@ export const docs: DocEntry[] = [
     split: 2,
   },
   {
+    slug: "characters-3d",
+    title: "3D characters from sprites",
+    description: "An experimental pipeline from directional sprites to a rigged, animated 3D character with separate items: a pixel path, a painted path, the steps, and what each costs.",
+    file: "docs/CHARACTERS_3D.md",
+    group: "Guides",
+  },
+  {
     slug: "generators",
     title: "Generator selection",
     description: "Pick a generator for the asset you need and see what it costs.",
@@ -124,7 +131,7 @@ export const docs: DocEntry[] = [
   {
     slug: "research-3d",
     title: "Research: 3D models from sprites",
-    description: "Every attempt to turn eight directional sprites into a 3D model, with pictures, ending in sixteen redrawn directions.",
+    description: "Every attempt to turn directional sprites into a 3D model, with pictures: from carving and sixteen redrawn directions to a rigged, animated character in separate parts.",
     file: "docs/RESEARCH_3D.md",
     group: "Research",
   },

@@ -17,6 +17,7 @@ export type CtaSection =
   | "gallery"
   | "characters"
   | "paperdoll"
+  | "models"
   | "skeletons"
   | "effects"
   | "provider_updates"

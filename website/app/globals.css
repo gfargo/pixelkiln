@@ -778,6 +778,12 @@ a { color: inherit; text-decoration: none; }
 .spin-stage { display: grid; place-items: center; min-height: 420px; background: #100f0c; overflow: hidden; cursor: grab; touch-action: pan-y; user-select: none; }
 .spin-stage:active { cursor: grabbing; }
 .spin-figure { width: var(--spin-cell); height: var(--spin-cell); background-repeat: no-repeat; background-size: var(--spin-size); background-position: var(--spin-at); image-rendering: pixelated; }
+.mesh-stage { position: relative; min-height: 420px; height: 420px; background: #100f0c; overflow: hidden; cursor: grab; touch-action: none; }
+.mesh-stage:active { cursor: grabbing; }
+.mesh-canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; image-rendering: pixelated; }
+.mesh-canvas-smooth { image-rendering: auto; }
+.mesh-status { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--cream-muted); font-size: 16px; }
+@media (max-width: 980px) { .mesh-stage { min-height: 340px; height: 340px; } }
 .spin-note { max-width: 520px; margin: 6px 0 0; color: var(--cream-muted); font-size: var(--text-body); line-height: 1.65; }
 @media (max-width: 980px) { .spin { grid-template-columns: minmax(0, 1fr); gap: 32px; } .spin-stage { min-height: 340px; } }
 .cast-visuals { display: grid; gap: 40px; min-width: 0; }
@@ -1731,6 +1737,22 @@ div.receipt-line .receipt-mark { background: var(--lime); }
 
 /* The recovery band is a field of the second brand colour, with ink on it. */
 .safety-section { background: var(--lime); }
+
+/* The 3D characters page */
+.models-status { max-width: 760px; }
+.models-figure { margin: 0 0 8px; }
+.models-figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line-strong); }
+.models-figure figcaption { margin-top: 12px; color: var(--cream-muted); font-size: 14px; line-height: 1.6; }
+.provider-table.models-table td:nth-child(2), .provider-table.models-table td:nth-child(3) { white-space: normal; min-width: 240px; }
+.models-steps { list-style: none; margin: 0 0 32px; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--line); max-width: 820px; }
+.models-steps li { display: grid; grid-template-columns: 36px 96px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--line); color: var(--cream-muted); font-size: 15px; line-height: 1.6; }
+.models-steps strong { color: var(--cream); font-weight: 600; }
+.models-step-number { color: var(--cream-muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+.feature-art-models img { width: 100%; height: auto; image-rendering: auto; }
+@media (max-width: 640px) {
+  .models-steps li { grid-template-columns: 28px minmax(0, 1fr); }
+  .models-steps li > span:last-child { grid-column: 2; }
+}
 
 .back-to-top {
   position: fixed;

@@ -34,6 +34,12 @@ export function FeatureArt({ id }: { id: Feature["id"] }) {
           <Image src="/sprites/paperdoll/showcase-stack.png" alt="A bare figure, a suit of armour, a helm and cape, a sword and shield, and all of them stacked into a knight" width={476} height={92} unoptimized />
         </div>
       );
+    case "models":
+      return (
+        <div className="feature-art feature-art-strip feature-art-models">
+          <Image src="/models/art.png" alt="Three 3D models: a stocky knight from small sprites, a bare adult figure, and a tall armoured knight seen from the front and the back" width={1040} height={260} unoptimized />
+        </div>
+      );
     case "effects":
       return (
         <div className="feature-art feature-art-effects">

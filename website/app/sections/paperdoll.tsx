@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { CodeBody } from "@/app/ui/code-window";
 import { CharacterBuilder } from "@/app/ui/character-builder";
-import { SpinViewer } from "@/app/ui/spin-viewer";
 import { SpriteCarousel } from "@/app/ui/sprite-carousel";
 import { SpriteLoop } from "@/app/ui/sprite-loop";
 import { TrackedLink } from "@/app/ui/tracked-link";
@@ -119,20 +118,21 @@ export function PaperdollSection() {
               </p>
               <CharacterBuilder />
             </div>
-            <div className="builder-block" id="turnaround">
-              <h3>Turn it all the way round.</h3>
+            <div className="builder-block" id="in-3d">
+              <h3>The same layers, in 3D.</h3>
               <p>
-                The generator draws eight directions. This is sixteen. The
-                eight extra come from an experiment: carve a 3D model out of
-                the eight drawn views, render it from the angles between, and
-                have an image model redraw each rough render. It is research,
-                not a PixelKiln command yet, and the{" "}
-                <TrackedLink className="text-link" id="paperdoll_research_3d" section="paperdoll" href="/docs/research-3d">research notes</TrackedLink>{" "}
-                show every step, including what did not work.{" "}
+                An experiment takes this idea a dimension up: the bare body
+                and each item become separate 3D meshes on one skeleton, with
+                animations a game engine can play. It has its own page, with
+                live models you can turn and dress.{" "}
                 <TrackedLink className="text-link" id="paperdoll_turnaround_skeleton" section="paperdoll" href="/skeletons#uses">Skeletons and rigging</TrackedLink>{" "}
                 shows where rigging fits with the rest.
               </p>
-              <SpinViewer />
+              <div className="review-links">
+                <TrackedLink className="text-link" id="paperdoll_models_page" section="paperdoll" href="/3d">
+                  See the 3D characters
+                </TrackedLink>
+              </div>
             </div>
           </div>
         </section>
