@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 /** Every model the site can show. `pixel` says whether its pixel look starts on. */
 const SUBJECTS = [
   { id: "parts", label: "Painted, from 256 px sprites", pixel: false },
+  { id: "heavy", label: "Second body, same items", pixel: false },
   { id: "pixel", label: "Pixel, from 64 px sprites", pixel: true },
   { id: "cards", label: "Sprite cards on bones", pixel: true },
   { id: "knight", label: "First knight, one piece", pixel: true },
@@ -488,6 +489,14 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             move the cards. The pixels are the sprites&apos; own. Joints
             open and overlap as limbs turn, and only eight directions are
             drawn.
+          </p>
+        ) : subject === "heavy" ? (
+          <p className="spin-note">
+            Drag to turn it. A different body, heavier and broader, wearing
+            the items made on the first one. Nothing was redrawn or meshed
+            again for him but his own body. Each item was reshaped to his
+            bones and to how much thicker he is, then fitted to his skin.
+            Take the armour off to see the body under it.
           </p>
         ) : subject === "pixel" ? (
           <p className="spin-note">

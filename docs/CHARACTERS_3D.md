@@ -191,6 +191,17 @@ With `CHAINS="Cape=3x4"` at the rig step, the cape hangs from three columns of
 four bones. This simulates them through every animation and stores the swing
 as keys, so the cape moves in any engine with no physics to set up.
 
+### 10. Dress another body
+
+```bash
+ONLY=Head python3 research/scripts/refit.py <helm.glb> <first.skin.npz> <second.skin.npz> <helm-for-second.glb>
+```
+
+An item made on one body can be worn by another. Make the second body's own
+mesh and rig (steps 1 to 7, the body only), write each body's bones with
+`SKIN=<file>` at the rig step, and reshape each item from the first to the
+second. Then rig the second body with the reshaped items as usual.
+
 ## In a game engine
 
 The example file was imported into Godot 4.7.2 with no errors: one skeleton of
@@ -224,5 +235,6 @@ swing. See step 31 of the research note.
 - **Materials.** Colour and a normal map only: no metal or roughness, and the
   redraw's lighting is painted in.
 - **Fingers, eyes and a jaw** in the skeleton.
-- **An item on a second body.** Items are cut on one body and have only been
-  worn by it.
+- **Many bodies.** The items have been worn by two: the one they were cut on
+  and one much heavier man, after `refit.py` reshaped them for him. Other
+  heights and builds are untried.

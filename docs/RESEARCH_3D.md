@@ -53,6 +53,7 @@ Last updated 17 November 2026.
 | 43 | Put stock animations on the skeleton | Quaternius's Universal Animation Library (CC0), our script | Eleven library animations play on the knight: idle, walk, jog, sprint, sword attack, death and others | Keep. The character now moves like a game character. |
 | 44 | Paint views from above and below as well | Hunyuan3D paint stage, our bake | The dark streaks on arm tops, shoulders and heads are gone | Keep. The viewer's model is rebuilt with it. |
 | 45 | Bones for the cape, and a simulation that swings them | Our scripts | Twelve cape bones in three chains; the cape streams in a sprint, hangs in an idle and falls in a roll, baked into every animation | Keep. It works in any engine with no physics set up. |
+| 46 | Put the first body's items on a second, heavier body | PixelLab, our scripts | The same four items fit a much broader man, after reshaping each to his bones and thickness | Keep. Scaling by ratio failed; adding the difference in thickness works. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1160,6 +1161,41 @@ Not checked: the cape against the arms, which have no capsules; every frame of e
 
 **Verdict.** Keep. Baking the swing into the animations is the portable choice; an engine's own cloth can replace it where wanted, since the bones are there.
 
+## 46. The same items on a second body
+
+**Question.** Parts are separate so that they can be reused. Every item so far has been worn only by the body it was cut on. Does one fit another body?
+
+**Setup.**
+
+- *The body.* PixelLab's v3 character at 256 pixels: "heavyset and broad with a barrel chest, a thick waist, wide shoulders, thick strong arms and thick legs". It came back with the arms down, which fuses them to the trunk when meshed, so a state of it was asked for in a T-pose and used. 9 generations, then 10 to 25 for the state (not read back), and 1.6 for joints, 0.8 of them wasted on the arms-down drawing.
+
+![The second body in eight directions, in a T-pose](../website/public/research/3d/second-body-sprites.png)
+
+- *His mesh.* Redrawn, meshed, painted with views from above and below, thinned and rigged as in steps 40 to 44. Nothing was drawn or meshed for him but his own body.
+- *The items.* The thinned cuirass, leg armour, cape and helm of step 44, made on the first body. [`scripts/refit.py`](../research/scripts/refit.py) describes each point of an item against the first body's bones, as how far along a bone and how far out from it, and puts it the same share of the way along the second body's bone. `rig.py` then fits the item to his skin and gives it his weights, as for any item.
+- *How far out.* The second body's limbs are measured as thicker than the first's, by the typical distance of each bone's own vertices from its line: 3.0 sprite pixels at a typical bone.
+
+**Result.** The first try scaled each point's distance from the bone by the ratio of the two bodies' thickness, about two here:
+
+![The items scaled by the ratio of thickness: a collar blown up, a torn cape, bent horns](../website/public/research/3d/second-body-scaled.png)
+
+- **Scaling by ratio fails for anything that stands off the body.** The fur collar, already well clear of the shoulders, doubled in size. The cape tore as it was pushed back to the skin, and the helm's horns bent, pulled at by the neck and shoulder bones.
+
+The second try moves each point out by the difference in thickness, so an item keeps its clearance from the skin, and describes the helm against the head alone and the cape against the trunk alone (`ONLY`). The bare body above, dressed below:
+
+![The second body bare, and wearing the first body's four items](../website/public/research/3d/second-body.png)
+
+- **All four items fit.** The cuirass spans the barrel chest, the leg armour wraps the thick legs, the collar sits on the shoulders at its own size, and the helm keeps its shape.
+- **The items moved 6 to 13 sprite pixels** typically to get there, on a figure about 117 tall.
+- **It animates like the first:** the same twelve motions, the cape on its chains. In the viewer it loads, walks, and is the "Second body" model.
+- **It is one file of 2.4 MB,** 16,495 triangles, valid, and imports into Godot 4.7.2 with 33 bones.
+- **The cuirass is stretched,** not remade: its trim lines are wider apart on him, and the crest is larger.
+- **The forearm guards stop short of the wrists,** as on the first body.
+
+Not checked: a body that differs in height more than build, a woman's build, a child's, and whether hidden skin is right under every item on him.
+
+**Verdict.** Keep. One set of items, two bodies, for the cost of one more body. This is the claim the design rests on, and it holds for a body this different.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1188,7 +1224,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Hold the paint stage's colours** to the sprites' (step 29): the gold dulls and the dark metal turns blue.
 - **A smaller file.** Repack each cut item's texture to the part it uses, and thin the meshes.
 - **Tidy the cut's edge,** which is ragged and carries a fringe of skin colour.
-- **An item on a second body.** The fit of step 28 moves an item to just above whatever body it is given. Whether a helm cut on one body sits right on another is untested.
+- **More bodies.** Step 46 puts the items on one heavier man. A much shorter or taller body, and other builds, are untested.
 - **Higher quality paint.** The texture does not have to be pixel art: aim for the best painted surface the models can give, and pixelate afterwards if wanted. Step 32 starts it. Steps 33 to 35 continue it. Step 36 fixes the item edges and a colour fault. Still to do: the short sleeve, a second painter (MV-Adapter), and repacking each item's texture so it uses the whole picture and the file shrinks.
 - **Towards game-ready** (see the survey below): a smaller file; sprites drawn at 256 pixels at the source; a thinned mesh with the paint and a normal map baked onto it; a standard humanoid skeleton and stock animations; metal and roughness; bones and springs for the cape.
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
@@ -1358,6 +1394,9 @@ python3 research/scripts/retarget.py <character.glb> <library.glb> <out.glb>
 # Give a hanging item chains of bones, then swing them through every animation (step 45).
 CHAINS="Cape=3x4" ITEMS="Cape=<cape.glb>:Hips,Spine,Chest:loose" python3 research/scripts/rig.py <body.glb> <body.rig.json> - - <character.glb>
 python3 research/scripts/sway.py <animated.glb> <out.glb>
+
+# Reshape an item made on one body for another (step 46). The skin files come from rig.py with SKIN=<file>.
+ONLY=Head python3 research/scripts/refit.py <helm.glb> <first.skin.npz> <second.skin.npz> <helm-for-second.glb>
 
 # Draw textured meshes large, one row each.
 python3 research/scripts/look.py <sheet.png> <a.glb> <b.glb>

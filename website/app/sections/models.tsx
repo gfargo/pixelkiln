@@ -37,9 +37,10 @@ export function ModelsSection() {
             .glb, so a game can dress the same body differently. Take items
             off, pick a motion, switch the skeleton on. The file is the one
             the download link gives you: it opens in Godot with its bones,
-            its animations and the list of which skin each item hides.
+            its animations and the list of which skin each item hides. The
+            second body wears the very same items, reshaped for him.
           </p>
-          <MeshViewer subjects={["parts", "pixel", "knight", "hero"]} />
+          <MeshViewer subjects={["parts", "heavy", "pixel", "knight", "hero"]} />
         </div>
 
         <div className="builder-block" id="paths">
