@@ -305,7 +305,10 @@ eight directions, and the eight flat answers are combined into one position
 in space for each joint. From those, `rig.py` builds 21 bones under the names
 Unity's and Godot's humanoid profiles use (Hips, Spine, Chest, Neck, Head, and
 a Shoulder, UpperArm, LowerArm, Hand, UpperLeg, LowerLeg, Foot and Toes for
-each side). There is one Hand bone a side and no fingers. A hanging item such
+each side). Where the mesh has a thumb standing apart from the fingers, which
+a 256px source gives and a 64px one does not, each hand also gets three thumb
+bones, one chain of three for the four fingers together (under the middle
+finger's names), and a point that marks where a grip goes. A hanging item such
 as a cape gets chains of bones of its own. Stock animations are carried over
 from a humanoid library made for a different skeleton, and a cape's swing is
 simulated once and stored in each animation.
@@ -481,7 +484,7 @@ These are separate skeletons that share the same 18 joints:
 | An anchors file | committed JSON, one entry per frame | nobody: it records where the joints already are |
 | PixelLab's stored 3D skeleton | on your PixelLab account, with a v3 character | PixelLab, from a template or a sentence |
 | An OpenPose map | a committed PNG per frame | you, or a script |
-| A 3D rig | a `.glb` written by the research's `rig.py`: 21 humanoid bones, plus chains for a cape | stock animations carried over by `retarget.py`; a cape's swing stored by `sway.py` |
+| A 3D rig | a `.glb` written by the research's `rig.py`: 21 humanoid bones, a thumb and one finger chain a hand where the mesh shows a thumb, plus chains for a cape | stock animations carried over by `retarget.py`; a cape's swing stored by `sway.py` |
 
 A keypoints file and an anchors file are local files PixelKiln reads, hashes
 and checks. A stored 3D skeleton is never downloaded, so PixelKiln cannot show
@@ -504,7 +507,7 @@ means no primary source confirmed the number.
 | [Godot 4 SkeletonProfileHumanoid](https://docs.godotengine.org/en/stable/classes/class_skeletonprofilehumanoid.html) | 3D rig | 56 bones in all | 15 | MIT | A target for exported rigs |
 | [VRM 1.0 humanoid](https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_vrm-1.0/humanoid.md) | 3D rig | 15 required bones, 40 optional | 15, all optional | VRM specification | Not used |
 | [glTF 2.0 skins](https://github.com/KhronosGroup/glTF/blob/main/specification/2.0/Specification.adoc) | 3D file format | any | any | Khronos | The 3D research writes `.glb` |
-| [Quaternius Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) | 3D animations | 65 bones, Unreal mannequin names (standard edition, read from its file) | 15 a hand, plus a tip bone for each finger; whether its animations move them was not checked | CC0 | The 3D research retargets its walks and attacks, using 21 of the bones |
+| [Quaternius Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) | 3D animations | 65 bones, Unreal mannequin names (standard edition, read from its file) | 15 a hand, plus a tip bone for each finger. Its animations do pose them: fists in the walk and idle, a closed right hand in the sword animations (read from the file) | CC0 | The 3D research retargets its walks and attacks, using 21 of the body bones and, for each hand, the thumb and middle finger |
 | [DragonBones](https://github.com/DragonBones/DragonBonesJS) / [Spine](https://esotericsoftware.com/spine-runtimes-license) | 2D bones | any | any | DragonBones MIT; Spine needs an editor license per user | Not used |
 
 Unity's Humanoid avatar, Mixamo and Unreal's mannequin all have finger bones, but

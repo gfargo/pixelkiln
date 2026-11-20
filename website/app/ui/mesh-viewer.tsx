@@ -505,8 +505,10 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             redraw, and its colours snapped to the sprites&apos; own. It is
             stocky, because a 64 pixel sprite gives a quarter of its height
             to the head, and its texture is soft under the pixel look. It
-            has the same skeleton, the same separate items and the same
-            motions as the painted one, in half the triangles.
+            has the same body skeleton, the same separate items and the
+            same motions as the painted one, in half the triangles. Its
+            hands are too small to have a thumb apart, so they get no
+            finger bones.
           </p>
         ) : subject === "parts" ? (
           <p className="spin-note">
@@ -522,7 +524,11 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             triangles, with its paint and relief baked back on. The
             motions other than the first walk come from a free animation
             library made for a different skeleton, carried over bone by
-            bone. Switch the pixel look on to see it as pixel art.
+            bone. The sword is a separate mesh too, made from eight
+            sprites of a sword and placed in the right hand, whose thumb
+            and fingers have bones and close round the grip. Pick the
+            sword attack to see it used. Switch the pixel look on to see
+            it as pixel art.
           </p>
         ) : (
           <p className="spin-note">

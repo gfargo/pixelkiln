@@ -54,6 +54,7 @@ Last updated 17 November 2026.
 | 44 | Paint views from above and below as well | Hunyuan3D paint stage, our bake | The dark streaks on arm tops, shoulders and heads are gone | Keep. The viewer's model is rebuilt with it. |
 | 45 | Bones for the cape, and a simulation that swings them | Our scripts | Twelve cape bones in three chains; the cape streams in a sprint, hangs in an idle and falls in a roll, baked into every animation | Keep. It works in any engine with no physics set up. |
 | 46 | Put the first body's items on a second, heavier body | PixelLab, our scripts | The same four items fit a much broader man, after reshaping each to his bones and thickness | Keep. Scaling by ratio failed; adding the difference in thickness works. |
+| 47 | Finger bones, and a sword in the hand | PixelLab, Hunyuan3D-2mv, Quaternius's library, our scripts | A thumb and one finger chain a hand, found on the mesh; the library's fists and sword grip carry over; a generated sword sits in the closed right hand | Keep for 256 pixel sources. A 64 pixel hand and a hand drawn as a fist get no finger bones. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1196,6 +1197,50 @@ Not checked: a body that differs in height more than build, a woman's build, a c
 
 **Verdict.** Keep. One set of items, two bodies, for the cost of one more body. This is the claim the design rests on, and it holds for a body this different.
 
+## 47. Finger bones, and a sword in the hand
+
+**Question.** The skeleton stopped at the hand, so a grip was a flat hand and nothing could be held (steps 42 and 43). Do the hands of a mesh from 256 pixel sprites carry enough to close round a handle, and can a separately made item be put in one?
+
+**Setup.**
+
+- *What the mesh has.* The first body's hand is a mitten: the four fingers as one slab, and a thumb standing apart. That matches what the [skeletons guide](./SKELETONS.md) measured on the sprites: a 256 pixel hand carries a wrist, knuckles, a fingertip and a thumb, and no more.
+- *Finding the bones.* `rig.py` measures each hand on the filled mesh. Going back from the fingertips the hand is one piece, then two once the thumb's tip is passed, then one again at the web between thumb and fingers. The web is taken as 58% of the hand's length back from the fingertips, which gives the wrist, the knuckles at 56% and three finger joints. The thumb's line runs from near the wrist to its tip.
+- *The bones.* Three for the thumb and three for the fingers' one chain, a hand, under the names Godot's and Unity's humanoid profiles give the thumb and the middle finger. A seventh, `LeftGrip` or `RightGrip`, carries no skin: it marks where a grip goes, just under the palm.
+- *Motion.* The animation library poses its fingers: fists in the walk and idle, a closed right hand and an open left in the sword animations (read from its file). `retarget.py` now turns a hand as a whole so that its palm faces the way the library's does, then carries the library's thumb and middle finger over.
+- *The sword.* One PixelLab object, a longsword upright in eight directions at 128 pixels, for 25 generations. Its front, left, back and right went to Hunyuan3D-2mv (six and a half minutes), the mesh was coloured from the eight sprites and thinned from 29,999 triangles to 1,499.
+
+![A longsword in eight directions](../website/public/research/3d/sword-sprites.png)
+
+- *Holding it.* A new kind of item in `rig.py`, `Sword=sword.glb:RightHand:held`. The item's longest line is laid across the palm, leaving on the thumb's side. Its grip, half way between one end and the guard (the widest place near an end), goes to the hand's grip point. It is made half the body's height long and follows the hand bone alone.
+
+**Result.** The left hand at rest with its bones, from above and from the front, and closed by the library's idle:
+
+![A hand with a thumb chain and a finger chain, and the same hand closed into a fist](../website/public/research/3d/hand-bones.png)
+
+- **The hands were found** on the first body: 9.9 and 10.8 sprite pixels long, on a figure 113 tall. The wrist joint estimated on the sprites sat in the palm, and moved 2.0 and 2.7 pixels back.
+- **A fist closes** with a tunnel between fingers and thumb, which is where a handle goes.
+- **The sword is held.** In the library's sword attack the knight lunges with the blade forward, the grip in his closed right hand between pommel and guard:
+
+![The dressed knight lunging with the sword, and the hand on the grip](../website/public/research/3d/held-sword.png)
+
+- **It is one file of 2.6 MB,** 17,997 triangles, valid, with the sword as a sixth separate mesh. The viewer loads it, plays the sword attack, and lists the sword among the things worn.
+- **Godot 4.7.2 imports it** with 47 bones: 21 for the body, 14 for the hands, 12 for the cape. Its humanoid profile finds the twelve finger bones by name, as optional bones.
+- **The 64 pixel body gets none.** Its hand has no thumb apart, and `rig.py` says so and leaves the skeleton as it was.
+- **Nor does the second body** of step 46: PixelLab drew his hands as closed fists. A held item needs the finger bones' measurements, so he cannot be given the sword yet.
+- **`refit.py` now uses the bones two bodies share,** since one may have finger bones and the other not. The helm it gives the second body is unchanged; the cuirass differs by 3 pixels at most, at the wrists that moved.
+
+Flaws:
+
+- **The sword's colour has black patches,** where the sprites' outlines were projected onto it.
+- **The grip is thicker than the fist's tunnel** and the pommel is large: the sword is scaled by its length alone.
+- **The two hands differ in length** by a pixel, since each is measured on its own.
+- **The closed hand is coarse.** A hand is about fifty triangles a bone after thinning, so knuckles crease unevenly.
+- **The fingers stay closed when the sword is taken off** in the viewer: the grip is part of each animation.
+
+Not checked: the left hand holding something, two-handed grips, a shield, the held sword in Godot's own renderer, and whether Godot's or Unity's retargeting drives a one-chain hand sensibly.
+
+**Verdict.** Keep, for the painted path. A thumb and one chain is what the mesh shows, and it is enough to hold a sword through a stock attack.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1230,7 +1275,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Carve them separately, upright, and place them on the model the way the paperdoll layers place them on the sprite.
+- **Held items.** Step 47 puts a sword in the right hand. Still to do: a hand drawn as a fist, the left hand, a shield, two hands on one grip, and a handle sized to the hand.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
@@ -1296,7 +1341,7 @@ No report was found of any of these being tested on pixel art.
 |---|---|---|
 | Triangle count and edge flow | 16,496 triangles after thinning (step 41), from 79,819; still no loops at the joints | [AutoRemesher](https://www.cgchannel.com/2026/07/get-free-retopology-tool-autoremesher-and-its-blender-bridge/) (free, MIT, all-quad, a target count); QuadriFlow in Blender; [CurioMesh](https://github.com/CurioCrafter/CurioMesh) (GPLv3, Blender). Guides put a rigged game character at 10,000 to 100,000 triangles. Then the paint is baked from the dense mesh onto the light one, with a normal map for the lost relief |
 | Unwrap | Hundreds of small pieces from xatlas, and each item's texture mostly empty | A fresh unwrap of the light mesh with few seams; one packed texture per character or per item |
-| Skeleton | Twenty-one bones under standard humanoid names, matched by Godot's profile (step 42); no fingers | A standard humanoid skeleton so that stock animations fit. [Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) rigs an uploaded humanoid in a T-pose for free and has a large animation library; it wants one joined mesh, and is described as unmaintained. Open models: [UniRig](https://dl.acm.org/doi/abs/10.1145/3730930) (MIT code; its checkpoints and data have their own terms), [Puppeteer](https://arxiv.org/pdf/2508.10898), RigAnything, Anymate (Apache-2.0). No memory figures were found for any of them. *Unverified.* |
+| Skeleton | Twenty-one bones under standard humanoid names, matched by Godot's profile (step 42); a thumb and one finger chain a hand where the mesh shows a thumb (step 47) | A standard humanoid skeleton so that stock animations fit. [Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) rigs an uploaded humanoid in a T-pose for free and has a large animation library; it wants one joined mesh, and is described as unmaintained. Open models: [UniRig](https://dl.acm.org/doi/abs/10.1145/3730930) (MIT code; its checkpoints and data have their own terms), [Puppeteer](https://arxiv.org/pdf/2508.10898), RigAnything, Anymate (Apache-2.0). No memory figures were found for any of them. *Unverified.* |
 | Animation | Eleven stock animations retargeted from a CC0 library (step 43), and one walk made by formula | Mixamo's library; [HY-Motion 1.0](https://arxiv.org/abs/2512.23464) (Tencent, open weights, text to human motion, a community licence). Its skeleton and export formats were not checked |
 | Materials | Base colour only, with the redraw's lighting painted in | Roughness and metal maps: Hunyuan3D 2.1's paint stage (21 GB), MaterialMVP, and 2026 work that estimates materials from several views together ([ReLi3D](https://arxiv.org/abs/2603.19753), Intrinsic Image Fusion). A crude start costs nothing: metal and rough values per item |
 | Parts | Cut from a worn mesh by a sprite mask and a colour test (steps 27 and 36) | Generators that make parts natively: [Hunyuan3D-Part](https://x.com/TencentHunyuan/status/1971491034044694798) (open, segments a mesh into parts and regenerates each whole), [OmniPart](https://arxiv.org/pdf/2507.06165) (planned from 2D part masks, which the paperdoll layers are), PartCrafter. None was checked for clothing or for a 12 GB card |
@@ -1325,6 +1370,7 @@ No public tool was found that takes several directional pixel sprites and return
 - The 256 pixel body and four states in step 39: 9 generations for the body; the states are quoted at 10 to 25 each and were not read back.
 - A-poses in step 21: 20 generations for the two states, 0.25 for importing the knight, 1.6 for sixteen joint estimates.
 - The body and its five layers in step 26: 52.8 generations (2 for the body, 10 for each layer, 0.8 for the joints), read from the balance before and after.
+- The sword of step 47: 25 generations for the eight directions, and six and a half minutes of GPU time for its mesh.
 - Nine meshes in step 27: about two minutes of GPU time each. Five paint runs in step 29: five to six minutes each.
 
 ## Running the scripts

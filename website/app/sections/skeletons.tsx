@@ -40,7 +40,7 @@ const KINDS: Array<[string, string, string]> = [
   ["An anchors file", "Committed JSON, one entry per frame", "Nobody: it records where the joints already are"],
   ["PixelLab's stored 3D skeleton", "Your PixelLab account, with a v3 character", "PixelLab, from a template or a sentence"],
   ["An OpenPose map", "A committed PNG per frame", "You, or a script"],
-  ["A 3D rig", "A .glb from the 3D research: 21 humanoid bones, plus chains for a cape", "Stock animations carried over from a library; a cape's swing stored in each"],
+  ["A 3D rig", "A .glb from the 3D research: 21 humanoid bones, a thumb and one finger chain a hand, plus chains for a cape", "Stock animations carried over from a library; a cape's swing stored in each"],
 ];
 
 export function SkeletonsSection() {

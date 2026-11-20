@@ -31,9 +31,14 @@ import trimesh
 
 item_file, from_file, to_file, out = sys.argv[1:5]
 power = float(os.environ.get('REACH', '4')); only = [n for n in os.environ.get('ONLY', '').split(',') if n]
-first, second = np.load(from_file), np.load(to_file)
-names = [str(n) for n in first['names']]
-if names != [str(n) for n in second['names']]: sys.exit('the two bodies have different bones')
+first, second = dict(np.load(from_file)), dict(np.load(to_file))
+# Only the bones both bodies have are used: one body may have finger bones or a cape's chains and the other not.
+theirs = [str(n) for n in second['names']]; names = [str(n) for n in first['names'] if str(n) in theirs]
+if 'Hips' not in names: sys.exit('the two bodies share no bones')
+for skin in (first, second):
+    mine = [str(n) for n in skin['names']]; keep = np.array([mine.index(n) for n in names])
+    back = np.full(len(mine), -1); back[keep] = np.arange(len(keep))
+    skin['head'], skin['tail'], skin['owner'] = skin['head'][keep], skin['tail'][keep], back[skin['owner']]
 
 
 def girth(skin):

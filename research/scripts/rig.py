@@ -7,7 +7,7 @@ estimates in each view, triangulated to 3D), the voxels and camera from carve.ts
 Needs numpy, pillow, trimesh.
 
 The skeleton is twenty-one bones named the way game engines name a humanoid (Hips, Spine, Chest, Neck, Head,
-LeftShoulder, LeftUpperArm ... LeftToes); BONES=15 gives the first, smaller set without chest, neck, shoulders or toes.
+LeftShoulder, LeftUpperArm ... LeftToes), and seven more a hand where the mesh has a thumb to find; BONES=15 gives the first, smaller set without chest, neck, shoulders or toes.
 Skin weights come from distance to each bone. Given the carved voxels, that is straight-line distance with a
 penalty when the line leaves the body, so an arm hanging beside the torso is not pulled along by the spine.
 Given "-" for the voxels, the mesh itself is filled in and distance is measured through the inside of the body:
@@ -21,6 +21,11 @@ Environment:
            mesh: "Helm=helm.glb:Head;Cape=cape.glb:Hips,Spine;Cuirass=cuirass.glb". The names after the colon are
            the only bones that item may follow; with none it follows whatever the body under it follows.
            A third field, "loose" ("Cape=cape.glb:Hips,Spine:loose"), marks an item that hides no skin.
+           "held" ("Sword=sword.glb:RightHand:held") marks a rigid thing the hand holds: it is turned and placed in
+           the grip of that hand, whatever frame its file is in, and follows the hand alone.
+  HELD_LENGTH  how long a held item is made, as a share of the body's height (default 0.5)
+  FINGERS  0 leaves out the finger bones. By default a hand whose thumb can be found on the mesh gets a thumb
+           of three bones, one chain of three for the fingers, and <Side>Grip, which marks where a grip goes.
   COVER    how near an item's surface must be for the skin to count as covered, in sprite pixels (default 1.2)
   ALIGN    1 slides each item to sit evenly round the body before fitting it (default 1; loose items are left)
   CHAINS   bones for hanging items: "Cape=3x4" hangs the item called Cape from three columns of four links,
@@ -37,7 +42,7 @@ Environment:
 """
 import io, json, math, os, struct, sys
 import numpy as np
-from scipy.ndimage import binary_fill_holes, distance_transform_edt, map_coordinates
+from scipy.ndimage import binary_fill_holes, distance_transform_edt, label as connected, map_coordinates
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import dijkstra
 from scipy.spatial import cKDTree
@@ -84,6 +89,56 @@ down = np.array([0, 0, -1.0])
 def past(a, b, by):  # a point `by` beyond b on the line from a
     d = b - a; return b + d / (np.linalg.norm(d) + 1e-9) * by
 
+# ---- hands: a thumb and one chain for the fingers, where the mesh has a thumb to find
+# A mesh from large sprites has hands like mittens: the four fingers as one slab, and the thumb apart from it.
+# That is enough to close a hand round a grip. Each hand is measured on the filled mesh: going back from the
+# fingertips, the hand is one piece, then two once the thumb's tip is passed, then one again at the web between
+# thumb and fingers. The web is 58% of a hand's length back from the fingertips, which puts the wrist (the joint
+# estimated on the sprites sits in the palm), the knuckles 56% of the way along, and the three finger joints.
+# The thumb's own line gives its three bones. A hand with no thumb to find (a 64 pixel sprite's) gets none of this.
+def hand(side, s):
+    along_line = lambda p, q, share: p + (q - p) * share
+    el, wr = J[s + " ELBOW"], J[s + " ARM"]; forearm = np.linalg.norm(wr - el); a = (wr - el) / forearm
+    rel = centres - wr; t = rel @ a
+    near = np.nonzero((t > -0.4 * forearm) & (t < 1.6 * forearm) & (np.linalg.norm(rel - np.outer(t, a), axis=1) < 0.8 * forearm))[0]
+    def pieces(index):  # the cells given, as connected pieces, largest first
+        volume = np.zeros(shape, bool); cell = solid_at[index]; volume[cell[:, 0], cell[:, 1], cell[:, 2]] = True
+        labels = connected(volume)[0][cell[:, 0], cell[:, 1], cell[:, 2]]
+        return [index[labels == k] for k in np.argsort(-np.bincount(labels)) if k > 0 and (labels == k).sum() >= 12]
+    arm = next((piece for piece in pieces(near) if np.linalg.norm(centres[piece] - wr, axis=1).min() < 1.5), None)
+    if arm is None: return None
+    along = (centres[arm] - wr) @ a; tip_t = along.max(); thumb = fingers = None; thumb_tip = web = None
+    for back in np.arange(tip_t - 0.5, -0.3 * forearm, -0.25):
+        apart = pieces(arm[along > back])
+        if len(apart) >= 2:
+            if thumb_tip is None: thumb_tip = back
+            fingers = max(apart, key=lambda piece: ((centres[piece] - wr) @ a).max()); thumb = max((piece for piece in apart if piece is not fingers), key=len); web = back
+        elif thumb is not None: break
+    if thumb is None or thumb_tip - web < 1.0: return None
+    length = float(np.clip((tip_t - web) / 0.58, tip_t - web + 1, tip_t + 0.35 * forearm)); wrist_t = tip_t - length
+    def slab(at, index=arm):  # the middle of the hand, or of one piece of it, at this distance along
+        d = np.abs((centres[index] - wr) @ a - at); return centres[index[d <= max(0.6, d.min() + 0.1)]].mean(0)
+    wrist = slab(wrist_t); knuckle_t = max(wrist_t + 0.56 * length, web + 0.25); reach = tip_t - knuckle_t
+    knuckle = slab(knuckle_t, fingers); end = slab(tip_t - 0.4, fingers); end = end + a * (tip_t - (end - wr) @ a)
+    c = centres[thumb].mean(0); out_side = c - wrist - a * ((c - wrist) @ a)  # from the hand's middle line to the thumb's side of it
+    cmc = wrist + a * 0.12 * length + out_side * 0.45; cmc = centres[solid_tree.query(cmc)[1]]
+    thumb_end = centres[thumb][np.linalg.norm(centres[thumb] - cmc, axis=1).argmax()]
+    inner = lambda q: centres[solid_tree.query_ball_point(q, 1.0)].mean(0) if solid_tree.query_ball_point(q, 1.0) else q  # towards the middle of the flesh
+    mcp, ip = inner(along_line(cmc, thumb_end, 0.5)), inner(along_line(cmc, thumb_end, 0.76))
+    f = (knuckle - wrist) / np.linalg.norm(knuckle - wrist); across = out_side - f * (out_side @ f); across /= np.linalg.norm(across)
+    palm = np.cross(f, across) * (1 if side == "Left" else -1)  # the way the palm faces
+    hold = slab(wrist_t + 0.5 * length); under = hold.copy()
+    while solid_tree.query(under)[0] < G: under = under + palm * 0.25  # out through the palm's skin
+    return {"wrist": wrist, "fingers": [knuckle, slab(knuckle_t + 0.45 * reach, fingers), slab(knuckle_t + 0.75 * reach, fingers), end],
+            "thumb": [cmc, mcp, ip, thumb_end], "grip": under + palm * 0.09 * length, "palm": palm, "across": across, "along": f, "length": length}
+HANDS = {}
+if GEODESIC and os.environ.get("BONES", "humanoid") != "15" and os.environ.get("FINGERS", "1") != "0":
+    for side, s in (("Left", "LEFT"), ("Right", "RIGHT")):
+        found = hand(side, s)
+        if found is None: print(f"{side} hand: no thumb apart from the fingers, so no finger bones", file=sys.stderr); continue
+        print(f"{side} hand: {found['length']:.1f} sprite pixels long, wrist moved {np.linalg.norm(found['wrist'] - J[s + ' ARM']):.1f}", file=sys.stderr)
+        HANDS[side] = found; J[s + " ARM"] = found["wrist"]
+
 # name, parent, where the joint is, where its bone ends
 # BONES=15 is the first skeleton of this note. The default adds the bones a standard humanoid has besides
 # (chest, neck, shoulders, toes), under the names Unity's and Godot's humanoid profiles use, so that an engine
@@ -103,13 +158,21 @@ for side, s in (("Left", "LEFT"), ("Right", "RIGHT")):
     if FULL:
         collar = along(neck, sh, 0.3) - np.array([0, 0, 0.08 * np.linalg.norm(neck - hips)])
         BONES.append((side + "Shoulder", "Chest", collar, sh)); arm_root = side + "Shoulder"
-    BONES += [(side + "UpperArm", arm_root, sh, el), (side + "LowerArm", side + "UpperArm", el, wr), (side + "Hand", side + "LowerArm", wr, past(el, wr, 3)),
+    BONES += [(side + "UpperArm", arm_root, sh, el), (side + "LowerArm", side + "UpperArm", el, wr), (side + "Hand", side + "LowerArm", wr, HANDS[side]["fingers"][0] if side in HANDS else past(el, wr, 3)),
               (side + "UpperLeg", "Hips", hp, kn), (side + "LowerLeg", side + "UpperLeg", kn, an)]
     if FULL:
         ball = np.array([an[0], an[1] - 0.55 * (an[2] - floor_z) - 1.0, floor_z + 0.25 * (an[2] - floor_z)])  # the ball of the foot, ahead of the ankle
         BONES += [(side + "Foot", side + "LowerLeg", an, ball), (side + "Toes", side + "Foot", ball, ball + np.array([0, -0.6 * np.linalg.norm(ball - an), 0]))]
     else:
         BONES.append((side + "Foot", side + "LowerLeg", an, an + down * 3 + np.array([0, -2.0, 0])))
+# Finger bones come after the body's twenty-one, under the names the humanoid profiles give them. The fingers'
+# one chain takes the middle finger's names. <Side>Grip carries no skin: it marks where a held thing's grip goes.
+NO_SKIN = set()
+for side, found in HANDS.items():
+    for chain, parts in (("Thumb", ("Metacarpal", "Proximal", "Distal")), ("Middle", ("Proximal", "Intermediate", "Distal"))):
+        joints = found["thumb" if chain == "Thumb" else "fingers"]
+        for k, part in enumerate(parts): BONES.append((side + chain + part, side + (chain + parts[k - 1] if k else "Hand"), joints[k], joints[k + 1]))
+    BONES.append((side + "Grip", side + "Hand", found["grip"], found["grip"] + found["across"])); NO_SKIN.add(side + "Grip")
 names = [b[0] for b in BONES]; parent = [names.index(b[1]) if b[1] else -1 for b in BONES]
 head_pos = np.array([b[2] for b in BONES]); tail_pos = np.array([b[3] for b in BONES])
 
@@ -134,6 +197,7 @@ if GEODESIC:
     at = solid_tree.query(world)[1]
     through = np.zeros((len(BONES), len(solid_at)))  # from every cell inside the body to each bone, for the items
     for b in range(len(BONES)):
+        if names[b] in NO_SKIN: through[b] = np.inf; dist[:, b] = np.inf; continue
         along = head_pos[b] + (tail_pos[b] - head_pos[b]) * np.linspace(0, 1, 24)[:, None]
         gap, seeds = solid_tree.query(along)
         seeds = np.unique(seeds[gap < 1.5]) if (gap < 1.5).any() else np.unique(seeds)
@@ -186,7 +250,23 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
     pf = np.asarray(part.faces); puv = np.asarray(part.visual.uv, np.float64)
     prelief = sized(getattr(part.visual.material, "normalTexture", None), "TEX_NORMAL")
     pnormals = np.asarray(part.vertex_normals, np.float32) if prelief is not None else None
-    if os.environ.get("ALIGN", "1") == "1" and fit_kind != "loose":
+    held = fit_kind == "held"
+    if held:
+        # A held thing (a sword) is rigid and comes in a frame of its own. Its longest line is laid across the
+        # palm, leaving on the thumb's side; its flat faces the way the fingers point; the grip, half way between
+        # the end and the widest place nearest an end (the guard), goes to the hand's <Side>Grip. It follows the
+        # hand alone, and the fingers close round it in any animation that makes a fist.
+        side = allowed.replace("Hand", "")
+        if side not in HANDS: sys.exit(f"{label}: held items need a hand with finger bones, as LeftHand or RightHand; found {sorted(HANDS)}")
+        grasp = HANDS[side]; centre = pw.mean(0); axes = np.linalg.svd(pw - centre, full_matrices=False)[2]
+        run = (pw - centre) @ axes[0]; wide = np.abs((pw - centre) @ axes[1]); steps = np.linspace(run.min(), run.max(), 41)
+        guard = steps[np.argmax([wide[(run >= lo) & (run <= hi)].max(initial=0) for lo, hi in zip(steps[:-1], steps[1:])])]
+        if guard - run.min() > run.max() - guard: axes[0] = -axes[0]; run = -run; guard = -guard
+        size = float(os.environ.get("HELD_LENGTH", "0.5")) * (world[:, 2].max() - world[:, 2].min()) / (run.max() - run.min())
+        turn = np.stack([grasp["across"], grasp["along"], np.cross(grasp["across"], grasp["along"])], 1) @ np.stack([axes[0], axes[1], np.cross(axes[0], axes[1])], 1).T
+        pw = (pw - centre - axes[0] * (run.min() + guard) / 2) * size @ turn.T + grasp["grip"]
+        prelief = pnormals = None
+    if os.environ.get("ALIGN", "1") == "1" and fit_kind not in ("loose", "held"):
         # The item came from a mesh fitted to the sprites on its own, and can sit a pixel or two off the body
         # along an arm, where the outline barely changes. Slide it until it is the same distance from the skin
         # all the way round: least squares on the distance of every vertex near the body.
@@ -197,7 +277,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
             step = np.linalg.lstsq(np.hstack([n[near], -np.ones((near.sum(), 1))]), -d[near], rcond=None)[0][:3]
             step = np.clip(step, -1, 1); pw = pw + step; moved += step
         print(f"{label}: slid {np.round(moved, 2).tolist()} sprite pixels to sit on the body", file=sys.stderr)
-    if FIT > 0:
+    if FIT > 0 and not held:
         # An item is drawn a pixel outside the body and meshed on its own, so some of it lands inside the
         # body's mesh. Drop the triangles buried deep in the body that face inward, which nobody can see, and move what is
         # left out to just above the skin. FIT is how far above, in sprite pixels; 0 leaves the item alone.
@@ -219,6 +299,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         if len(banned) == len(names): sys.exit(f"{label}: none of {allowed} is a bone; bones are {names}")
         pd[:, banned] = 1e9
     pj, pwt = skin(pd)
+    if held: pj = np.zeros((len(pw), 4), np.uint8); pj[:, 0] = names.index(allowed); pwt = np.zeros((len(pw), 4), np.float32); pwt[:, 0] = 1
     if label in CHAINS:
         # A hanging item gets bones of its own: columns of links running down it, hung from the bone the item
         # may follow. The top of the item (a collar) stays on the body; below that each vertex follows the two
@@ -254,7 +335,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
     # Which of the body's vertices this item covers: those with the item's surface within COVER sprite pixels.
     # A loose item (a cape) covers nothing, since it swings away from what is behind it.
     covers = np.zeros(len(world), bool)
-    if fit_kind != "loose":
+    if fit_kind not in ("loose", "held"):
         cloud = trimesh.sample.sample_surface(trimesh.Trimesh(pw, pf, process=False), 300000, seed=5)[0]
         covers = cKDTree(cloud).query(world)[0] < float(os.environ.get("COVER", "1.2"))
     ITEMS.append({"name": label, "covers": covers, "world": pw, "faces": pf, "uv": puv, "joints": pj, "weights": pwt, "texture": ptex, "relief": prelief, "given_normals": pnormals})

@@ -9,7 +9,7 @@ const STEPS: Array<{ name: string; text: string }> = [
   { name: "Paint", text: "A second model paints each mesh, one direction at a time with that direction's picture as its reference, plus views from above and below." },
   { name: "Cut", text: "Each item is cut out of the mesh of the figure wearing it, so it fits the body it was made on." },
   { name: "Thin", text: "Every part drops to a fifth of its triangles, with its paint and relief baked back on." },
-  { name: "Rig", text: "Twenty-one bones under standard humanoid names go in from the same 18 joints PixelKiln estimates for sprites, found in each direction and combined. Items follow the bones under them, and skin under an item is hidden." },
+  { name: "Rig", text: "Twenty-one bones under standard humanoid names go in from the same 18 joints PixelKiln estimates for sprites, found in each direction and combined. Items follow the bones under them, and skin under an item is hidden. Where the mesh has a thumb apart from the fingers, each hand gets a thumb and one chain for the fingers, so it can close round a grip." },
   { name: "Animate", text: "Motions from a free humanoid library are carried over bone by bone." },
   { name: "Swing", text: "The cape hangs from chains of bones, and a simulation swings them through every motion and stores the result." },
 ];

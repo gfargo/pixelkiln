@@ -10,7 +10,9 @@ cannot be copied across.
 
 For each bone and each moment, the library bone's turn away from its rest pose is taken in world
 space and given to the matching bone of the character. The two rest poses need not agree: each of
-the character's limbs is first turned to point the way the library's limb points at rest. The hips
+the character's limbs is first turned to point the way the library's limb points at rest. Where the
+character has finger bones (rig.py adds a thumb and one chain for the fingers when the mesh has a thumb),
+they follow the library's thumb and middle finger, so a hand closes into a fist or round a grip. The hips
 also move, by the library's hip travel scaled to the character's hip height. Everything is sampled
 at a fixed rate and written as new animations in a copy of the character's file.
 
@@ -126,6 +128,13 @@ class Skeleton:
 
 character, character_blob = load(character_file); library, library_blob = load(library_file)
 ours, theirs = Skeleton(character), Skeleton(library)
+# Finger bones, where rig.py found a thumb: its one chain for the fingers follows the library's middle finger.
+FINGERS = {}
+for side, s in (('Left', 'l'), ('Right', 'r')):
+    chain = {f'{side}ThumbMetacarpal': f'thumb_01_{s}', f'{side}ThumbProximal': f'thumb_02_{s}', f'{side}ThumbDistal': f'thumb_03_{s}',
+             f'{side}MiddleProximal': f'middle_01_{s}', f'{side}MiddleIntermediate': f'middle_02_{s}', f'{side}MiddleDistal': f'middle_03_{s}'}
+    chain = {a: PAIRS.get(a, b) for a, b in chain.items()}
+    if all(a in ours.named for a in chain) and all(b in theirs.named for b in chain.values()): PAIRS.update(chain); FINGERS[side] = list(chain)
 missing = [(a, b) for a, b in PAIRS.items() if a not in ours.named or b not in theirs.named]
 if missing: sys.exit(f'bones not found: {missing}')
 bones = [name for name in (character['nodes'][j]['name'] for j in character['skins'][0]['joints']) if name in PAIRS]
@@ -148,6 +157,21 @@ for name in bones:
         yours = at(theirs, their_place, PAIRS[CHILD[name]]) - at(theirs, their_place, PAIRS[name])
         align[name] = between(mine, yours)
     else: align[name] = np.eye(3)
+# A hand with fingers is turned as a whole, so that its palm faces the way the library's does: a finger curls
+# about the line of the knuckles, and that line has to agree. Each finger bone then starts from the turn of the
+# bone above it and adds the least turn that points it along the library's.
+def palm(skeleton, places, wrist, finger, thumb):
+    x = at(skeleton, places, finger) - at(skeleton, places, wrist); x /= np.linalg.norm(x)
+    z = np.cross(x, at(skeleton, places, thumb) - at(skeleton, places, wrist)); z /= np.linalg.norm(z)
+    return np.stack([x, np.cross(z, x), z], 1)
+for side, chain in FINGERS.items():
+    hand = f'{side}Hand'
+    align[hand] = palm(theirs, their_place, PAIRS[hand], PAIRS[f'{side}MiddleProximal'], PAIRS[f'{side}ThumbProximal']) @ palm(ours, our_place, hand, f'{side}MiddleProximal', f'{side}ThumbProximal').T
+    for k, name in enumerate(chain):
+        above = hand if k % 3 == 0 else chain[k - 1]
+        if k % 3 == 2: align[name] = align[above]; continue
+        mine = align[above] @ (at(ours, our_place, chain[k + 1]) - at(ours, our_place, name))
+        align[name] = between(mine, at(theirs, their_place, PAIRS[chain[k + 1]]) - at(theirs, their_place, PAIRS[name])) @ align[above]
 hip_scale = at(ours, our_place, 'Hips')[1] / at(theirs, their_place, 'pelvis')[1]
 hips_rest = np.array(character['nodes'][ours.named['Hips']].get('translation', [0, 0, 0]), float)
 

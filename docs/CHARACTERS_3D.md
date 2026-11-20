@@ -28,6 +28,9 @@ machine with a 12 GB RTX 3060.
 - **A standard skeleton.** Twenty-one bones under the names Unity's and Godot's
   humanoid profiles use. Godot 4.7's `SkeletonProfileHumanoid` finds every bone
   it requires, by name.
+- **Hands that close,** on the painted path. Where the mesh has a thumb apart
+  from the fingers, each hand gets a thumb, one chain for the four fingers
+  together, and a point that marks where a grip goes.
 - **Stock animations.** Motions from a humanoid library made for another
   skeleton, carried over bone by bone.
 
@@ -46,7 +49,7 @@ wrong one.
 | GPU time, body and four items | About 45 minutes | About two hours |
 | Build | About four heads tall | About seven heads tall |
 | Surface | The sprite's colours, soft up close; meant to be drawn small with a pixel filter | Plates, trim, faces and cloth painted in |
-| The example file | 9,300 triangles, 1.0 MB | 16,500 triangles, 2.3 MB |
+| The example file | 9,300 triangles, 1.0 MB | 18,000 triangles with a sword, 2.6 MB |
 
 **Take the pixel path** when the game is pixel art, the camera is far, and
 cost matters. Its limits are known:
@@ -173,6 +176,14 @@ above the skin, gives it the bone weights of the body under it, and splits the
 body by what covers it. A name after the colon limits an item to those bones;
 `loose` marks one that hides no skin.
 
+Hands are measured on the mesh here too. A hand with a thumb standing apart
+gets seven more bones: `LeftThumbMetacarpal`, `LeftThumbProximal`,
+`LeftThumbDistal`, `LeftMiddleProximal`, `LeftMiddleIntermediate`,
+`LeftMiddleDistal` (the four fingers move as one, under the middle finger's
+names) and `LeftGrip`, which carries no skin and marks where a grip goes. A
+hand with no thumb to find, which is every 64 pixel hand and any hand drawn as
+a fist, gets none, and the script says so. `FINGERS=0` turns this off.
+
 ### 8. Animate
 
 ```bash
@@ -204,10 +215,27 @@ mesh and rig (steps 1 to 7, the body only), write each body's bones with
 `SKIN=<file>` at the rig step, and reshape each item from the first to the
 second. Then rig the second body with the reshaped items as usual.
 
+### 11. Put something in a hand
+
+```bash
+ITEMS="Sword=<sword.glb>:RightHand:held;Cuirass=<cuirass.glb>" python3 research/scripts/rig.py <body-light.glb> <body.rig.json> - - <character.glb>
+```
+
+A held thing is made on its own: eight directions of the object upright
+(a PixelLab object, 25 generations at 128 pixels), meshed, coloured from the
+sprites with `texture.py`, and thinned. `held` lays its longest line across
+the palm of the hand named, puts its grip at that hand's grip point, and makes
+it `HELD_LENGTH` of the body's height long (default 0.5). The file's own
+frame does not matter. It needs a hand with finger bones.
+
+Then animate as in step 8. `retarget.py` carries the library's thumb and
+middle finger over, so the hand is a fist in a walk and closed round the grip
+in a sword attack.
+
 ## In a game engine
 
 The example file was imported into Godot 4.7.2 with no errors: one skeleton of
-33 bones (21 for the body, 12 for the cape), nine skinned meshes, twelve animations, and each body piece's
+47 bones (21 for the body, 14 for the hands, 12 for the cape), ten skinned meshes, twelve animations, and each body piece's
 `hiddenBy` list in its node metadata. Godot drops a trailing `_Loop` from
 animation names, so the library's `Walk_Loop` arrives as `Walk`.
 
@@ -236,7 +264,11 @@ swing. See step 31 of the research note.
   its unwrap is dozens of pieces.
 - **Materials.** Colour and a normal map only: no metal or roughness, and the
   redraw's lighting is painted in.
-- **Fingers, eyes and a jaw** in the skeleton.
+- **Separate fingers, eyes and a jaw** in the skeleton. The four fingers
+  move as one, and only on the painted path.
+- **Held items beyond one sword in the right hand.** A hand drawn as a fist,
+  a shield, and two hands on one grip are untried, and the grip is not sized
+  to the hand.
 - **Many bodies.** The items have been worn by two: the one they were cut on
   and one much heavier man, after `refit.py` reshaped them for him. Other
   heights and builds are untried.
