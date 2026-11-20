@@ -1,3 +1,10 @@
+# [0.123.0](https://github.com/gfargo/pixelkiln/compare/v0.122.1...v0.123.0) (2026-11-20)
+
+
+### Features
+
+* **skeleton:** custom rigs for props, capes and tails, and written motion ([1057e86](https://github.com/gfargo/pixelkiln/commit/1057e86beb53587be4e12cc8e9cc87e79e93a1d7))
+
 ## [0.122.1](https://github.com/gfargo/pixelkiln/compare/v0.122.0...v0.122.1) (2026-11-20)
 
 
