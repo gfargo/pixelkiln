@@ -896,6 +896,52 @@ describe("PixelLab provider: animate-skeleton", () => {
     expect(lock.entries["base/revised"]).toMatchObject({ status: "review" })
   })
 
+  const rig = [
+    { name: "hips", parent: null, side: "mid", estimate: null },
+    { name: "right_wrist", parent: "hips", side: "near", estimate: "RIGHT ARM" },
+    { name: "staff_grip", parent: "right_wrist", side: "near", estimate: null },
+  ]
+  const rigPose = () => rig.map((j, i) => ({ label: j.name, x: 0.3 + i * 0.1, y: 0.5, z_index: 1 }))
+
+  async function submitRig(file: Record<string, unknown>, revisionExtra: Record<string, unknown> = {}) {
+    const loaded = await writeProject(revisionExtra, { keypointsFile: "rig.json" })
+    await writeFile(path.join(dir, "rig.json"), JSON.stringify(file))
+    const [child] = await resolveSpecs(loaded, { assets: ["revised"] })
+    const lock: Lock = { version: 2, entries: {} }
+    const plan = await buildPlan([child!], lock)
+    let body: Record<string, unknown> | null = null
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      const url = new URL(String(input))
+      if (url.pathname === "/v2/animate-with-skeleton-v3") {
+        body = init?.body ? JSON.parse(String(init.body)) : null
+        return new Response(JSON.stringify({ background_job_id: "rig-1", status: "processing" }), { status: 202 })
+      }
+      throw new Error(`unexpected request: ${url.pathname}`)
+    }))
+    await submit(new PixelLabProvider(new PixelLabClient("key")), loaded, plan.actionable, lock, path.join(dir, "pixelkiln.lock.json"), { spacingMs: 0 })
+    return { child: child!, body: body as Record<string, unknown> | null }
+  }
+
+  it("sends a custom rig with its poses, one frame allowed, on the mannequin template", async () => {
+    const { body } = await submitRig({ rig, kind: "person", firstFrameKeypoints: rigPose(), frames: [rigPose()] })
+    expect(body).toMatchObject({ rig, template_id: "mannequin" })
+    expect(body!.keypoints).toHaveLength(1)
+    expect((body!.first_frame_keypoints as Array<{ label: string }>).map((j) => j.label)).toEqual(["hips", "right_wrist", "staff_grip"])
+  })
+
+  it("has PixelLab write the motion with writeMotionFrames, and a four-legged rig goes on the dog template", async () => {
+    const { child, body } = await submitRig({ rig, kind: "four-legged", firstFrameKeypoints: rigPose() }, { writeMotionFrames: 6 })
+    expect(child.revision?.frames).toBe(6)
+    expect(body).toMatchObject({ write_motion_frames: 6, template_id: "dog" })
+    expect(body).not.toHaveProperty("keypoints")
+  })
+
+  it("says what to do when the keypoints file has no frames and nothing writes them", async () => {
+    const loaded = await writeProject({}, { keypointsFile: "rig.json" })
+    await writeFile(path.join(dir, "rig.json"), JSON.stringify({ rig, firstFrameKeypoints: rigPose() }))
+    await expect(resolveSpecs(loaded, { assets: ["revised"] })).rejects.toThrow(/has no frames; add the motion's poses, or set revision\.writeMotionFrames/)
+  })
+
   it("serves the decoded frames to the pick sheet over HTTP, never as file:// URLs", async () => {
     // The frames decode to file:// URLs in the provider's temp cache. The
     // sheet is served from http://127.0.0.1, which a browser refuses to let

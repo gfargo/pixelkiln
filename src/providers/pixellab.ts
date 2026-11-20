@@ -828,8 +828,15 @@ export class PixelLabProvider implements Provider {
       // `frames` is null until the keypoints file exists (manifest.ts) —
       // that is a "not ready yet" state `plan` must still show, not a
       // validation failure, same as a not-yet-drawn mask never fails here.
-      if (frames != null && (frames < 3 || frames > 15)) {
-        throw new Error(`PixelLab animate-skeleton takes 3 to 15 frames; the keypoints file has ${frames}`)
+      // A custom rig may redraw a single frame; the 18 joints need 3.
+      const rig = spec.revision.skeleton?.rig
+      const fewest = rig && spec.revision.writeMotionFrames == null ? 1 : 3
+      if (frames != null && (frames < fewest || frames > 15)) {
+        throw new Error(
+          spec.revision.skeleton && frames === 0 && spec.revision.writeMotionFrames == null
+            ? `${spec.styleId}/${spec.assetId}: the keypoints file has no frames; add the motion's poses, or set revision.writeMotionFrames to have PixelLab write them`
+            : `PixelLab animate-skeleton takes ${fewest} to 15 frames; the keypoints file has ${frames}`,
+        )
       }
       if (skeletonTemplate && !CHARACTER_TEMPLATES.includes(skeletonTemplate as (typeof CHARACTER_TEMPLATES)[number])) {
         throw new Error(`PixelLab animate-skeleton template "${skeletonTemplate}" is not one of ${CHARACTER_TEMPLATES.join(", ")}`)
@@ -2657,15 +2664,20 @@ export class PixelLabProvider implements Provider {
       if (sha256(keypointsBytes) !== revision.keypointsSha256) {
         throw new Error(`${spec.styleId}/${spec.assetId}: revision keypoints changed after the manifest was resolved`)
       }
+      // PixelLab's advice for a custom rig: `dog` for a four-legged body, `mannequin` for the rest.
+      const rig = revision.skeleton.rig
+      const templateId = revision.skeletonTemplate ?? (rig ? (revision.skeleton.kind === "four-legged" ? "dog" : "mannequin") : undefined)
       const res = await this.client.animateWithSkeletonV3({
         firstFrame: image,
         firstFrameKeypoints: revision.skeleton.firstFrameKeypoints,
         keypoints: revision.skeleton.frames,
+        ...(rig ? { rig } : {}),
+        ...(revision.writeMotionFrames != null ? { writeMotionFrames: revision.writeMotionFrames } : {}),
         direction: revision.direction!,
         // The style's camera, when it is one this endpoint knows; its enum is
         // narrower than a style's free-string `view`.
         ...(spec.view === "side" || spec.view === "low top-down" || spec.view === "high top-down" ? { view: spec.view } : {}),
-        templateId: revision.skeletonTemplate,
+        templateId,
         action: spec.prompt,
         description: revision.description,
         seed: spec.seed,

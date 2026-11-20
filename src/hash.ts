@@ -342,6 +342,8 @@ export function specHash(
             enhancePrompt: spec.revision.enhancePrompt,
             keypointsSha256: spec.revision.keypointsSha256,
             skeletonTemplate: spec.revision.skeletonTemplate,
+            // Only when set, so revisions made before it keep their hash.
+            writeMotionFrames: spec.revision.writeMotionFrames,
             description: spec.revision.description,
             removalTask: spec.revision.removalTask,
             convention: spec.revision.convention,

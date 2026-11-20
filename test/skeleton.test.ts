@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { SKELETON_LABELS, SkeletonFrameSchema, SkeletonKeypointSchema, SkeletonSetSchema, parseSkeletonSet, scaffoldSkeletonSet } from "../src/skeleton.ts"
+import { SKELETON_LABELS, SkeletonFrameSchema, SkeletonKeypointSchema, SkeletonRigSchema, SkeletonSetSchema, parseSkeletonSet, scaffoldSkeletonSet, skeletonBones } from "../src/skeleton.ts"
 
 const joint = (overrides: Partial<{ label: string; x: number; y: number; z_index: number; depth: number }> = {}) => ({
   label: "RIGHT KNEE",
@@ -66,7 +66,8 @@ describe("parseSkeletonSet", () => {
   })
 
   it("throws naming the file and the first few issues for an invalid shape", () => {
-    expect(() => parseSkeletonSet({ firstFrameKeypoints: frame(), frames: [] }, "poses.json"))
+    // Two frames: the 18 joints need 3 (an empty list is allowed, for written motion).
+    expect(() => parseSkeletonSet({ firstFrameKeypoints: frame(), frames: [frame(), frame()] }, "poses.json"))
       .toThrow(/revision keypoints file poses\.json does not match the expected shape: frames:/)
   })
 
@@ -93,5 +94,46 @@ describe("scaffoldSkeletonSet", () => {
     set.frames[0]![0]!.x = 0.9
     expect(set.frames[1]![0]!.x).toBe(0.52)
     expect(set.firstFrameKeypoints[0]!.x).toBe(0.52)
+  })
+})
+
+describe("custom rigs", () => {
+  const rig = [
+    { name: "hips", parent: null, side: "mid" as const, estimate: null },
+    { name: "right_wrist", parent: "hips", side: "near" as const, estimate: "RIGHT ARM" as const },
+    { name: "staff_grip", parent: "right_wrist", side: "near" as const, estimate: null },
+    { name: "staff_top", parent: "staff_grip", side: "near" as const, estimate: null },
+  ]
+  const pose = (dx = 0) => rig.map((j, i) => ({ label: j.name, x: 0.2 + i * 0.1 + dx, y: 0.5, z_index: 1 }))
+
+  it("takes poses that name the rig's joints, and one frame is enough", () => {
+    const set = parseSkeletonSet({ rig, kind: "person", firstFrameKeypoints: pose(), frames: [pose(0.05)] }, "rig.json")
+    expect(set.rig).toHaveLength(4)
+    expect(set.frames).toHaveLength(1)
+    expect(skeletonBones(set)).toEqual([["hips", "right_wrist"], ["right_wrist", "staff_grip"], ["staff_grip", "staff_top"]])
+  })
+
+  it("allows no frames at all, for motion PixelLab writes", () => {
+    expect(parseSkeletonSet({ rig, firstFrameKeypoints: pose() }, "rig.json").frames).toEqual([])
+  })
+
+  it("refuses a pose that misses a rig joint or names one the rig does not have", () => {
+    const missing = pose().slice(1)
+    expect(() => parseSkeletonSet({ rig, firstFrameKeypoints: missing, frames: [] }, "rig.json")).toThrow(/missing hips/)
+    const stray = [...pose(), { label: "tail", x: 0.5, y: 0.5, z_index: 0 }]
+    expect(() => parseSkeletonSet({ rig, firstFrameKeypoints: stray, frames: [] }, "rig.json")).toThrow(/not in the rig: tail/)
+  })
+
+  it("refuses a rig with two roots, a parent listed after its child, or a repeated name", () => {
+    const twoRoots = [...rig, { name: "cape", parent: null, side: "mid" as const, estimate: null }]
+    expect(SkeletonRigSchema.safeParse(twoRoots).error?.issues[0]?.message).toMatch(/exactly one root joint; this one has 2/)
+    const late = [rig[0], rig[2], rig[1], rig[3]]
+    expect(SkeletonRigSchema.safeParse(late).error?.issues[0]?.message).toMatch(/"staff_grip" hangs from "right_wrist", which is not listed before it/)
+    const twice = [...rig, { ...rig[3]! }]
+    expect(SkeletonRigSchema.safeParse(twice).error?.issues[0]?.message).toMatch(/joint "staff_top" appears twice/)
+  })
+
+  it("still holds the 18 joints to 3 to 15 frames", () => {
+    expect(() => parseSkeletonSet({ firstFrameKeypoints: frame(), frames: [frame()] }, "p.json")).toThrow(/need 3 to 15 frames/)
   })
 })

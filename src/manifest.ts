@@ -1483,11 +1483,15 @@ export async function resolveSpecs(
                 // The manifest's own `frames` field stays rejected for this
                 // mode (superRefine, types.ts) — the real frame count comes
                 // from the keypoints file once it exists, not a manifest
-                // number, so plan can only know it once authored.
-                ...(keypoints ? { frames: keypoints.skeleton.frames.length } : {}),
+                // number, so plan can only know it once authored. Written
+                // motion has its count in the manifest instead.
+                ...(asset.revision.writeMotionFrames != null
+                  ? { frames: asset.revision.writeMotionFrames }
+                  : keypoints ? { frames: keypoints.skeleton.frames.length } : {}),
               }
             : {}),
           ...(asset.revision.skeletonTemplate ? { skeletonTemplate: asset.revision.skeletonTemplate } : {}),
+          ...(asset.revision.writeMotionFrames != null ? { writeMotionFrames: asset.revision.writeMotionFrames } : {}),
           ...(asset.revision.description ? { description: asset.revision.description } : {}),
           ...(asset.revision.removalTask ? { removalTask: asset.revision.removalTask } : {}),
           ...(asset.revision.convention ? { convention: asset.revision.convention } : {}),

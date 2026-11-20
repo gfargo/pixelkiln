@@ -1,5 +1,5 @@
 import { encodeRgbaPng, type DecodedPng } from "./png.ts"
-import { SKELETON_BONES, type SkeletonKeypoint, type SkeletonSet } from "./skeleton.ts"
+import { skeletonBones, type PoseJoint, type SkeletonSet } from "./skeleton.ts"
 
 /**
  * A contact sheet of a keypoints file: one cell per pose, the pose the image
@@ -13,7 +13,9 @@ import { SKELETON_BONES, type SkeletonKeypoint, type SkeletonSet } from "./skele
  * of a small sprite read as raised arms;
  * the first cell's source is at full strength and the frames' dimmed, so the
  * difference between "the pose the image is in" and "the motion" reads at a
- * glance. Coordinates are fractions of the source, as PixelLab's are.
+ * glance. Coordinates are fractions of the source, as PixelLab's are. A
+ * custom rig is drawn joint to parent: joints that stand for one of the 18
+ * take that joint's colour, and the rest (props, capes, hats) are yellow.
  */
 export interface SkeletonSheetOptions {
   /** The image the poses belong to. Without one, cells are a flat dark ground. */
@@ -28,6 +30,8 @@ const RIGHT: Rgba = [255, 140, 40, 255]
 const LEFT: Rgba = [60, 150, 255, 255]
 const CENTER: Rgba = [240, 240, 240, 255]
 const FACE: Rgba = [150, 150, 150, 255]
+/** A custom rig's joints that are not one of the 18: a staff, a cape, a hat. */
+const PROP: Rgba = [255, 215, 70, 255]
 const GROUND: Rgba = [28, 28, 34, 255]
 const OUTLINE: Rgba = [0, 0, 0, 255]
 const GUTTER = 4
@@ -48,24 +52,38 @@ export function renderSkeletonSheet(set: SkeletonSet, options: SkeletonSheetOpti
   const height = rows * cellH + (rows + 1) * GUTTER
   const canvas = new Canvas(width, height)
   canvas.fill(0, 0, width, height, [12, 12, 16, 255])
+  const bones = skeletonBones(set)
+  // A rig joint is coloured as the humanoid joint it stands for, if any.
+  const stands = new Map((set.rig ?? []).map((joint) => [joint.name, joint.estimate ?? null]))
+  const colorOf = (label: string): Rgba => {
+    if (!set.rig) return labelColor(label)
+    const humanoid = stands.get(label)
+    return humanoid ? labelColor(humanoid) : PROP
+  }
 
   poses.forEach((pose, index) => {
     const left = GUTTER + (index % columns) * (cellW + GUTTER)
     const top = GUTTER + Math.floor(index / columns) * (cellH + GUTTER)
     canvas.fill(left, top, cellW, cellH, GROUND)
     if (source) canvas.drawImage(source, left, top, scale, index === 0 ? 1 : 0.45)
-    drawPose(canvas, pose, left, top, cellW, cellH, Math.max(1, Math.round(Math.min(cellW, cellH) / 128)))
+    drawPose(canvas, pose, bones, colorOf, left, top, cellW, cellH, Math.max(1, Math.round(Math.min(cellW, cellH) / 128)))
   })
   return encodeRgbaPng(width, height, canvas.data)
 }
 
-function drawPose(canvas: Canvas, pose: SkeletonKeypoint[], left: number, top: number, w: number, h: number, stroke: number): void {
+function drawPose(
+  canvas: Canvas,
+  pose: PoseJoint[],
+  bones: ReadonlyArray<readonly [string, string]>,
+  colorOf: (label: string) => Rgba,
+  left: number, top: number, w: number, h: number, stroke: number,
+): void {
   const at = new Map(pose.map((joint) => [joint.label, joint]))
-  const point = (joint: SkeletonKeypoint) => [left + joint.x * (w - 1), top + joint.y * (h - 1)] as const
+  const point = (joint: PoseJoint) => [left + joint.x * (w - 1), top + joint.y * (h - 1)] as const
   // Everything twice: a dark outline first, then the colour, so an orange
   // bone still reads over an orange sprite.
   for (const outline of [true, false]) {
-    for (const [from, to] of SKELETON_BONES) {
+    for (const [from, to] of bones) {
       const a = at.get(from)
       const b = at.get(to)
       if (!a || !b) continue
@@ -80,7 +98,7 @@ function drawPose(canvas: Canvas, pose: SkeletonKeypoint[], left: number, top: n
   }
 }
 
-function colorOf(label: string): Rgba {
+function labelColor(label: string): Rgba {
   if (label.endsWith(" EYE") || label.endsWith(" EAR")) return FACE
   if (label.startsWith("RIGHT")) return RIGHT
   if (label.startsWith("LEFT")) return LEFT

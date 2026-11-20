@@ -26,6 +26,7 @@ import {
   type SkeletonSet,
 } from "../../skeleton.ts"
 import { renderSkeletonSheet } from "../../skeleton-preview.ts"
+import { CHARACTER_DIRECTIONS_8, type CharacterDirection } from "../../types.ts"
 import { log } from "../io.ts"
 import type { Args } from "../args.ts"
 
@@ -47,6 +48,7 @@ export async function runEstimateSkeleton(args: Args): Promise<void> {
   const bytes = await readFile(path.resolve(image))
   const metadata = imageMetadata(bytes)
   if (!metadata) throw new UsageError(`${image} is not a readable PNG or JPEG`)
+  if (args.custom) return estimateCustom(args, image, bytes, metadata)
   const sizeProblem = estimateSkeletonSizeProblem(metadata.width, metadata.height)
   if (sizeProblem) throw new UsageError(`${image} is ${sizeProblem}`)
 
@@ -63,6 +65,55 @@ export async function runEstimateSkeleton(args: Args): Promise<void> {
   if (args.out) {
     await writeFile(path.resolve(args.out), json + "\n")
     log(`  wrote ${args.out}: the estimated pose and ${frames} frames to edit`)
+    log(`  preview it with: pixelkiln skeleton-preview ${args.out} --from ${image}`)
+  } else {
+    log(json)
+  }
+}
+
+const VIEWS = ["side", "low top-down", "high top-down"] as const
+
+/**
+ * `estimate-skeleton --custom`: PixelLab's `/estimate-custom-skeleton` (beta)
+ * builds a rig for whatever is in the picture, a staff, a cape, a tail, and
+ * this writes it as a keypoints file whose poses name the rig's joints. 1
+ * generation; a background job of about a minute, waited on here.
+ */
+async function estimateCustom(
+  args: Args,
+  image: string,
+  bytes: Buffer,
+  metadata: { width: number; height: number; format: "png" | "jpeg" },
+): Promise<void> {
+  if (metadata.width > 256 || metadata.height > 256) {
+    throw new UsageError(`${image} is ${metadata.width}x${metadata.height}; estimate-skeleton --custom takes images up to 256x256`)
+  }
+  const direction = (args.direction ?? "south") as CharacterDirection
+  if (!(CHARACTER_DIRECTIONS_8 as readonly string[]).includes(direction)) {
+    throw new UsageError(`--direction must be one of ${CHARACTER_DIRECTIONS_8.join(", ")}`)
+  }
+  if (args.view && !(VIEWS as readonly string[]).includes(args.view)) {
+    throw new UsageError(`--view must be one of ${VIEWS.join(", ")}`)
+  }
+  if (!args.description && !args.action) {
+    log("  tip: --description (what it is) and --action (what it will do) tell PixelLab which parts need joints")
+  }
+  const client = clientFromEnv()
+  log("  estimating a custom rig (about a minute)…")
+  const res = await client.estimateCustomSkeleton({
+    image: { base64: bytes.toString("base64"), format: metadata.format },
+    direction,
+    ...(args.view ? { view: args.view as (typeof VIEWS)[number] } : {}),
+    ...(args.description ? { description: args.description } : {}),
+    ...(args.action ? { action: args.action } : {}),
+  })
+  const frames = args.frames ?? DEFAULT_SCAFFOLD_FRAMES
+  const json = JSON.stringify(scaffoldSkeletonSet(res.keypoints, frames, { rig: res.rig, kind: res.kind }), null, 2)
+  const extra = res.rig.filter((joint) => !joint.estimate).map((joint) => joint.name)
+  if (args.out) {
+    await writeFile(path.resolve(args.out), json + "\n")
+    log(`  wrote ${args.out}: a ${res.kind ?? "custom"} rig of ${res.rig.length} joints and ${frames} frames to edit`)
+    if (extra.length) log(`  joints beyond the 18: ${extra.slice(0, 12).join(", ")}${extra.length > 12 ? ", …" : ""}`)
     log(`  preview it with: pixelkiln skeleton-preview ${args.out} --from ${image}`)
   } else {
     log(json)

@@ -1992,6 +1992,7 @@ strip and a record, and the lines are free to make at any time.
 
 ```bash
 pixelkiln estimate-skeleton <image> [--out keypoints.json] [--frames 4] [--force]
+pixelkiln estimate-skeleton <image> --custom [--description <text>] [--action <text>] [--direction south] [--view <camera>] [--out rig.json] [--frames 1]
 ```
 
 PixelLab only. Derives an 18-joint skeleton from an image via
@@ -2008,6 +2009,19 @@ estimated pose as `firstFrameKeypoints`, and `--frames` copies of it (3–15,
 default 4) as the frames to move into the motion. It prints, or writes to
 `--out`; `--out` refuses to replace an existing file, which is usually hand
 edits, unless `--force` is given.
+
+`--custom` calls PixelLab's `/estimate-custom-skeleton` (beta) instead, which
+builds a rig for whatever is in the picture: a staff, a cape, a hat, a tail,
+wings. `--description` says what the sprite is and `--action` what it will be
+animated doing, so the parts that move get joints; given "a wizard holding a
+staff" and "swinging the staff", it hung a three-joint staff from the wrist.
+`--direction` is the way the sprite faces (default `south`) and `--view` its
+camera (`side`, `low top-down` or `high top-down`). The image may be any size
+up to 256x256. It is a background job of about a minute, waited on here, and
+costs 1 generation. The file it writes also holds the `rig` (each joint's name,
+parent, side, and the humanoid joint it stands for, if any) and its `kind`
+(`person`, `four-legged` or `other`); its poses name the rig's joints, and
+`--frames` may be 1. See [Skeletons and rigging](./SKELETONS.md#custom-rigs-in-pixelkiln).
 
 ### `skeleton-preview`
 
@@ -2098,7 +2112,10 @@ Print the package version. `-v` is an alias.
 | Option | Applies to | Meaning |
 |---|---|---|
 | `--manifest <path>` | manifest commands | Manifest path; defaults to `pixelkiln.manifest.json`. |
-| `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15; default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
+| `--frames <n>` | `estimate-skeleton`/normal-map | Frames to scaffold after the estimated pose, 3–15 (1–15 with `--custom`); default 4. For normal-map, the equal frames in the `--from` strip, 1–32; default 1. |
+| `--custom` | `estimate-skeleton` | Build a custom rig with PixelLab's `/estimate-custom-skeleton`: joints for props, capes, hats and tails as well as the body. 1 generation. |
+| `--action <text>` | `estimate-skeleton --custom` | What the sprite will be animated doing, e.g. `"swinging the staff"`, so the parts that move get joints. |
+| `--view <camera>` | `estimate-skeleton --custom` | The camera the sprite is drawn at: `side`, `low top-down` or `high top-down`. |
 | `--convention <c>` | normal-map | `opengl` (green up, the default) or `directx` (green down, for Unreal). |
 | `--mode <mode>` | normal-map/asset import/model adopt/model normal-map | normal-map and model normal-map: `lite` (the default, 0.1 generation) or `pro` (0.5). asset import `--kind tileset`: `topdown` (the default) or `sidescroller`. model adopt: `textures` (the default) or `whole`. |
 | `--image <n\|material>` | model export/import/normal-map | The texture: an image index, a material name for its base colour texture, or `<material>:normal` for its normal map. For `model normal-map`, a material name means its normal map, and several can be given comma-separated. |
@@ -2167,7 +2184,7 @@ Print the package version. `-v` is an alias.
 | `--note <text>` | refine approve | Optional review note stored in the quality companion. |
 | `--model-root <path>` | recipe verify | ComfyUI `models` directory. Enables streamed hash checks for every external model declared by the recipe. |
 | `--quantize <n>` | unzoom | `0` auto-detects a palette (default), `-1` keeps every color, `2`-`256` quantizes to exactly that many. |
-| `--description <text>` | font/pixelate/vfx | The font's style, e.g. `"warm orange arcade font"`, an optional style steer for pixelate, or the effect for PixelLab's paid VFX artist (with `--effect`, what to change). |
+| `--description <text>` | font/pixelate/vfx, `estimate-skeleton --custom` | The font's style, e.g. `"warm orange arcade font"`, an optional style steer for pixelate, the effect for PixelLab's paid VFX artist (with `--effect`, what to change), or what a sprite is for a custom rig. |
 | `--artist <a>` | vfx | With `--description`: `lite` (default) or `pro`. |
 | `--weight <w>` | font | `Bold` or `Regular` (default). |
 | `--glyph-px <n>` | font | Native glyph size: `8`, `16` (default), `32`, or `64`. |
@@ -2199,7 +2216,7 @@ Print the package version. `-v` is an alias.
 | `--upper <text>` | asset import | With `--kind tileset`: the upper terrain. Top-down only. |
 | `--transition <text>` | asset import | With `--kind tileset`: the strip between the terrains, if the sheet has one. |
 | `--animation <id>` | asset mirror/export | An animation group id. |
-| `--direction <dir>` | asset mirror/expand/export | The direction to flip, the way an object faces before expansion, or a GIF's direction. |
+| `--direction <dir>` | asset mirror/expand/export, `estimate-skeleton --custom` | The direction to flip, the way an object faces before expansion, a GIF's direction, or the way a sprite faces for a custom rig (default `south`). |
 | `--keep` | asset expand | Keep the reviewed directions; the object becomes 8-direction. |
 | `--discard` | asset expand | Discard the pending directions; the object is unchanged. |
 | `--pro` | pixelate | Use Image to Pixel Art Pro (20 generations). |

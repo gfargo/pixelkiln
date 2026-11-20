@@ -214,6 +214,33 @@ looks like; PixelLab requires both. Eight frames at 64×64 billed 3 generations.
 PixelLab's own anchors are 3 frames for 2 generations and 15 frames for 4.
 See [Skeleton-driven animation](./REVISIONS.md#skeleton-driven-animation).
 
+## Custom rigs in PixelKiln
+
+The 18 joints stop at the wrist, the head and the hips. For a staff, a cape, a
+hat or a tail, build a custom rig:
+
+```bash
+pixelkiln estimate-skeleton mage.png --custom \
+  --description "a wizard in a purple robe holding a long staff" \
+  --action "swinging the staff overhead" --out poses/mage-rig.json
+```
+
+PixelLab's `/estimate-custom-skeleton` (beta, 1 generation, about a minute)
+builds the rig from the picture, the description and the action, and the file
+keeps it beside the poses: each joint's name, its parent, its side, and the
+humanoid joint it stands for, if any. `skeleton-preview` draws it joint to
+parent, the body in its usual colours and everything else in yellow. An
+`animate-skeleton` revision with that file sends the rig, so the staff moves
+with the hand; add `writeMotionFrames` to have PixelLab write the motion from
+the prompt instead of posing every frame. See
+[Custom rigs and written motion](./REVISIONS.md#custom-rigs-and-written-motion).
+
+What the rig contains depends on what it is told; on the figures in
+[Props, capes and hats](#props-capes-and-hats) it added cape chains, a sword,
+a shield, horns, a staff and a hat. Joint names change from one estimate to the
+next, so keep the file you animate from, and edit it rather than estimating
+again.
+
 ## Animate through the character's own skeleton
 
 A `skeleton-v3` loop uses a different skeleton: the 3D one PixelLab stores
@@ -416,7 +443,7 @@ Which tool for what, from everything tried on this page:
 | Body joints, 64 to 128px | PixelLab's `estimate-skeleton` | Right on every figure here; rtmlib close behind, MediaPipe unreliable |
 | Body joints, 256px, free | rtmlib, or MediaPipe | Both close to PixelLab; rtmlib also found every smaller body |
 | Hand points, 256px | rtmlib (installed by the user), else MediaPipe | 5 to 8% off, against 7 to 9% |
-| Joints for props, capes and hats | PixelLab's custom skeleton | The only tool that adds them by itself |
+| Joints for props, capes and hats | `estimate-skeleton --custom` (PixelLab's custom skeleton) | The only tool that adds them by itself |
 | A prop's mask and its bone, free and shippable | SAM 2.1, then the mask's long axis | Clean on staffs and swords; Apache-2.0 code and weights |
 | What may bend | MediaPipe's body mask or segmenter | Leaves a cape out of the body; rough |
 
