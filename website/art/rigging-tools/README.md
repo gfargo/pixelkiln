@@ -21,3 +21,20 @@ hats"). Made November 19, 2026.
   is skipped: 1.2.3 asks for an `interactive_segmentation.task` bundle that is
   not at the usual address.
 - `draw-figure.py` writes `website/public/showcase/skeleton/rigging-tools.png`.
+
+## rtmlib and SAM 2.1
+
+`docs/SKELETONS.md`, "Open-source tools on your own machine", and
+`open-tools.png` on `/skeletons#open-tools`.
+
+- `rtmlib-trial.py`: rtmlib 0.0.16 (onnxruntime 1.32, CPU) whole-body pose on
+  every sprite at 1, 2 and 4 times, in `balanced` and `performance` modes.
+  Results: `rtmlib-balanced.json`, `rtmlib-performance.json`. Its ONNX models
+  download from download.openmmlab.com on first use and are not ours to
+  redistribute (Human-Art detector, mixed RTMW training data).
+- `sam-trial.py`: SAM 2.1 (`facebook/sam2.1-hiera-{tiny,small,large}`, Apache-2.0)
+  through `transformers` 5.23 and torch 2.15 on the M1 Max's GPU, one click per
+  prop. Results: `sam-<size>.json`; masks in `out-<size>/`. The same script on
+  an RTX 3060 (torch 2.6, CUDA 12.4, Windows): `sam-large-cuda.json`,
+  `sam-small-cuda.json`, identical masks and scores.
+- `draw-open-tools.py` writes `website/public/showcase/skeleton/open-tools.png`.

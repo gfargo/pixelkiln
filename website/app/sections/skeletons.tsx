@@ -275,6 +275,30 @@ export function SkeletonsSection() {
           </p>
         </div>
 
+        <div className="builder-block" id="open-tools">
+          <h3>Free tools on your own machine.</h3>
+          <p>
+            Two open-source tools were tried on the same sprites. rtmlib&apos;s RTMW model found a body on every
+            figure, 64px included, in a third of a second on a laptop CPU, and was the closest of the free
+            tools on 256px hands. It still read the knight&apos;s horns as raised arms. SAM 2.1 cut out the
+            sword and the staff from one click each, and the long axis of each mask is the prop&apos;s bone; it
+            could not cut out a cape.
+          </p>
+          <figure className="skeleton-resolution skeleton-open">
+            <Image src="/showcase/skeleton/open-tools.png" alt="Five figures in rows with rtmlib's body, MediaPipe's body and SAM 2.1's mask of a prop. rtmlib finds every body but runs the knight's arms into its horns; MediaPipe misses the adventurer and the mage; SAM cuts out the sword and the staff" width={912} height={1340} unoptimized />
+            <figcaption>
+              SAM 2.1&apos;s code and weights are Apache-2.0, so it could ship with PixelKiln. rtmlib&apos;s code is
+              Apache-2.0 too, but its models were trained on data with non-commercial terms: something a
+              user installs, not something PixelKiln can hand out. Neither needed a CUDA card: an RTX 3060
+              gave the same masks as the Mac, and no faster.
+            </figcaption>
+          </figure>
+          <p className="skeleton-after">
+            <TrackedLink className="text-link" id="skeletons_open_tools" section="skeletons" href="/docs/skeletons#open-source-tools-on-your-own-machine-rtmlib-and-sam-2-1">The guide</TrackedLink>{" "}
+            has every score, the licences, and which tool to use for which job.
+          </p>
+        </div>
+
         <div className="builder-block" id="joints">
           <h3>The 18 joints.</h3>
           <p>
