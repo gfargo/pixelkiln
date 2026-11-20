@@ -8,7 +8,9 @@ import { SKELETON_BONES, type SkeletonKeypoint, type SkeletonSet } from "./skele
  * paid for — the check the docs otherwise leave to the author's reading of
  * raw fractions.
  *
- * Right-side bones are orange, left-side blue, the head and spine white;
+ * Right-side limbs are orange, left-side blue, the head and spine white, and
+ * the eyes and ears a dim grey: in the side colours, the lines up to the ears
+ * of a small sprite read as raised arms;
  * the first cell's source is at full strength and the frames' dimmed, so the
  * difference between "the pose the image is in" and "the motion" reads at a
  * glance. Coordinates are fractions of the source, as PixelLab's are.
@@ -25,6 +27,7 @@ export interface SkeletonSheetOptions {
 const RIGHT: Rgba = [255, 140, 40, 255]
 const LEFT: Rgba = [60, 150, 255, 255]
 const CENTER: Rgba = [240, 240, 240, 255]
+const FACE: Rgba = [150, 150, 150, 255]
 const GROUND: Rgba = [28, 28, 34, 255]
 const OUTLINE: Rgba = [0, 0, 0, 255]
 const GUTTER = 4
@@ -78,6 +81,7 @@ function drawPose(canvas: Canvas, pose: SkeletonKeypoint[], left: number, top: n
 }
 
 function colorOf(label: string): Rgba {
+  if (label.endsWith(" EYE") || label.endsWith(" EAR")) return FACE
   if (label.startsWith("RIGHT")) return RIGHT
   if (label.startsWith("LEFT")) return LEFT
   return CENTER

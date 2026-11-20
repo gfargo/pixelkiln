@@ -258,8 +258,7 @@ export function SkeletonsSection() {
           <figure className="skeleton-resolution skeleton-props">
             <Image src="/showcase/skeleton/rigging-tools.png" alt="Four characters in rows: an adventurer, a caped figure, a knight and a mage. Columns: PixelLab's 18 joints; MediaPipe's 33-point body; the extra joints PixelLab's custom skeleton added for capes, a sword, a shield, horns, a staff and a hat; and MediaPipe's segmenter colouring skin, clothes and accessories" width={1166} height={1106} unoptimized />
             <figcaption>
-              PixelLab&apos;s 18 joints misread the adventurer&apos;s pack as raised arms, and MediaPipe found no body
-              at all. MediaPipe got the knight wrong but scored it 0.44 against 0.99 on good figures, so its
+              PixelLab&apos;s 18 joints were right on all four. MediaPipe found no body on the 64px adventurer. MediaPipe got the knight wrong but scored it 0.44 against 0.99 on good figures, so its
               own score tells you to discard it. The custom rig hung the sword and staff from the wrist and the
               capes from the shoulders.
             </figcaption>
@@ -268,7 +267,7 @@ export function SkeletonsSection() {
             <li><span className="tick" aria-hidden="true" /> Props and capes: PixelLab&apos;s custom skeleton. Rigid items hang from the wrist, capes from the shoulders and hips.</li>
             <li><span className="tick" aria-hidden="true" /> Bodies at 256px: MediaPipe, free. Its Holistic model returned body, both hands and 478 face points in one call.</li>
             <li><span className="tick" aria-hidden="true" /> Depth for 3D: MediaPipe gives every body point a 3D position; PixelLab&apos;s joints are flat.</li>
-            <li><span className="tick" aria-hidden="true" /> Dressed characters fool both. Check every estimate over the art before animating from it.</li>
+            <li><span className="tick" aria-hidden="true" /> MediaPipe misses small and heavily dressed characters. Check every estimate over the art before animating from it.</li>
           </ul>
           <p className="skeleton-after">
             <TrackedLink className="text-link" id="skeletons_props" section="skeletons" href="/docs/skeletons#props-capes-and-hats">The full comparison</TrackedLink>{" "}

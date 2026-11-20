@@ -174,7 +174,8 @@ pixelkiln skeleton-preview poses/hero-wave.json --from hero-south.png
 
 This draws every pose over the sprite on one sheet: the starting pose at full
 strength, each frame after it over a dimmed copy. Right-side bones are
-orange, left-side blue, and the head and spine white. It runs locally and
+orange, left-side blue, the head and spine white, and the eyes and ears grey.
+It runs locally and
 costs nothing.
 
 ![A bare figure's estimated pose with its arms at its sides, then eight poses raising its right arm into a wave](../website/public/showcase/skeleton/base-wave-poses.png)
@@ -182,10 +183,12 @@ costs nothing.
 Check the starting pose before anything else. PixelLab redraws that frame
 first to learn the sprite's colours and background. A starting pose that does
 not match the picture gives no error, but it degrades every frame drawn from
-it. Clothing and gear can fool the estimate: on a character carrying a sword
-and a pack on its back, it read the straps and hilt as both arms raised,
-although the arms hung at its sides. Use a sprite with nothing on its back,
-such as a paperdoll's bare base, or move the joints back by hand. See
+it. Read the sheet carefully on a small sprite: the lines from the nose to the
+eyes and ears run up toward the top of the head, and an earlier version of the
+sheet drew them in the same orange and blue as the arms. On a 64px adventurer
+with a sword hilt and an orb behind its head, they looked like both arms raised,
+although the estimate had the arms down correctly. The sheet now draws the eyes
+and ears in grey. See
 [`skeleton-preview`](./CLI.md#skeleton-preview).
 
 ## Animate from poses
@@ -289,7 +292,7 @@ What each tool did:
 
 | Figure | PixelLab, 18 joints | MediaPipe, body | PixelLab, custom rig | MediaPipe, segmenter |
 |---|---|---|---|---|
-| Adventurer, 64px | Wrong: read the pack straps and sword hilt as both arms raised | Found no body | Not tried | Found nothing |
+| Adventurer, 64px | Right: arms down at its sides | Found no body | Not tried | Found nothing |
 | Cape, 256px | Right | Right; its body mask covered 51% of the sprite and left out the cape | Three cape chains (five joints down each side from the shoulders, three down the middle from the hips) and a point for each hand | Cape marked as clothes, body as skin |
 | Knight, 128px | Right | Wrong, a tangle around the helm, with a body visibility of 0.44 | A three-joint sword from the right wrist, a shield top and bottom from the left, three joints up each horn, a four-joint cape chain | Helm and much of the sword and shield marked as accessories, the horns as skin |
 | Mage, 128px | Right | Pose Landmarker found no body; Holistic found 33 points | A three-joint staff from the right wrist, three joints up the hat and one at each side of the brim | Most of the staff marked as accessories, the hat and robe as clothes |
@@ -319,9 +322,10 @@ What follows from it:
   (`pose_world_landmarks`), with depth. On these flat front views the depth is
   small and not checked against anything, but it is a starting point for a 3D
   rig that PixelLab's 2D joints do not give.
-- **Neither tool can be trusted blind on a dressed character.** The adventurer
-  defeated both, in different ways. Check every estimate over the art
-  (`skeleton-preview` for the 18 joints) before animating from it.
+- **MediaPipe cannot be trusted blind on a dressed or small character.** It
+  found no body on the 64px adventurer and a wrong one on the knight. Check
+  every estimate over the art (`skeleton-preview` for the 18 joints) before
+  animating from it.
 
 How a rigid or bending part maps onto the rigs elsewhere:
 
