@@ -78,6 +78,46 @@ red cape and a sword, facing right"), seed 31415, strength 0.75:
 Raw frames: [`smoke/walk-frame-02.png`](smoke/walk-frame-02.png),
 [`smoke/attack-frame-01.png`](smoke/attack-frame-01.png).
 
+## Running the benchmark
+
+[`run-benchmark.py`](run-benchmark.py) renders every lane through a ComfyUI
+that is already running, using only its HTTP API and Python's standard library:
+
+```bash
+python run-benchmark.py --host http://127.0.0.1:8188 --out runs/<name>
+python run-benchmark.py --host http://127.0.0.1:8188 --out runs/<name> --lanes B-0.75 --characters knight
+```
+
+| Lane | What it renders |
+|---|---|
+| `A` | prompt only: the ControlNet nodes removed, the seed stepped by one per frame |
+| `B-0.55`, `B-0.75`, `B-0.90` | OpenPose ControlNet at that strength, fixed seed 31415 |
+| `repeat` | `B-0.75` for the first character's walk again, to check byte-for-byte repeats |
+
+Two characters (a knight and a goblin) over three motions make 16 frames per
+lane per character, or 136 frames for a full run. Each frame lands at
+`<out>/<lane>/<character>/<motion>/frame-NN.png`. `runs.json` records each
+frame's seed, strength, seconds and SHA-256. Frames already on disk are
+skipped, so a stopped run picks up where it left off.
+
+## Findings log
+
+What each run taught us about running this graph, newest first. Quality
+findings wait for the rubric scores.
+
+- **November 2026, RTX 3060 12 GB (Windows).** The machine already ran a
+  ComfyUI 0.34.0 with the same three models, under the same file names. A
+  second ComfyUI 0.46.0 on the same card took 310 to 415 s a frame, because the
+  two competed for VRAM. Sending the graph to the existing server instead took
+  about 31 s a frame (55 s for the first, while the models loaded), so a full
+  136-frame run takes about 75 minutes. The core-node graph ran unchanged on both versions. ComfyUI
+  0.46.0 needed PyTorch 2.11 (cu128); on 2.6 it failed at startup.
+- **November 2026, Apple M1 Max.** Smoke test: 223 s for the first frame and
+  163 s for the second (ComfyUI 0.35.0, MPS).
+
+The machine-level notes are in
+[Set up ComfyUI: Run on a shared GPU machine](../../../docs/COMFYUI.md#run-on-a-shared-gpu-machine).
+
 ## What is left
 
 1. **Lane A (prompt only) and lane B (pose):** every motion for two characters
