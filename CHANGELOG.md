@@ -1,3 +1,26 @@
+# [0.124.0](https://github.com/gfargo/pixelkiln/compare/v0.123.0...v0.124.0) (2026-11-20)
+
+
+### Features
+
+* **site:** a cape that swings, research step 45 ([0f67980](https://github.com/gfargo/pixelkiln/commit/0f6798095b2a376383b3ef4a8a03688349365db7))
+* **site:** a character assembled from separate item meshes, and research steps 26 to 28 ([5c067cb](https://github.com/gfargo/pixelkiln/commit/5c067cb87d7c157a7e2df0d5a2d0ebf01975b210))
+* **site:** a live rigged mesh on the paperdoll page, and the research behind it ([ab4fcaa](https://github.com/gfargo/pixelkiln/commit/ab4fcaaec871d3136e291d148e594569f50b192a))
+* **site:** a page and a guide of their own for 3D characters ([d6a1b2d](https://github.com/gfargo/pixelkiln/commit/d6a1b2dc5f8c9e928f2175607cfde03c70e58367))
+* **site:** a thinned model with baked paint and relief on a humanoid skeleton, research steps 41 and 42 ([87147a3](https://github.com/gfargo/pixelkiln/commit/87147a3ac0fb254a9731f32e18f0f97b4f4e3985))
+* **site:** A-pose characters with smoother meshes and a palette pass, and research steps 21 to 25 ([2697b65](https://github.com/gfargo/pixelkiln/commit/2697b65497202b5552cb383c551953d13e552d07))
+* **site:** characters painted by Hunyuan3D's paint stage, and research steps 17 to 20 ([881b49d](https://github.com/gfargo/pixelkiln/commit/881b49defe85a306521dec7b7b132557bbf8c60b))
+* **site:** finger bones and a held sword, research step 47 ([51962a3](https://github.com/gfargo/pixelkiln/commit/51962a3b2861309a5c138c0739cde2f650bb03cd))
+* **site:** hide the skin under worn items, and research step 30 ([c012720](https://github.com/gfargo/pixelkiln/commit/c01272037a0a40d1cb2351cf9ff94ed1588f5128))
+* **site:** item edges taken from the paint and a colour fault fixed in the bake, research step 36 ([9d9d54e](https://github.com/gfargo/pixelkiln/commit/9d9d54eb269eecd24c57ba31c94bc26194c72e2a))
+* **site:** paint views from above and below, research step 44 ([44c826a](https://github.com/gfargo/pixelkiln/commit/44c826acbbcccd28e6c048e9df1c6e1a6f2fc5bc))
+* **site:** painted textures on the separate parts, and research step 29 ([51b14e8](https://github.com/gfargo/pixelkiln/commit/51b14e85574f4fc87a1eab3e4cc7740075e9624c))
+* **site:** stock animations retargeted onto the character, research step 43 ([1639046](https://github.com/gfargo/pixelkiln/commit/1639046ac39fd83ded7d466dac80888c06cd4cba))
+* **site:** the character as sprite cards on its skeleton, and research step 31 ([e3cbcee](https://github.com/gfargo/pixelkiln/commit/e3cbcee14456a1479ea6dd84144e4ca9e7c92c5b))
+* **site:** the first body's items on a second body, research step 46 ([3336021](https://github.com/gfargo/pixelkiln/commit/33360217b0dfbcf8b25cfb31e04848a9f1565640))
+* **site:** the parts model rebuilt from 256 pixel sprites, research step 40 ([aa289a9](https://github.com/gfargo/pixelkiln/commit/aa289a95178601d93867dfea7f7f01e15c4e6e0b))
+* **site:** the parts model rebuilt from redrawn pictures, and research step 35 ([5ac87a0](https://github.com/gfargo/pixelkiln/commit/5ac87a0190c5ff15cf4aadf0fdf4375993ba0838))
+
 # [0.123.0](https://github.com/gfargo/pixelkiln/compare/v0.122.1...v0.123.0) (2026-11-20)
 
 
