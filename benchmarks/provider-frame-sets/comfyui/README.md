@@ -3,8 +3,10 @@
 Work toward [#79](https://github.com/gfargo/pixelkiln/issues/79): a versioned
 ComfyUI recipe that turns an ordered set of pose maps into a pixel-art frame
 set, and a benchmark that shows where it works and where it fails. This folder
-holds the first slice: the model audit, the pose maps, the generation graph and
-a two-frame smoke test. No benchmark result, recipe or quality claim exists yet.
+holds the model audit, the pose maps, the generation graph, a two-frame smoke
+test, and the first full run (lanes A and B, two characters) with a lane D
+trial on its 0.75 frames. The rubric has not been scored yet, so no quality
+claim or recipe exists.
 
 ## Model audit
 
@@ -100,11 +102,108 @@ lane per character, or 136 frames for a full run. Each frame lands at
 frame's seed, strength, seconds and SHA-256. Frames already on disk are
 skipped, so a stopped run picks up where it left off.
 
+Raw 1024px renders go to `runs/`, which git ignores (a full run is about 77 MB).
+[`make-sheets.py`](make-sheets.py) turns a run into contact sheets and lane GIFs,
+and [`key-and-crop.py`](key-and-crop.py) clears the background of refined frames
+and crops each motion to one shared box. Both write into `results/`.
+
+## Run 1: Forge, November 2026
+
+136 frames on an RTX 3060 (ComfyUI 0.34.0, the machine's own install and
+models), median 31.6 s a frame, 69 minutes in all. Everything is in
+[`results/forge-shared/`](results/forge-shared), with each render's seed,
+strength, seconds and hash in [`runs.json`](results/forge-shared/runs.json).
+
+**Repeatability:** the `repeat` lane rendered the knight's walk at 0.75 a second
+time, and all 8 frames matched the first pass byte for byte. Same machine, same
+ComfyUI, same inputs, same bytes.
+
+### Lanes A and B
+
+![The knight across lanes A, B-0.55, B-0.75 and B-0.90](results/forge-shared/sheet-knight.png)
+
+![The goblin across the same lanes](results/forge-shared/sheet-goblin.png)
+
+Side-by-side GIFs, the four lanes playing each motion:
+[knight idle](results/forge-shared/knight-idle.gif),
+[walk](results/forge-shared/knight-walk.gif),
+[attack](results/forge-shared/knight-attack.gif);
+[goblin idle](results/forge-shared/goblin-idle.gif),
+[walk](results/forge-shared/goblin-walk.gif),
+[attack](results/forge-shared/goblin-attack.gif).
+
+What the sheets show, before anyone scores them:
+
+- **Lane A is not a motion baseline.** It has one prompt and a seed stepped per
+  frame index, so frame N of every motion is the same image: its idle, the
+  first four walk frames and its attack are identical. It still shows what the
+  model draws without the pose: mostly front views where the prompt asked for a
+  side view, a different knight each frame, and in one frame a sword standing
+  apart from him. A fair motion baseline needs the motion in the prompt. That
+  is a change for the next run.
+- **Lane B follows every pose and keeps the side view.** The design holds
+  (red cape and plume, armour; green skin, ears, vest), but small parts drift:
+  the plume comes and goes, the helmet changes shape, and the knight's sword
+  moves between raised, lowered and pointing forward within one walk.
+- **Props drift most.** The pose map has no joint for a weapon, so nothing
+  holds it. The goblin's club becomes a spear in the walk, and in the attack a
+  spear, a fist, a shield and a stick.
+- **Scale jumps on the strike frame.** Attack frame 02 is drawn about a fifth
+  larger than its neighbours for both characters, though the skeleton is not.
+- **Strength barely matters between 0.55 and 0.90.** The three rows are close;
+  0.90 is a little stiffer. The drift above appears at every strength, so it
+  is not a strength problem.
+- **The background changes.** The flat grey from the prompt shifts in tone and
+  hue between frames (the goblin's from grey to blue-grey), and one knight walk
+  frame came back with a mottled background.
+
+### Lane D trial: native frames
+
+The 32 B-0.75 frames went through `pixelkiln refine` with the pinned Pixel Art
+Fixer, a 24-colour palette per character (23 colours taken from the character
+pixels across its frames, plus the background grey), then `key-and-crop.py`:
+
+![Native frames at 3x: knight idle, walk, attack; goblin idle, walk, attack](results/forge-shared/native-strips-x3.png)
+
+The native frames, strips and 4x GIFs are in
+[`results/forge-shared/native/`](results/forge-shared/native), and the grid
+each frame got is in
+[`refine.json`](results/forge-shared/native/refine.json).
+
+- **Every frame lands on one grid:** 8px cells at phase 0, so each 1024px render
+  becomes 128x128 native art, and every loop shares it. 26 of 32 passed the
+  default high-confidence gate. `refine` refused the other 6 and wrote nothing.
+  Rerun with `--min-grid-confidence low`, all 6 detected the same 8px grid at
+  phase 0. In a frame set, the confident frames could vouch for the others.
+  `refine` checks each frame alone today.
+- **The characters are about 110 to 117 pixels tall** inside the 128px canvas.
+  Cropped to one box per motion, the knight's idle is 53x110 and the goblin's
+  walk 85x116. Those sizes come from where the 1024px render places the figure.
+  To get a smaller sprite, render the figure smaller in the frame. Shrinking the
+  native frame afterwards would blur it.
+- **A flat key clears 31 of 32 backgrounds.** After refine the background is one
+  palette colour, so a flood fill from the edge removes it. The mottled walk
+  frame breaks into speckles, and the drop shadow stays because it is a
+  different grey. A prompt without a shadow, or a background-removal step in
+  the graph, would fix both. Neither is tested yet.
+- **It takes about 20 s a frame** on an M1 Max, almost all of it in the fixer.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
 
+- **November 2026, lane D on run 1.** SDXL with Pixel Art XL draws on a steady
+  8px grid at 1024px, so every frame in a set refines to the same 128x128 grid.
+  The fixer's confidence varies frame to frame, but its answer did not.
+  Palettes taken from the character pixels work; palettes taken from whole
+  frames are mostly background grey. Background removal and smaller sprites
+  have to be handled at render time, not after.
+- **November 2026, run 1 lanes A and B.** A fixed seed with the OpenPose
+  ControlNet keeps one character across a loop, but not their props, and the
+  strike frame grows. Strength from 0.55 to 0.90 changes little. The same
+  inputs repeat byte for byte. Next run: put the motion in lane A's prompt, add
+  the prop to the pose (or a reference image, lane C), and ask for no shadow.
 - **November 2026, RTX 3060 12 GB (Windows).** The machine already ran a
   ComfyUI 0.34.0 with the same three models, under the same file names. A
   second ComfyUI 0.46.0 on the same card took 310 to 415 s a frame, because the
@@ -120,15 +219,16 @@ The machine-level notes are in
 
 ## What is left
 
-1. **Lane A (prompt only) and lane B (pose):** every motion for two characters
-   (the knight, and a non-human or heavily armoured silhouette). At about 160s a
-   frame, 16 frames x 2 characters is about 85 minutes per lane.
-2. **The strength sweep** (0.55, 0.75, 0.90) on lane B, about 4 hours, and
-   **lane C** (an identity reference or character LoRA; not chosen yet).
-3. **Lane D:** refine the winning sets to a native grid and one palette with
-   `pixelkiln refine`, approve and pack them. Grid recovery on SDXL output is the
-   open risk; the earlier high-resolution benchmark found these models draw
-   pseudo-pixels.
-4. **Human scores:** the 1x rubric in #79, by a person.
-5. A second run of the winner, to record whether it repeats byte for byte.
-6. The recipe (`comfyui/pixel-art-pose-frames@1.0.0`), docs, skill and site.
+Done in run 1: lanes A and B for two characters, the strength sweep, the
+byte-for-byte repeat, and a lane D trial (grid recovery works).
+
+1. **Human scores:** the 1x rubric in #79, by a person, on run 1's sheets and
+   native frames.
+2. **Run 2:** lane A with the motion in its prompt, a no-shadow prompt, and a
+   fix for prop drift: a prop joint in the pose map, or **lane C** (an identity
+   or prop reference; not chosen yet).
+3. **Lane D in full:** a background-removal step in the graph, the figure
+   rendered at the target size, then `refine` as a frame set, approval and
+   packing. `refine` could also take a frame set's grid from its confident
+   frames, so one unsure frame does not block the set.
+4. The recipe (`comfyui/pixel-art-pose-frames@1.0.0`), docs, skill and site.

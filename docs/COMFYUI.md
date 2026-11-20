@@ -396,7 +396,10 @@ Nearest-neighbor scaling preserved those fake cells but did not fix them.
 Retro Diffusion's MIT-licensed
 [Pixel Art Fixer](https://github.com/Retro-Diffusion/pixel-art-fixer) detects the
 implied grid and reconstructs one output pixel per cell. Both benchmark sources
-returned the high-confidence `fast:ac+rl(S)` decision. The checked-in
+returned the high-confidence `fast:ac+rl(S)` decision. In the
+[pose-frame benchmark](../benchmarks/provider-frame-sets/comfyui/README.md#lane-d-trial-native-frames),
+all 32 frames of two characters' loops resolved to the same 8px grid at phase 0.
+Six of them only at low confidence, so `refine` refused those by default. The checked-in
 [native-grid boundary benchmark](../benchmarks/provider-hires/comfyui/README.md) includes
 the source PNGs, native reconstructions, dimensions, hashes, and pinned fixer
 revision.
