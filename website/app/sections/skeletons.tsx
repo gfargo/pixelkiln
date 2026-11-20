@@ -245,6 +245,37 @@ export function SkeletonsSection() {
           </p>
         </div>
 
+        <div className="builder-block" id="props">
+          <h3>Staffs, swords, capes and hats.</h3>
+          <p>
+            A body skeleton knows nothing about what a character carries or wears, yet those parts decide how
+            it animates: a staff is rigid and follows the hand, a cape hangs from the shoulders and bends.
+            Asked about a wizard swinging a staff or a knight with a cape, PixelLab&apos;s custom skeleton (a
+            beta MCP tool, 1 generation) added joints for every prop by itself. MediaPipe, free on your own
+            machine, knows only bodies, but its masks separate the body from a cape and clothes from
+            accessories: a first guess at what may bend.
+          </p>
+          <figure className="skeleton-resolution skeleton-props">
+            <Image src="/showcase/skeleton/rigging-tools.png" alt="Four characters in rows: an adventurer, a caped figure, a knight and a mage. Columns: PixelLab's 18 joints; MediaPipe's 33-point body; the extra joints PixelLab's custom skeleton added for capes, a sword, a shield, horns, a staff and a hat; and MediaPipe's segmenter colouring skin, clothes and accessories" width={1166} height={1106} unoptimized />
+            <figcaption>
+              PixelLab&apos;s 18 joints misread the adventurer&apos;s pack as raised arms, and MediaPipe found no body
+              at all. MediaPipe got the knight wrong but scored it 0.44 against 0.99 on good figures, so its
+              own score tells you to discard it. The custom rig hung the sword and staff from the wrist and the
+              capes from the shoulders.
+            </figcaption>
+          </figure>
+          <ul className="check-list cast-list skeleton-findings">
+            <li><span className="tick" aria-hidden="true" /> Props and capes: PixelLab&apos;s custom skeleton. Rigid items hang from the wrist, capes from the shoulders and hips.</li>
+            <li><span className="tick" aria-hidden="true" /> Bodies at 256px: MediaPipe, free. Its Holistic model returned body, both hands and 478 face points in one call.</li>
+            <li><span className="tick" aria-hidden="true" /> Depth for 3D: MediaPipe gives every body point a 3D position; PixelLab&apos;s joints are flat.</li>
+            <li><span className="tick" aria-hidden="true" /> Dressed characters fool both. Check every estimate over the art before animating from it.</li>
+          </ul>
+          <p className="skeleton-after">
+            <TrackedLink className="text-link" id="skeletons_props" section="skeletons" href="/docs/skeletons#props-capes-and-hats">The full comparison</TrackedLink>{" "}
+            covers every figure, how each part maps onto 3D rigs and engines, and what was not tried.
+          </p>
+        </div>
+
         <div className="builder-block" id="joints">
           <h3>The 18 joints.</h3>
           <p>

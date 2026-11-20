@@ -1858,3 +1858,5 @@ div.receipt-line .receipt-mark { background: var(--lime); }
 .skeleton-after { margin-top: 24px !important; }
 .skeleton-subhead { margin: 56px 0 12px !important; font-size: var(--text-lead) !important; }
 .skeleton-trial img { max-width: 794px; }
+.skeleton-props img { max-width: 1166px; }
+.skeleton-findings { margin-top: 0; }
