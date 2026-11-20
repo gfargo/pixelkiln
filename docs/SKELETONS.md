@@ -197,6 +197,86 @@ The 3D research builds a mesh from a character's eight drawn directions,
 binds it to a skeleton, and drives it with motion. It is research, not a
 command yet. See [Research: 3D models from sprites](./RESEARCH_3D.md).
 
+## Props, capes and hats
+
+A body skeleton says nothing about what a character carries or wears. For an
+animation or a 3D rig, those parts need joints of their own, and the joints say
+how each part may move: a staff or a sword is rigid and follows the hand, while
+a cape or a robe hangs from the shoulders and should bend. Four figures were
+tried with three tools in November 2026:
+
+- **PixelLab's 18-joint estimate** (`estimate-skeleton`, 0.1 generation).
+- **PixelLab's custom skeleton** (`estimate_custom_skeleton`, an MCP tool in
+  beta, 1 generation). Given a short description and an action, it builds a rig
+  for whatever is in the picture.
+- **MediaPipe** (Google, Apache-2.0, version 1.2.3, free and on your own
+  machine): its Pose Landmarker (33 body points, a 3D position for each, and a
+  mask of the body), its Holistic Landmarker (body, both hands and the face in
+  one call), and its multiclass segmenter (`selfie_multiclass_256x256`: hair,
+  skin, clothes, accessories).
+
+The figures: the adventurer from earlier (64px, a sword and a pack on its back),
+the 256px research body in a cape, and the paperdoll's knight (greatsword,
+shield, horned helm, cape) and mage (staff, robe, pointed hat), both about 92px
+on a 128px canvas.
+
+![Four figures in rows. Columns: PixelLab's 18 joints; MediaPipe's 33-point body; the extra joints PixelLab's custom skeleton added for capes, swords, shields, horns, a staff and a hat; and MediaPipe's segmenter colouring skin, clothes and accessories](../website/public/showcase/skeleton/rigging-tools.png)
+
+What each tool did:
+
+| Figure | PixelLab, 18 joints | MediaPipe, body | PixelLab, custom rig | MediaPipe, segmenter |
+|---|---|---|---|---|
+| Adventurer, 64px | Wrong: read the pack straps and sword hilt as both arms raised | Found no body | Not tried | Found nothing |
+| Cape, 256px | Right | Right; its body mask covered 51% of the sprite and left out the cape | Three cape chains (five joints down each side from the shoulders, three down the middle from the hips) and a point for each hand | Cape marked as clothes, body as skin |
+| Knight, 128px | Right | Wrong, a tangle around the helm, with a body visibility of 0.44 | A three-joint sword from the right wrist, a shield top and bottom from the left, three joints up each horn, a four-joint cape chain | Helm and much of the sword and shield marked as accessories, the horns as skin |
+| Mage, 128px | Right | Pose Landmarker found no body; Holistic found 33 points | A three-joint staff from the right wrist, three joints up the hat and one at each side of the brim | Most of the staff marked as accessories, the hat and robe as clothes |
+
+What follows from it:
+
+- **For props and capes, PixelLab's custom skeleton is the tool.** It named
+  every prop it was told about and placed sensible chains on them: rigid items
+  hang from the wrist they are held in, and capes hang from the shoulders. It
+  needs a description and an action, the rig's joint names change between
+  calls, and it costs a generation per eight frames.
+- **MediaPipe knows bodies, not props,** and it was trained on photographs. On
+  bare and lightly dressed figures at 256px it was as good as PixelLab and free.
+  On the knight it was confidently wrong in shape but not in its own score: the
+  body points' average visibility was 0.44, against 0.99 to 1.00 on the good
+  figures, so check visibility and discard a body below about 0.9.
+- **Its masks tell a game what may bend.** The Pose Landmarker's body mask
+  leaves out a cape, and the multiclass segmenter separates clothes from
+  accessories. Pixels inside the body mask follow the skeleton; clothes outside
+  it, like a cape, want chains that bend; accessories, like a staff, want one
+  rigid bone. The segmenter is rough on pixel art (it called the knight's horns
+  skin), so treat it as a first guess to correct, not an answer.
+- **Holistic is the one-call option at 256px:** on the 256px figures it returned
+  33 body points, 21 points for each hand and 478 face points. At 64 and 128px
+  it returned the body only.
+- **MediaPipe also gives 3D:** every body point has a position in metres
+  (`pose_world_landmarks`), with depth. On these flat front views the depth is
+  small and not checked against anything, but it is a starting point for a 3D
+  rig that PixelLab's 2D joints do not give.
+- **Neither tool can be trusted blind on a dressed character.** The adventurer
+  defeated both, in different ways. Check every estimate over the art
+  (`skeleton-preview` for the 18 joints) before animating from it.
+
+How a rigid or bending part maps onto the rigs elsewhere:
+
+| Part | PixelLab custom rig | 3D research (`rig.py`, in #323) | Engines |
+|---|---|---|---|
+| Staff, sword, shield | A chain parented to the wrist | An item allowed to follow only named bones | One bone parented to the hand, weighted fully to it |
+| Cape, robe hem | Chains from the shoulders or hips | `CHAINS`, e.g. `Cape=3x4`: three columns of four links | A bone chain with soft weights, often driven by physics |
+| Hat, horns, helm | Short chains from the head | An item following the head | Bones under the head bone |
+
+Not tried: MediaPipe's Interactive Segmenter (click a point, get a mask of that
+part), because version 1.2.3 asks for a model bundle that is not published at
+the usual address. Not tried either: objects that are not characters (a chest
+with a lid, a door, a vehicle). PixelLab's custom skeleton says it handles them;
+MediaPipe has no model for them.
+
+Everything is in `website/art/rigging-tools/`: the sprites, both tools' raw
+output, `mediapipe-run.py` and `draw-figure.py`.
+
 ## Which skeleton is which
 
 These are separate skeletons that share the same 18 joints:
