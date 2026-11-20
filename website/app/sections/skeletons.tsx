@@ -220,6 +220,24 @@ export function SkeletonsSection() {
               </tbody>
             </table>
           </div>
+          <h3 className="skeleton-subhead">Finding the hand points.</h3>
+          <p>
+            Two tools were tried on the same three hands. PixelLab&apos;s custom skeleton (a beta MCP tool,
+            1 generation) adds a hand, fingers and a thumb to the rig by itself when told the figure grips
+            something. MediaPipe&apos;s Hand Landmarker runs on your own machine for nothing. At 256px MediaPipe
+            was closest, missing by 7 to 9% of the hand&apos;s length against PixelLab&apos;s 10%, and found the hand
+            every time. At 128px it found it only at the sprite&apos;s own size or doubled. At 64px it found
+            nothing, and PixelLab&apos;s points were close to a guess.
+          </p>
+          <figure className="skeleton-resolution skeleton-trial">
+            <Image src="/showcase/skeleton/hand-trial.png" alt="The right hand at 64, 128 and 256px with the hand-placed points as white rings, PixelLab's points in orange and MediaPipe's in green; MediaPipe finds no hand at 64px" width={794} height={730} unoptimized />
+            <figcaption>
+              White rings: placed by eye. Orange: PixelLab&apos;s custom skeleton. Green: MediaPipe at the
+              sprite&apos;s own size, on white. One T-posed figure per size with open hands, the easiest case;{" "}
+              <TrackedLink className="text-link" id="skeletons_hand_trial" section="skeletons" href="/docs/skeletons#finding-hand-points-pixellab-or-mediapipe">the guide</TrackedLink>{" "}
+              has every enlargement and both grounds.
+            </figcaption>
+          </figure>
           <p className="skeleton-after">
             Which libraries and engines take which skeleton, with their licenses, is in{" "}
             <TrackedLink className="text-link" id="skeletons_formats" section="skeletons" href="/docs/skeletons#formats-libraries-and-rigs">the guide&apos;s formats table</TrackedLink>:

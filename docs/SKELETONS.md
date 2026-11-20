@@ -81,10 +81,73 @@ Notes from the measurement:
 
 **Not built yet.** PixelLab's `/estimate-skeleton` returns the 18 joints and no
 hand points, `animate-skeleton` takes only those 18 labels, and a held item is
-placed a little past the wrist. Hand points would need either PixelLab's custom-skeleton estimate
-(`estimate_custom_skeleton` among its MCP tools, which takes joint names you
-choose; not tried) or a local
-hand estimator such as MediaPipe (not tried on pixel art). Both are open.
+placed a little past the wrist. Two tools can find hand points; the next
+section compares them. PixelKiln does not call either of them yet.
+
+## Finding hand points: PixelLab or MediaPipe
+
+Two tools were tried on the three figures above (November 2026), and scored
+against the hand points placed by eye:
+
+- **PixelLab's custom skeleton** (`estimate_custom_skeleton`, an MCP tool,
+  beta). It builds a rig of any shape for a sprite up to 256×256. Asked about a
+  figure "gripping a sword handle", it added a hand point, one or two finger
+  points and a thumb base and tip to each hand by itself. 1 generation for up to
+  8 frames.
+- **MediaPipe's Hand Landmarker** (Google, Apache-2.0, version 1.2.3, the
+  `hand_landmarker.task` model). It runs on your own machine, free and offline,
+  and returns 21 points a hand. It was trained on photographs. Its Pose
+  Landmarker was tried as well.
+
+Each figure went to PixelLab as it is. MediaPipe got it on white and on mid
+grey, at its own size and enlarged 2, 4, 8 and 16 times, and also as a close
+crop of the hand alone. Error is the average distance from the four
+hand-placed points (knuckles, fingertip, thumb base, thumb tip), in the
+sprite's own pixels and as a share of the hand's length from wrist to
+fingertip.
+
+![The right hand at 64, 128 and 256px with the hand-placed points as white rings, PixelLab's custom skeleton in orange and MediaPipe's hand points in green. MediaPipe finds no hand at 64px.](../website/public/showcase/skeleton/hand-trial.png)
+
+| Sprite | PixelLab custom skeleton | MediaPipe Hand Landmarker |
+|---|---|---|
+| 64px | 1.2 px, 25% of the hand: always answers, but the points sit one or two pixels apart and the thumb tip falls below the hand | No hand found at any enlargement, on either ground |
+| 128px | 1.7 px, 13%: the thumb tip lands below the drawing | 0.8 to 1.2 px, 7 to 9%, at its own size and 2×; no hand found at 4× or more |
+| 256px | 2.4 px, 10% | 1.7 to 2.3 px, 7 to 9%, found at every enlargement on both grounds |
+
+How each handles the size of a sprite:
+
+- **PixelLab works at the sprite's own size,** up to 256×256, and always
+  returns a whole rig. The rig is built fresh on every call: the joint names
+  and the number of finger points changed between the three calls, and so did
+  which hand it called "near", so a script has to match hands by position, not
+  by name. Below 128px it still returns hand points, but there is too little
+  hand for them to mean much.
+- **MediaPipe shrinks or stretches every picture to its own fixed input:**
+  192×192 and 224×224 for the hand bundle, 224×224 and 256×256 for pose
+  ([hand](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker),
+  [pose](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker)).
+  Enlarging a sprite adds no detail, so it does not help. At 128px the hand
+  disappeared at 4× and above, and at 256px the error grew slightly with each
+  enlargement. A crop of the hand alone was not found once enlarged; the hand
+  detector needs the arm and body around it.
+- **MediaPipe's Pose Landmarker found the figure at every size,** 64px
+  included, at every enlargement. Its hand points are only the wrist, thumb,
+  index and pinky: enough for a direction, not for a grip.
+
+Which to use:
+
+| Sprite | Use | Why |
+|---|---|---|
+| 64px | Neither | MediaPipe finds no hand; PixelLab's points are close to a guess. The 18 joints are enough. |
+| 128px | MediaPipe at the sprite's own size, PixelLab when it finds nothing | MediaPipe is closer when it answers, but it does not always answer. |
+| 256px | MediaPipe | Closest, found every time, free and offline. |
+
+Limits of the trial: one figure per size, facing south, in a T-pose with open
+hands, which is the easiest case. The hand-placed points are themselves only
+good to about a pixel. Clothed or armoured characters, a hand already closed on
+a handle, and other directions were not tried. Everything is in
+`website/art/skeleton-resolution/` (`mediapipe-trial.py`, `score-hands.py`,
+both tools' raw results) and can be run again.
 
 ## Estimate one
 
@@ -302,9 +365,10 @@ means no primary source confirmed the number.
 | Format | Kind | Body | Hand, per hand | License | Used in PixelKiln |
 |---|---|---|---|---|---|
 | [PixelLab skeleton](https://api.pixellab.ai/v2/openapi.json) | 2D joints | 18 | none | PixelLab's terms | `estimate-skeleton`, `animate-skeleton`, `anchors` |
+| PixelLab custom skeleton (beta) | 2D rig | built per sprite | a hand, 1 or 2 finger points and a thumb base and tip, when asked about gripping | PixelLab's terms | Tried for hand points; see [Finding hand points](#finding-hand-points-pixellab-or-mediapipe) |
 | [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) | 2D keypoints | 18 (COCO) or 25 (BODY_25, with feet) | 21 | Non-commercial; commercial use needs a paid license | Its 18-point *format*, drawn by our own script for ComfyUI pose maps. The OpenPose software is not used. |
 | [COCO-WholeBody](https://github.com/jin-s13/COCO-WholeBody) / [DWPose](https://github.com/IDEA-Research/DWPose) | 2D keypoints | 17 + 6 feet (133 with face and hands) | 21 | DWPose code Apache-2.0; the training data is CC BY-NC, and the weights' terms are not stated | Not used |
-| [MediaPipe Pose](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker) and [Hand Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker) | 2D landmarks | 33 | 21 | Apache-2.0 | Not used; a candidate hand estimator |
+| [MediaPipe Pose](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker) and [Hand Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker) | 2D landmarks | 33 | 21 | Apache-2.0 | Tried for hand points: the closest at 256px; see [Finding hand points](#finding-hand-points-pixellab-or-mediapipe) |
 | [xinsir OpenPose ControlNet (SDXL)](https://huggingface.co/xinsir/controlnet-openpose-sdxl-1.0) | pose control | body | not claimed: its card never says it was trained on hands | Apache-2.0 | The ComfyUI pose lane (#79) |
 | [Godot 4 SkeletonProfileHumanoid](https://docs.godotengine.org/en/stable/classes/class_skeletonprofilehumanoid.html) | 3D rig | 56 bones in all | 15 | MIT | A target for exported rigs |
 | [VRM 1.0 humanoid](https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_vrm-1.0/humanoid.md) | 3D rig | 15 required bones, 40 optional | 15, all optional | VRM specification | Not used |
