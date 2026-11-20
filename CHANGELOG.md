@@ -1,3 +1,10 @@
+## [0.122.1](https://github.com/gfargo/pixelkiln/compare/v0.122.0...v0.122.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* the adventurer's skeleton estimate was right; draw eyes and ears in grey ([5af410b](https://github.com/gfargo/pixelkiln/commit/5af410baf5a7c3f8ffb33c39ea3b2bb29364e9ec))
+
 # [0.122.0](https://github.com/gfargo/pixelkiln/compare/v0.121.1...v0.122.0) (2026-11-19)
 
 
