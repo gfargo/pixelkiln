@@ -1,0 +1,11 @@
+{
+  "note": "estimate_custom_skeleton, no rig, direction south, description 'bald adult man in a T-pose, open hands with the thumb apart from the fingers', action 'gripping a sword handle with each hand, fingers closing'. 1 generation each, November 19, 2026. Only the hand on the left of the picture (the figure's right hand) is kept here, as fractions of the image; joint names are as returned, and they differ between calls.",
+  "results": {
+    "256": {"job": "fa546c54-e2e2-42d1-9deb-6b27f022db39", "image": "character:fbd3a3ca-4144-454b-928b-2cb9a7dcdb0a:south", "side": "near, mapped to RIGHT ARM",
+            "wrist": [0.1429, 0.2586], "knuckles": [0.1094, 0.2617], "finger_1": [0.082, 0.2617], "fingertip": [0.0586, 0.2656], "thumb base": [0.1172, 0.2812], "thumb tip": [0.0977, 0.2969]},
+    "128": {"job": "5f6dde33-f7c4-4935-9775-5b127775c3f0", "image": "body128.png", "side": "far, mapped to RIGHT ARM",
+            "wrist": [0.1458, 0.2576], "knuckles": [0.0781, 0.2656], "fingertip": [0.043, 0.2656], "thumb base": [0.1055, 0.2812], "thumb tip": [0.0859, 0.3008]},
+    "64": {"job": "b607315e-6b1d-4515-b151-e9a5508afb66", "image": "character:b32381e9-efea-489f-8462-6ddf22abe341:south", "side": "far, mapped to RIGHT ARM",
+           "wrist": [0.146, 0.3849], "knuckles": [0.1094, 0.3844], "fingertip": [0.0625, 0.3906], "thumb base": [0.1172, 0.4219], "thumb tip": [0.1328, 0.4531]}
+  }
+}
