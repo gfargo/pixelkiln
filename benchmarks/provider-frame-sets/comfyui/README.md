@@ -188,10 +188,105 @@ each frame got is in
   the graph, would fix both. Neither is tested yet.
 - **It takes about 20 s a frame** on an M1 Max, almost all of it in the fixer.
 
+## Run 2: consistency lanes, November 2026
+
+Run 1's frames were each drawn from fresh noise, so props, helmets and faces
+jumped between frames. Run 2 tried four ways of holding one character across a
+loop, on the same machine and graph. Raw renders stay in `runs/run2`; the
+comparisons are in [`results/run2/`](results/run2), made with
+[`compare-lanes.py`](compare-lanes.py).
+
+![The knight: run 1, then each run 2 lane, one row each](results/run2/compare-knight.png)
+
+![The goblin, the same rows](results/run2/compare-goblin.png)
+
+The lanes playing side by side:
+[knight idle](results/run2/compare-knight-idle.gif),
+[walk](results/run2/compare-knight-walk.gif),
+[attack](results/run2/compare-knight-attack.gif);
+[goblin idle](results/run2/compare-goblin-idle.gif),
+[walk](results/run2/compare-goblin-walk.gif),
+[attack](results/run2/compare-goblin-attack.gif).
+
+- **S, one sheet per motion** ([`poses/make-pose-sheets.py`](poses/make-pose-sheets.py)):
+  every frame of a loop in one 1536x640 image (the walk 1536x1280). Frames
+  within a loop match each other far better than run 1's. Each motion is a
+  separate sheet, though, so each motion is a different design: the knight is
+  hooded in his idle and attack and wears a plumed helmet in his walk. Arms
+  follow the pose loosely.
+- **Sheet size.** At 1x the native frames are 48x80, consistent but chunky. At
+  1.5x (2304x960 for a row of four) the idle came out 72x120 and still
+  consistent. At 2x the design drifted between cells, and the 1.5x walk
+  (two rows, 4.4 MP) fell apart: past about 2.2 MP, SDXL stops drawing one
+  character. The grid stays 8px at every size.
+- **SH, sheet plus a hires pass** (latent 1.5x, redrawn at denoise 0.5): keeps
+  the 1x layout and enlarges the pixel blocks. It does not give finer pixels.
+- **K, keyframe img2img** (run 1's B-0.75 idle frame 0 as the start latent, pose
+  ControlNet at 0.90): at denoise 0.55 to 0.85 the keyframe wins and the poses
+  are mostly ignored. Same character everywhere, but the upper body stays in
+  the idle pose, so there is little motion.
+- **I, IP-Adapter** (Plus, SDXL, ViT-H, fed the keyframe; pose ControlNet 0.75):
+  the best identity across motions, the same knight and the same goblin with
+  his club in every loop, and the legs follow the walk. The reference pulls
+  arms and props back toward the keyframe, so the attack is smaller than the
+  skeleton asks for. At 0.9 identity is stronger and pose weaker; 0.6 is the
+  better balance. Small parts still drift frame to frame: the sword can change
+  hands and the goblin's face changes. IP-Adapter passes the reference as one
+  CLIP embedding of a 224px image, which carries the overall look but not
+  which hand holds what.
+
+## Run 3: the keyframe in the sheet, November 2026
+
+Three lanes that combine run 2's two fixes, 22 renders in 23 minutes. The
+comparisons are in [`results/run3/`](results/run3); each sheet's rows are
+run 1 (B-0.75), run 2's I-0.6, then the three new lanes.
+
+![The knight: run 1, I-0.6, SI, IC, ICI](results/run3/compare-knight.png)
+
+![The goblin, the same rows](results/run3/compare-goblin.png)
+
+GIFs: [knight idle](results/run3/compare-knight-idle.gif),
+[walk](results/run3/compare-knight-walk.gif),
+[attack](results/run3/compare-knight-attack.gif);
+[goblin idle](results/run3/compare-goblin-idle.gif),
+[walk](results/run3/compare-goblin-walk.gif),
+[attack](results/run3/compare-goblin-attack.gif).
+
+- **IC, the keyframe fixed in cell 0 of a five-cell row**
+  ([`poses/make-incontext-sheets.py`](poses/make-incontext-sheets.py); the
+  latent noise is masked to cells 1-4): it does not work with SDXL base. The
+  model ignores the fixed cell. The knight came out hooded, the background went
+  dark, and swords float beside the figure. Copying from a neighbouring cell
+  needs a model trained to inpaint, which this one is not.
+- **ICI, the same plus IP-Adapter at 0.6:** the best knight so far. Same plume,
+  cape and sword hand through each loop, and close to the keyframe in every
+  motion. The goblin keeps his face and vest, but his club comes and goes
+  (missing in two idle frames and most of the walk). The gain over I-0.6 comes
+  from IP-Adapter, not from the fixed cell.
+- **SI, sheet plus IP-Adapter at 0.6:** every motion is now the same character
+  (run 2's S drew a different knight per motion), and frames within a loop
+  match. Props are still the weak point: the goblin's walk sheet has extra
+  clubs and an axe, and the knight's attack sheet swaps the sword for an axe
+  in one cell.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, run 3.** IP-Adapter does the work; a fixed keyframe cell
+  beside the frames does nothing with SDXL base (no inpainting model). Sheet or
+  row plus IP-Adapter gives one character per loop and across loops. What still
+  drifts is props: the pose map has no joint for them and the reference image
+  does not say where they go. Next: a prop drawn into the pose or control image,
+  a per-character LoRA, or an inpainting model for the in-context row.
+
+- **November 2026, run 2.** Two kinds of drift need two fixes. Drawing a whole
+  loop in one image holds a character within the loop; a reference image
+  (IP-Adapter at 0.6) holds it across loops. Neither holds which hand carries a
+  prop or the details of a face. Keyframe img2img holds identity by giving up
+  the motion. Larger canvases do not give finer pixels: SDXL with Pixel Art XL
+  keeps an 8px grid, and past about 2.2 MP a sheet stops being one character.
 
 - **November 2026, lane D on run 1.** SDXL with Pixel Art XL draws on a steady
   8px grid at 1024px, so every frame in a set refines to the same 128x128 grid.

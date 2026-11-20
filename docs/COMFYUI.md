@@ -239,6 +239,28 @@ compares it modulo the shared step. A passing grid check still cannot judge
 character identity, motion arcs, foot sliding, or loop timing. Review the
 animation at 1× before recording approval.
 
+### Keep one character across frames
+
+Each frame is a separate still render, so an SDXL graph with only a pose
+ControlNet re-invents props, helmets and faces every frame. The
+[pose benchmark](../benchmarks/provider-frame-sets/comfyui/README.md) tested
+fixes on SDXL base with Pixel Art XL:
+
+| Strategy | Within a loop | Across motions | Follows the pose |
+|---|---|---|---|
+| Pose ControlNet only | props and details drift | no | yes |
+| Whole loop in one image (a sheet of pose cells) | holds | a new design per sheet | loosely |
+| IP-Adapter Plus at 0.6, fed a keyframe | mostly holds | holds | yes, big arm moves shrink |
+| Sheet plus IP-Adapter at 0.6 | holds | holds | loosely |
+| Keyframe img2img (denoise 0.55–0.85) | holds | holds | no, stays near the keyframe pose |
+| Keyframe in a fixed cell beside the frames | no effect without an inpainting model | no | yes |
+
+Start from IP-Adapter at 0.6 with a keyframe the person has approved. Keep a
+sheet under about 2.2 MP; past that SDXL stops drawing one character. A larger
+canvas does not give finer pixels: the grid stays at 8px. Props still drift with
+every strategy, because the pose map has no joint for them, so review the hand
+that holds each prop in every frame.
+
 ## Controlled revisions
 
 Install the first bundled image-to-image graph with:

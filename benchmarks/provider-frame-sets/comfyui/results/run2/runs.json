@@ -1,0 +1,782 @@
+[
+ {
+  "lane": "SH",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "sheet.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "size": [
+   1536,
+   640
+  ],
+  "hires": {
+   "scale": 1.5,
+   "denoise": 0.5,
+   "steps": 24
+  },
+  "seconds": 84.3,
+  "sha256": "432a434288adf8d8cb46a13113b4da82068f644a2f41b84fbacc5803ada4062c"
+ },
+ {
+  "lane": "SH",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "sheet.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "size": [
+   1536,
+   1280
+  ],
+  "hires": {
+   "scale": 1.5,
+   "denoise": 0.5,
+   "steps": 24
+  },
+  "seconds": 190.3,
+  "sha256": "b7f701b90a40edbeabe028b65e72cba42e2b5148c0d85dd2043a5cae2cf6f1d9"
+ },
+ {
+  "lane": "SH",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "sheet.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "size": [
+   1536,
+   640
+  ],
+  "hires": {
+   "scale": 1.5,
+   "denoise": 0.5,
+   "steps": 24
+  },
+  "seconds": 102.5,
+  "sha256": "df1530111c64d90ecaac015e9b409dda42898849dde586d21a9e52185fd2e43f"
+ },
+ {
+  "lane": "SH",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "sheet.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "size": [
+   1536,
+   640
+  ],
+  "hires": {
+   "scale": 1.5,
+   "denoise": 0.5,
+   "steps": 24
+  },
+  "seconds": 90.8,
+  "sha256": "f1985f11e1b60a138dde408513cb98987c4b10c8db4f90bcc9a96475cf22b0e8"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 159.0,
+  "sha256": "4df35a17afd0261c6afaa3da96523e50585be08423f0cb9cdd179c944e3bf773"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 144.5,
+  "sha256": "95b30005c897ea0479f95848bf57708493ab2382d0f5c2aa28869a6fbec7f950"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 83.9,
+  "sha256": "557bd2738ff412c6900225df25a2dda627ceb78c998eca4c89d4fe03826398a6"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 120.0,
+  "sha256": "4c27d673215e5c7674a365edf6dbe69980daf42dbb11f318052097ca50d73418"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 82.6,
+  "sha256": "437ab49594ab2f6fa8a18b19137fca5ed90bfb3577fb43bb73b6a5dc0367fd1a"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 83.7,
+  "sha256": "06bcb97f6bfc16d116a01aee1635d66160922e2f3ce666094720ed56982b22ca"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 119.2,
+  "sha256": "675bee1c2b54e30ac058f899d12ccb8ca7d674e6dee1cac71e6abb430c724931"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 89.4,
+  "sha256": "d664f145db2d186127607ff2055dd487c7dcc91d2a3f30d833fc10747e63fe53"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 80.2,
+  "sha256": "f7914dd97d16b8d92d874d45da0b8ec351f4cd752f8ee175a3eed8f73a79476d"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 80.1,
+  "sha256": "82d1620c570e104ddea3a688eb06dcc15ffe1728a7a9129e6efbfa74e31ef0ef"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 79.4,
+  "sha256": "2066b4fcf93f9b5f1489fa5fb0539fe25753a697ae3be9125fe311dfb3c6ce8b"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 80.1,
+  "sha256": "a6514bbc4b75645a4b53d4e32e76769218e630b71cb89a8972bbffc513e9cfc0"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 78.9,
+  "sha256": "2900fac1044297650822b4ed0b3d9382d59399b3e3f6c59ef143ed145e194735"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 79.2,
+  "sha256": "bf86c98359afc53de32cf2f5d603da160d3c7100eb538dab9e3555656fc40310"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 80.1,
+  "sha256": "0a06f1dd7ffdbd8d6b2ad143fcca48505be01aafb3eb988ea1924ce8acf33da3"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 79.1,
+  "sha256": "86c9cf045b894ecc22063c7429454d7f8327523a84c8f383d2d4709ee0b9d838"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 95.3,
+  "sha256": "d20b034fd4be5a242a942f90e8cc41004932fc5ce88bdca52a479a86b2c16cbd"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 83.9,
+  "sha256": "a769f1ad1f3b1c68b488fc81e35c63d32c567b607864ff7ef105c017c08ff9d7"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 88.4,
+  "sha256": "a8d668dd6a8f76a3dc0a247fa7a2789ebabf7538fb842fd8c2d4ab4421fe774c"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 85.8,
+  "sha256": "7e9a3f822033f5d53b65eae4ee2861c907a1de6077c4984ac33c8c0a35048329"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 82.2,
+  "sha256": "ba2eb2a29d12f4563213ff25f7fc33dc6a0d5681a0af544ef8bb1abccc05fa92"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 83.3,
+  "sha256": "222eeb3af00dc97c69e6c6dc97e4636f49ec226b9683f3ff5e42743313e1d884"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 82.3,
+  "sha256": "ca9c0a0d3f7cd3de697a16e34e4b5427e668ff4fc79cbcf10159691773c3d671"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 81.4,
+  "sha256": "da99e5d498ac0b2ebdd94e28da8bd2e81a57e9725c1d416858c527fc1ff0c164"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 76.6,
+  "sha256": "758c8301e5962578d0dd248964e3fa17f4317d6acaa1a4624e6bbf3bf1cc4a31"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 78.1,
+  "sha256": "e9539979f18e630b8b7ff00144fea26b10659b7a59a23fd63789495600bbd379"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 78.9,
+  "sha256": "fc551f52bddf69ce7d849542a3a39fd8ccb5d679bc8fb2035a4f44a7ebf37f61"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 77.3,
+  "sha256": "5a0a26af0b7420c95e1813958ca0b7cf92d39a49eca2c5adb55fc53b7d7ee35d"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 77.3,
+  "sha256": "9e88d12cf9126e2af3b32f17bae8c6df8a52eb299c9f881e13a1a6ef289e5be9"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 77.9,
+  "sha256": "d2e9194df649c7ab9a9414fad8a5c69e7a0d73da4e54c02a4618c4946497aa4e"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 78.1,
+  "sha256": "1697bd0dbd886e59a8493d0b31a2eb8cdef9c3f7dd4826d61a9f4a2c4010f1c6"
+ },
+ {
+  "lane": "I-0.9",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.9,
+  "seconds": 79.3,
+  "sha256": "b3b7c7d7674869d18113abcd8e05da944d856bd9bb983e1863a8d5a4f86289ad"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 87.9,
+  "sha256": "9fa16dd74d7b670ba23883689c85f881453b81b37445bdea4ee05a4e30429da7"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 84.4,
+  "sha256": "0ec5c97fe1cb75b03af2a7ca19d14b19a51291d41654089f00dfd15369908be5"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 83.4,
+  "sha256": "31c33ed138ca11bd588e20645efb74b37bfb056557ec2071db55711786dca230"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 82.4,
+  "sha256": "228920c6a04a13d154e7195c9b9fdda02515f1d79e553e11f1b7d0e74c50efdd"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 83.3,
+  "sha256": "eeecc9334378b08fc832eab2ab733a33cbcfa012ca215cd65d861af94fe85fdb"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 82.7,
+  "sha256": "1dc928b62a7a5bfe58ae37e5154c197a61f958b7f1314769bef0b6bac0fe096b"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 82.0,
+  "sha256": "828127e0495ae10791517411e3ea2709f131fb47324a9d45a375dd0076507b9a"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 81.2,
+  "sha256": "57b13447683491a369f3cc9b5de191f593a99023fc05f8ee37d7e43a23bf4b29"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 34.7,
+  "sha256": "30180c52b22bd07b04fc8e84fe49065eb96c080dfc3b49ac61940d6f3ff1a20b"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 34.9,
+  "sha256": "98d3c8fde265ca51cb4754c6a5da83b5f68e52238b377ac73d067694b81c3e17"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.5,
+  "sha256": "e62682593e1548836bad649f555631ef9b01af088f326542bd287765a1040a76"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.6,
+  "sha256": "8e7a41a7e92f99178ffe0487e2dee082e74322e6bde5c0553a4e839243e3d978"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.5,
+  "sha256": "6dabee6f161b98b24e7b876d646e230c07914be259fa807de361d415fbee3ade"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.5,
+  "sha256": "6613ba4aa9e8e9ecac403224ac78b566348fac75193b615a24a315d5f4b9c121"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.5,
+  "sha256": "49abcb2d3fa23fd01e618ea37912ca65de2149bb8981455a4a10c59ed4963dd5"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.6,
+  "sha256": "9d3b2a819de8ada11eccac18ca3740327fb7ec3ad7fd4ab311ce9ac7bc699dd2"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 51.6,
+  "sha256": "0b46a6f6b36cd55260d3cfd25295037b2979ec2ebf247c69fb1933d73d2a0170"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.6,
+  "sha256": "0bd75294d2dbbe38878a73a7676b7bee7fbca92f349f9d2b25688baf4bd0da5b"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.7,
+  "sha256": "25086e1977f759a65be1493e503ed4be90bec3736d5920bfe38109289c61e9b9"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "idle",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.8,
+  "sha256": "b15a6d4e25e5a78d09fbc8add9cd54f04dda6a369d460355dc68c0591864c71d"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.6,
+  "sha256": "f1654e4dd62da1f19c0b81ae9660d70a2b6a9568d7123d06664eeb1345d77ac6"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 34.7,
+  "sha256": "873978baa639ab8dfc18bfe5b603c008bd24e73226a3dc396f7f8bcd522193aa"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.6,
+  "sha256": "a9025fb7aa474b52e3b3132ab3022aa8bb913a63c3eee8ccddbbe3acfde35602"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 36.0,
+  "sha256": "b68110f9d56e7f8d2a885b5600417fb4386bf40bf98e86f4752f7692b75052cc"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-04.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.9,
+  "sha256": "87e81881c793f67779581f08b1cf7f73e88e687a6c20dd49e8feeb45ce24b45b"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-05.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.8,
+  "sha256": "c6765ae95b3d72946e624ba1134c4bce62bc637cdb3ee75ab467474f37322745"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-06.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.8,
+  "sha256": "128c994c1b1cec352c3937125876369c95fdea5cedec9e35793fcbfbc2496556"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "walk",
+  "frame": "frame-07.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.9,
+  "sha256": "57da5be66d8d0c8fbc37983ddaf4f4efc4a1f8aeaca7897e5ea117c781e6a6c8"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.8,
+  "sha256": "94e6a412c820dfd60b98f076d74d9268620cb01b1f8eebdd728f713f021072ec"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.8,
+  "sha256": "b11fcf6ff1f23e35876aee7785ec03dc5afceed319ff22e38af4fbe2790e6fd5"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.9,
+  "sha256": "cc2cdf3a3b57d57f8c002c050c78ffc5d83b96589ede2640e83c806e30ceb6c3"
+ },
+ {
+  "lane": "I-0.6",
+  "character": "goblin",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "ipadapterWeight": 0.6,
+  "seconds": 35.8,
+  "sha256": "6e3be124eb0629e5c7eafab88142c00acad845b6157eb1b82943a91e70182dc1"
+ }
+]
