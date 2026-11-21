@@ -399,6 +399,12 @@ on frames that already show a full stride.
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
 
+- **November 2026, run 7.** Exaggerated walk maps (stride 330 px instead of
+  190, knee lift doubled, a bob) give a real stride with the character LoRA
+  still holding identity and the weapon hand. The ControlNet undershoots the
+  map, so pose maps for SDXL should overshoot the motion wanted. Feet and
+  tails get messy at the widest steps.
+
 - **November 2026, run 6.** Raising the pose ControlNet to 0.9 or 1.0 with
   the character LoRA changes almost nothing: the knight gains a raised sword
   in a few walk frames, the goblin nothing. Without a LoRA the walk was just as

@@ -38,6 +38,9 @@ Lanes, each over every motion in poses/ (idle 4, walk 8, attack 4) for each char
   LE4-P0.9   LE4 with the pose ControlNet at 0.9 or 1.0 instead of 0.75, and L-0.5 with it
   LE4-P1.0   at 1.0: does a stronger pose control give a full stride?
   L-0.5-P1.0
+  LE4-W      LE4, LE4-P1.0 and L-0.5 on the exaggerated walk maps in poses/walk-wide/
+  LE4-W-P1.0 (longer stride, higher knee, more arm swing, a bob); saved under walk/.
+  L-0.5-W
   K-0.55   keyframe: every frame starts from the character's keyframe (--keyframes
   K-0.70   <dir>/<character>.png) encoded as the latent, redrawn at denoise 0.55 or 0.70 with
            the pose ControlNet at 0.90, so colours, props and proportions carry over.
@@ -83,7 +86,11 @@ LORA_LANES = {"L": {}, "LI": {"ip": True}, "LSI": {"ip": True, "sheet": True},
               "LE2": {"epoch": 2}, "LE4": {"epoch": 4},
               # run 6: the pose ControlNet raised from 0.75
               "LE4-P0.9": {"epoch": 4, "pose": 0.9}, "LE4-P1.0": {"epoch": 4, "pose": 1.0},
-              "L-0.5-P1.0": {"strength": 0.5, "pose": 1.0}}
+              "L-0.5-P1.0": {"strength": 0.5, "pose": 1.0},
+              # run 7: the exaggerated walk maps (poses/walk-wide/); render with --motions walk
+              "LE4-W": {"epoch": 4, "poses": {"walk": "walk-wide"}},
+              "LE4-W-P1.0": {"epoch": 4, "pose": 1.0, "poses": {"walk": "walk-wide"}},
+              "L-0.5-W": {"strength": 0.5, "poses": {"walk": "walk-wide"}}}
 CHAR_LORA = "pixelkiln\\pxk-{character}{suffix}.safetensors"
 CHAR_LORA_STRENGTH = 0.8
 
@@ -276,14 +283,16 @@ def main():
         keyframe = None
         if lane in KEYFRAME_LANES or lane in REFERENCE_LANES or LORA_LANES.get(lane, {}).get("ip"):
             keyframe = upload(args.host, os.path.join(args.keyframes, f"{character}.png"))
-        poses = sorted(f for f in os.listdir(os.path.join(HERE, "poses", motion)) if f.endswith(".png"))
+        # a W lane reads walk-wide/ for the walk, and still saves under walk/
+        pose_dir = os.path.join(HERE, "poses", LORA_LANES.get(lane, {}).get("poses", {}).get(motion, motion))
+        poses = sorted(f for f in os.listdir(pose_dir) if f.endswith(".png"))
         for index, pose in enumerate(poses):
             target = os.path.join(args.out, lane, character, motion, pose)
             if os.path.exists(target):
                 continue
             os.makedirs(os.path.dirname(target), exist_ok=True)
             seed = SEED + index if lane == "A" else SEED
-            pose_name = upload(args.host, os.path.join(HERE, "poses", motion, pose)) if lane != "A" else None
+            pose_name = upload(args.host, os.path.join(pose_dir, pose)) if lane != "A" else None
             if lane in LORA_LANES:
                 lora_name, lora_strength = lane_lora(lane, character)
                 png, seconds = render(args.host, graph(CHARACTERS[character], pose_name, strength, seed,

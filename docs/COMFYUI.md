@@ -260,7 +260,13 @@ fixes on SDXL base with Pixel Art XL:
 A character LoRA is the only strategy that kept the prop in the same hand, but
 at 0.8 it also overrides the pose. A lower strength (0.5 to 0.6) or an earlier
 epoch checkpoint did not free the motion in the benchmark, so train it on
-frames with varied poses. The benchmark's
+frames with varied poses.
+
+The OpenPose ControlNet draws a smaller motion than its map shows. In the
+benchmark a walk with a 190 px stride on a 1024 px canvas came out as a shuffle
+with the legs together, at any ControlNet strength; a 330 px stride with a
+higher knee and a hip bob came out as a real walk. Draw pose maps that
+overshoot the motion you want. The benchmark's
 `train-lora.py` trains one with kohya sd-scripts in about 25 minutes on a
 12 GB card, waiting for a shared ComfyUI to be idle first.
 

@@ -25,6 +25,8 @@ INK = (230, 230, 230)
 
 out = sys.argv[1]
 lanes = [arg.split("=", 1) for arg in sys.argv[2:]]
+if os.environ.get("MOTIONS"):  # e.g. MOTIONS=walk, for lanes that rendered one motion
+    MOTIONS = {m: MOTIONS[m] for m in os.environ["MOTIONS"].split(",")}
 os.makedirs(out, exist_ok=True)
 
 
@@ -54,7 +56,7 @@ characters = sorted(os.listdir(lanes[0][1]))
 for character in characters:
     table = {label: {m: frames(d, character, m) for m in MOTIONS} for label, d in lanes}
     cw = max(f.width for row in table.values() for fs in row.values() for f in fs)
-    sheet = Image.new("RGB", (LABEL + 16 * cw, len(lanes) * H), BG)
+    sheet = Image.new("RGB", (LABEL + sum(MOTIONS.values()) * cw, len(lanes) * H), BG)
     draw = ImageDraw.Draw(sheet)
     for r, (label, _) in enumerate(lanes):
         draw.text((6, r * H + H // 2), label, fill=INK)
