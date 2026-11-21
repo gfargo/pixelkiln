@@ -311,23 +311,44 @@ export async function runPicker(
     specs?: ResolvedSpec[]
     /** Receives the live URL as soon as the server listens. */
     onReady?: (info: ReviewReadyInfo) => void
+    /**
+     * Apply, as if `index: 0` were posted, every asset whose only option is
+     * one candidate or one ordered frame set, and serve the page only for
+     * the rest. `gen --yes` sets this so an unattended run cannot block.
+     */
+    autoAcceptSingle?: boolean
   } = {},
 ): Promise<PickResult> {
   const log = opts.onProgress ?? (() => {})
-  const session = await prepareReview(provider, lock, {
+  let session = await prepareReview(provider, lock, {
     onProgress: log,
     keys: opts.keys,
     specs: opts.specs,
   })
   if (!session) return { selected: 0, skipped: 0 }
-  const groups = session.groups
+  let autoSelected = 0
+  if (opts.autoAcceptSingle) {
+    const singles = session.groups.filter((g) => g.mode === "frame-set" || g.frameUrls.length === 1)
+    if (singles.length) {
+      const res = await session.apply({ selections: singles.map((g) => ({ key: g.key, index: 0 })) }, lockPath)
+      autoSelected = res.selected
+      log(`  --yes: accepted ${res.selected} single-candidate asset(s)`)
+      const rest = session.groups.filter((g) => !singles.includes(g)).map((g) => g.key)
+      session = rest.length
+        ? await prepareReview(provider, lock, { onProgress: log, keys: rest, specs: opts.specs })
+        : null
+      if (!session) return { selected: autoSelected, skipped: 0 }
+    }
+  }
+  const live = session
+  const groups = live.groups
 
-  return serveReviewPage<PickResult>({
-    html: session.html(),
+  const served = await serveReviewPage<PickResult>({
+    html: live.html(),
     port: opts.port,
     open: opts.open,
     onProgress: log,
-    assets: session.assets,
+    assets: live.assets,
     onReady: (url) => {
       const info = { url, keys: groups.map((group) => group.key) }
       if (opts.onReady) {
@@ -337,6 +358,7 @@ export async function runPicker(
         log(`  (leave this running; it exits once you apply)\n`)
       }
     },
-    handleApply: (body) => session.apply(body, lockPath),
+    handleApply: (body) => live.apply(body, lockPath),
   })
+  return { selected: served.selected + autoSelected, skipped: served.skipped }
 }

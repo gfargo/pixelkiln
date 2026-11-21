@@ -168,7 +168,10 @@ parent (a character's states, then their animations and the mirrors of
 those; a pro base drawn in another character's style; a revision of a
 still that was just made) become actionable, and the next wave takes them under
 what is left of the same budget, asking the same "Spend ...?" question each
-time unless `--yes`. It stops when a wave finds nothing new, when a wave
+time unless `--yes`. With `--yes`, an asset whose only option is a single
+candidate or one ordered frame set (an animation clip) is accepted as `index: 0`
+without waiting on the pick page; assets with two or more candidates still
+open it. It stops when a wave finds nothing new, when a wave
 submits nothing, or when the remaining budget cannot cover the next wave; in
 that last case the earlier waves' work is saved and the message says to run
 `gen` again with a budget for the rest. `--force` applies to the first wave

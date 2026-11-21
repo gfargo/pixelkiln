@@ -340,6 +340,21 @@ describe("review readiness", () => {
     expect(stderr).toContain("http://127.0.0.1:43123/")
     expect(stderr).toContain("1 asset awaiting selection")
   })
+
+  it("hints at the non-blocking path when stdin is not a terminal", () => {
+    const run = (stdinIsTTY: boolean) => {
+      let out = ""
+      announceReviewReady(
+        { url: "http://127.0.0.1:43123/", keys: ["base/anvil"] },
+        { isTTY: true, write: (chunk) => { out += chunk } },
+        { isTTY: true, write: () => {} },
+        stdinIsTTY,
+      )
+      return out
+    }
+    expect(run(false)).toContain("gen --yes")
+    expect(run(true)).not.toContain("hint:")
+  })
 })
 
 describe("retry policy", () => {
