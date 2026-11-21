@@ -1,3 +1,10 @@
+# [0.132.0](https://github.com/gfargo/pixelkiln/compare/v0.131.0...v0.132.0) (2026-11-21)
+
+
+### Features
+
+* **site:** a side-on spear stance, research step 55 ([330b82d](https://github.com/gfargo/pixelkiln/commit/330b82db8b9fc59fca6ea08cf4df1b05e04a14f2))
+
 # [0.131.0](https://github.com/gfargo/pixelkiln/compare/v0.130.0...v0.131.0) (2026-11-21)
 
 
