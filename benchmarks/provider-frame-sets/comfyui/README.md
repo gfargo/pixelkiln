@@ -394,6 +394,39 @@ try are a pose set with wider leg spread (an exaggerated walk), a depth or
 lineart control from a posed reference instead of OpenPose, or a LoRA retrained
 on frames that already show a full stride.
 
+## Run 7: an exaggerated walk, November 2026
+
+New walk maps in [`poses/walk-wide/`](poses/walk-wide), drawn by
+[`poses/make-poses.py`](poses/make-poses.py): a 330 px stride instead of 190,
+the knee lifted to 115 px instead of 55, twice the arm swing, a 10 degree lean,
+and a bob (the hips drop 30 px on contact). Three lanes render only the walk
+on them: LE4-W (the epoch 4 LoRA, pose 0.75), LE4-W-P1.0 (pose 1.0) and L-0.5-W
+(the final LoRA at 0.5). 48 frames at a median of 31.6 s. The comparisons are
+in [`results/run7/`](results/run7); the first two rows are run 5's LE4 and run
+6's L-0.5-P1.0 on the old walk maps.
+
+![The knight's walk: LE4, L-0.5-P1.0, LE4-W, LE4-W-P1.0, L-0.5-W](results/run7/compare-knight.png)
+
+![The goblin's walk, the same rows](results/run7/compare-goblin.png)
+
+GIFs: [knight walk](results/run7/compare-knight-walk.gif),
+[goblin walk](results/run7/compare-goblin-walk.gif).
+
+- **LE4-W:** the first real walk in the benchmark. Both characters step out
+  in frames 0 and 4 and bring the legs together in between, the torso leans,
+  and the character, outfit and weapon hand stay the same through the cycle.
+  The goblin's feet and tail get messy at the widest steps (frames 0 and 1
+  show extra claw-like shapes by the back foot).
+- **LE4-W-P1.0:** nearly the same as LE4-W, so the pose strength again adds
+  little. One stray boot fragment in the knight's frame 3.
+- **L-0.5-W:** a narrower stride, and with the LoRA at 0.5 the goblin drifts
+  (a bigger head, darker outfit, the club held low or out of the frame).
+
+The stiff walk in runs 1 to 6 came from the walk maps, not the LoRA or the
+ControlNet strength: SDXL's OpenPose ControlNet draws a smaller stride than the
+map shows, so the map has to overshoot. The best setting so far is the epoch 4
+LoRA at 0.8 with pose 0.75 on the exaggerated maps.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
