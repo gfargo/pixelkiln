@@ -6,6 +6,18 @@ import { detectMediaType, mediaTypeFromExtension } from "../media.ts"
 import { resolveOutputPath } from "../outputs.ts"
 import { pngSize } from "../pipeline/init.ts"
 import { lockKey, primaryOutput, type LockEntry, type Lock, type ResolvedSpec } from "../types.ts"
+import {
+  cacheReviewCandidates,
+  cachedCandidatePath,
+  candidateCacheDirFor,
+  ensureCandidatesCached,
+  fullyCached,
+  loadReviewState,
+  reviewStatePathFor,
+  updateReviewAsset,
+  type ReviewAsset,
+} from "./candidates.ts"
+import type { JobState } from "../provider.ts"
 import { renderSheet, type RenderSheetOptions, type SheetGroup } from "./sheet.ts"
 import { serveReviewPage } from "./review-server.ts"
 
@@ -51,6 +63,12 @@ export interface PrepareReviewOptions {
   specs?: ResolvedSpec[]
   /** Prefix for the sheet's local media routes when hosted under a sub-path. */
   routePrefix?: string
+  /**
+   * The lockfile the review belongs to. With it, every candidate is served
+   * from the local candidate cache beside it, and a job the provider has
+   * since dropped is still reviewable and appliable from that cache.
+   */
+  lockPath?: string
 }
 
 /**
@@ -121,23 +139,65 @@ export async function prepareReview(
   // be review routes instead, and a route must never reach the lockfile.
   const providerUrls = new Map<string, string[]>()
 
+  const store = opts.lockPath
+    ? { cacheDir: candidateCacheDirFor(opts.lockPath), statePath: reviewStatePathFor(opts.lockPath) }
+    : null
+  const records = new Map<string, ReviewAsset>()
+
   const groups: SheetGroup[] = []
   for (const [key, entry] of Object.entries(lock.entries)) {
     if (entry.provider !== provider.id || (selectedKeys && !selectedKeys.has(key))) continue
     if (entry.status !== "review" || !entry.reviewObjectId) continue
     try {
       const spec = specByKey.get(key)
-      const state = await provider.poll(entry.reviewObjectId, entry.generator, { spec, metadata: entry.providerMetadata?.[provider.id] })
-      if (
-        (state.status !== "review" && state.status !== "review-set") ||
-        (state.status === "review" ? !state.candidateUrls.length : !state.frameUrls.length)
-      ) continue
-      const urls = state.status === "review" ? state.candidateUrls : state.frameUrls
+      const jobId = entry.reviewObjectId
+      let polled: JobState | null = null
+      let pollError: unknown = null
+      try {
+        polled = await provider.poll(jobId, entry.generator, { spec, metadata: entry.providerMetadata?.[provider.id] })
+      } catch (err) {
+        pollError = err
+      }
+      const live =
+        polled &&
+        ((polled.status === "review" && polled.candidateUrls.length) ||
+          (polled.status === "review-set" && polled.frameUrls.length))
+          ? (polled as Extract<JobState, { status: "review" | "review-set" }>)
+          : null
+
+      // The local copy of the candidates: refreshed from a live job, or the
+      // only copy left once the provider has dropped it.
+      let record: ReviewAsset | null = null
+      if (store) {
+        if (live) {
+          const cached = await cacheReviewCandidates(provider, key, jobId, live, { ...store, generator: entry.generator })
+          for (const message of cached.failed) log(`  could not cache ${message}`)
+          record = cached.asset
+        } else {
+          const saved = (await loadReviewState(store.statePath)).assets[key]
+          if (saved && saved.jobId === jobId && saved.provider === provider.id) {
+            record = fullyCached(store.cacheDir, saved) ? saved : await ensureCandidatesCached(provider, key, store)
+            const why = pollError instanceof Error ? pollError.message : polled ? `job is ${polled.status}` : String(pollError)
+            log(`  ${key}: job no longer available upstream (${why}); using the cached candidates`)
+          }
+        }
+      }
+      if (!live && !record) {
+        if (pollError) throw pollError
+        continue
+      }
+      if (record) records.set(key, record)
+      const urls = live
+        ? live.status === "review" ? live.candidateUrls : live.frameUrls
+        : record!.candidates.map((c) => c.sourceUrl ?? `file://${cachedCandidatePath(store!.cacheDir, c)}`)
       const frameUrls: string[] = []
       const frameAssets: [string, { path: string; contentType: string }][] = []
       const frameSizes: ({ width: number; height: number } | null)[] = []
       for (const [index, url] of urls.entries()) {
-        const cached = await cachedFrame(url)
+        const local = record?.candidates[index] && store ? cachedCandidatePath(store.cacheDir, record.candidates[index]!) : null
+        const cached = local
+          ? { path: local, contentType: record!.candidates[index]!.mediaType ?? "application/octet-stream" }
+          : await cachedFrame(url)
         if (!cached) {
           frameUrls.push(url)
           frameSizes.push(null)
@@ -176,11 +236,17 @@ export async function prepareReview(
         ...(frameSizes.some(Boolean) ? { frameSizes } : {}),
         width: entry.width,
         height: entry.height,
-        ...(state.status === "review-set"
+        ...(live?.status === "review-set"
           ? {
               mode: "frame-set" as const,
-              frameLabels: state.sources.map((source, index) => source.role ?? `frame-${index}`),
-              fps: state.fps,
+              frameLabels: live.sources.map((source, index) => source.role ?? `frame-${index}`),
+              fps: live.fps,
+            }
+          : !live && record?.mode === "frame-set"
+          ? {
+              mode: "frame-set" as const,
+              frameLabels: record.candidates.map((c, index) => c.role ?? `frame-${index}`),
+              fps: record.fps ?? 12,
             }
           : { mode: "candidates" as const }),
         ...(sourceRoute && spec?.revision && spec.revision.sourceWidth && spec.revision.sourceHeight
@@ -211,6 +277,33 @@ export async function prepareReview(
 
   const byKey = new Map(groups.map((g) => [g.key, g]))
 
+  /** `file://` URL of a cached candidate for this exact job, or null. */
+  const localCandidate = (key: string, jobId: string, index: number): string | null => {
+    const record = records.get(key)
+    const candidate = record?.jobId === jobId ? record.candidates[index] : undefined
+    const file = store && candidate ? cachedCandidatePath(store.cacheDir, candidate) : null
+    return file ? `file://${file}` : null
+  }
+  /** A frame set rebuilt from the cache, when every frame is there. */
+  const localFrameSet = (key: string, jobId: string) => {
+    const record = records.get(key)
+    if (!record || record.jobId !== jobId || record.mode !== "frame-set" || !store || !fullyCached(store.cacheDir, record)) return null
+    const sources = record.candidates.map((c) => ({
+      url: `file://${cachedCandidatePath(store.cacheDir, c)}`,
+      ...(c.role ? { role: c.role } : {}),
+    }))
+    return {
+      status: "review-set" as const,
+      objectId: record.objectId ?? jobId,
+      sources,
+      metadata: undefined as Record<string, unknown> | undefined,
+    }
+  }
+  const markApplied = async (key: string, index: number) => {
+    if (!store || !records.has(key)) return
+    await updateReviewAsset(store.statePath, key, (asset) => ({ ...asset, status: "applied", chosen: index }))
+  }
+
   return {
     groups,
     assets: reviewAssets,
@@ -227,9 +320,12 @@ export async function prepareReview(
 
         if (group.mode === "frame-set") {
           const spec = specByKey.get(key)
-          const state = await provider.poll(entry.reviewObjectId, entry.generator, { spec, metadata: entry.providerMetadata?.[provider.id] })
-          if (state.status !== "review-set") {
-            throw new Error(`Frame set ${key} is no longer ready for review`)
+          const live = await provider
+            .poll(entry.reviewObjectId, entry.generator, { spec, metadata: entry.providerMetadata?.[provider.id] })
+            .catch(() => null)
+          const state = live?.status === "review-set" ? live : localFrameSet(key, entry.reviewObjectId)
+          if (!state) {
+            throw new Error(`Frame set ${key} is no longer ready for review and has no cached frames`)
           }
           upsert(lock, key, {
             status: "selected",
@@ -249,18 +345,34 @@ export async function prepareReview(
               : entry.providerMetadata,
           })
           selected++
-          log(`  accepted ${key} → ${state.sources.length} ordered frames`)
+          await markApplied(key, index)
+          log(`  accepted ${key} → ${state.sources.length} ordered frames${live?.status === "review-set" ? "" : " (from the local cache)"}`)
           continue
         }
 
         // Promote the chosen candidate; the review parent is removed upstream
         // once nothing is left in it.
-        const { objectId, sourceUrl, metadata } = await requireSelectCandidate(provider)(
-          entry.reviewObjectId,
-          index,
-          `asset:${entry.assetId}`,
-          entry.generator,
-        )
+        let selection: { objectId: string; sourceUrl: string | null; metadata?: Record<string, unknown> }
+        let fromCache = false
+        try {
+          selection = await requireSelectCandidate(provider)(
+            entry.reviewObjectId,
+            index,
+            `asset:${entry.assetId}`,
+            entry.generator,
+          )
+        } catch (err) {
+          // The provider dropped the job. The candidate's bytes are in the
+          // local cache, so the choice still lands; there is just no
+          // promoted account object to name.
+          const local = localCandidate(key, entry.reviewObjectId, index)
+          if (!local) throw err
+          log(`  ${key}: promotion failed upstream (${err instanceof Error ? err.message : String(err)}); using the cached candidate`)
+          selection = { objectId: `${entry.reviewObjectId}#${index}`, sourceUrl: local }
+          fromCache = true
+        }
+        const { objectId, metadata } = selection
+        const sourceUrl = fromCache ? selection.sourceUrl : selection.sourceUrl ?? localCandidate(key, entry.reviewObjectId, index)
 
         upsert(lock, key, {
           status: "selected",
@@ -280,7 +392,8 @@ export async function prepareReview(
             : entry.providerMetadata,
         })
         selected++
-        log(`  picked  ${key} → candidate ${index + 1}`)
+        await markApplied(key, index)
+        log(`  picked  ${key} → candidate ${index + 1}${fromCache ? " (from the local cache)" : ""}`)
       }
 
       await saveLock(lockPath, lock)
@@ -324,6 +437,7 @@ export async function runPicker(
     onProgress: log,
     keys: opts.keys,
     specs: opts.specs,
+    lockPath,
   })
   if (!session) return { selected: 0, skipped: 0 }
   let autoSelected = 0

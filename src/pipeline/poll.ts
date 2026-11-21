@@ -2,6 +2,7 @@ import { saveLock, upsert } from "../lock.ts"
 import type { Provider } from "../provider.ts"
 import type { Lock } from "../types.ts"
 import { lockKey, type ResolvedSpec } from "../types.ts"
+import { cacheReviewCandidates, candidateCacheDirFor, reviewStatePathFor } from "../pick/candidates.ts"
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -96,6 +97,18 @@ export async function poll(
             billed: state.billed ?? entry.billed,
           })
           result.review++
+          // The provider's job is not durable; keep the candidates the
+          // credits paid for before anyone opens the pick page.
+          try {
+            const { failed } = await cacheReviewCandidates(provider, key, entry.jobId!, state, {
+              cacheDir: candidateCacheDirFor(lockPath),
+              statePath: reviewStatePathFor(lockPath),
+              generator: entry.generator,
+            })
+            for (const message of failed) log(`  could not cache ${message}`)
+          } catch (err) {
+            log(`  could not cache candidates for ${key}: ${err instanceof Error ? err.message : String(err)}`)
+          }
           log(
             state.status === "review-set"
               ? `  review  ${key} (${state.frameUrls.length} ordered frames)`
