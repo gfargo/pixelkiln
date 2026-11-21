@@ -498,7 +498,7 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             bones and to how much thicker he is, then fitted to his skin.
             His hands were drawn as closed fists, so they have no finger
             bones: the sword runs through his right fist, which is found
-            on the mesh. Pick the sword attack to see it used. Take the
+            on the mesh. The shield is strapped to his left forearm. Pick the sword attack to see it used. Take the
             armour off to see the body under it.
           </p>
         ) : subject === "pixel" ? (
@@ -529,8 +529,9 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             library made for a different skeleton, carried over bone by
             bone. The sword is a separate mesh too, made from eight
             sprites of a sword and placed in the right hand, whose thumb
-            and fingers have bones and close round the grip. Pick the
-            sword attack to see it used. Switch the pixel look on to see
+            and fingers have bones and close round the grip. The
+            shield, made the same way, is strapped to the left forearm.
+            Pick the sword attack to see the sword used. Switch the pixel look on to see
             it as pixel art.
           </p>
         ) : (
