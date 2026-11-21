@@ -1,3 +1,10 @@
+# [0.133.0](https://github.com/gfargo/pixelkiln/compare/v0.132.0...v0.133.0) (2026-11-21)
+
+
+### Features
+
+* redesign the pick page as a keyboard-first review queue ([#371](https://github.com/gfargo/pixelkiln/issues/371)) ([ca38c44](https://github.com/gfargo/pixelkiln/commit/ca38c4408eadb95dd580eb9b25560a6f3677e8a3))
+
 # [0.132.0](https://github.com/gfargo/pixelkiln/compare/v0.131.0...v0.132.0) (2026-11-21)
 
 
