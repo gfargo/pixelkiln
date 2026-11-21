@@ -496,7 +496,10 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             the items made on the first one. Nothing was redrawn or meshed
             again for him but his own body. Each item was reshaped to his
             bones and to how much thicker he is, then fitted to his skin.
-            Take the armour off to see the body under it.
+            His hands were drawn as closed fists, so they have no finger
+            bones: the sword runs through his right fist, which is found
+            on the mesh. Pick the sword attack to see it used. Take the
+            armour off to see the body under it.
           </p>
         ) : subject === "pixel" ? (
           <p className="spin-note">

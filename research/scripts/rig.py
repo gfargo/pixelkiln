@@ -22,10 +22,12 @@ Environment:
            the only bones that item may follow; with none it follows whatever the body under it follows.
            A third field, "loose" ("Cape=cape.glb:Hips,Spine:loose"), marks an item that hides no skin.
            "held" ("Sword=sword.glb:RightHand:held") marks a rigid thing the hand holds: it is turned and placed in
-           the grip of that hand, whatever frame its file is in, and follows the hand alone.
+           the grip of that hand, whatever frame its file is in, and follows the hand alone. In a hand drawn as
+           a closed fist it runs through the fist, with its guard clear of the fist's side.
   HELD_LENGTH  how long a held item is made, as a share of the body's height (default 0.5)
   FINGERS  0 leaves out the finger bones. By default a hand whose thumb can be found on the mesh gets a thumb
            of three bones, one chain of three for the fingers, and <Side>Grip, which marks where a grip goes.
+           A hand drawn as a closed fist gets <Side>Grip alone, in the middle of the fist.
   COVER    how near an item's surface must be for the skin to count as covered, in sprite pixels (default 1.2)
   ALIGN    1 slides each item to sit evenly round the body before fitting it (default 1; loose items are left)
   CHAINS   bones for hanging items: "Cape=3x4" hangs the item called Cape from three columns of four links,
@@ -95,12 +97,13 @@ def past(a, b, by):  # a point `by` beyond b on the line from a
 # fingertips, the hand is one piece, then two once the thumb's tip is passed, then one again at the web between
 # thumb and fingers. The web is 58% of a hand's length back from the fingertips, which puts the wrist (the joint
 # estimated on the sprites sits in the palm), the knuckles 56% of the way along, and the three finger joints.
-# The thumb's own line gives its three bones. A hand with no thumb to find (a 64 pixel sprite's) gets none of this.
+# The thumb's own line gives its three bones. A hand with no thumb to find gets no finger bones; if it is a closed
+# fist it still gets a wrist and a grip (below).
 def hand(side, s):
     along_line = lambda p, q, share: p + (q - p) * share
     el, wr = J[s + " ELBOW"], J[s + " ARM"]; forearm = np.linalg.norm(wr - el); a = (wr - el) / forearm
     rel = centres - wr; t = rel @ a
-    near = np.nonzero((t > -0.4 * forearm) & (t < 1.6 * forearm) & (np.linalg.norm(rel - np.outer(t, a), axis=1) < 0.8 * forearm))[0]
+    near = np.nonzero((t > -0.9 * forearm) & (t < 1.6 * forearm) & (np.linalg.norm(rel - np.outer(t, a), axis=1) < 0.8 * forearm))[0]
     def pieces(index):  # the cells given, as connected pieces, largest first
         volume = np.zeros(shape, bool); cell = solid_at[index]; volume[cell[:, 0], cell[:, 1], cell[:, 2]] = True
         labels = connected(volume)[0][cell[:, 0], cell[:, 1], cell[:, 2]]
@@ -114,7 +117,24 @@ def hand(side, s):
             if thumb_tip is None: thumb_tip = back
             fingers = max(apart, key=lambda piece: ((centres[piece] - wr) @ a).max()); thumb = max((piece for piece in apart if piece is not fingers), key=len); web = back
         elif thumb is not None: break
-    if thumb is None or thumb_tip - web < 1.0: return None
+    if thumb is None or thumb_tip - web < 1.0:
+        # A hand drawn closed. There is no thumb to find, so no finger bones, but a fist already has the shape of a
+        # hold. Going back from the knuckles its cross-section grows to the fist's thickest place and then shrinks
+        # to the wrist, the narrowest place before the forearm widens again. The grip goes through the middle of the
+        # fist along its wider side where that runs front to back, and leaves towards the front, as the thumb's side of a
+        # fist held out palm down does. A fist too round to have a wider side takes the front as it is.
+        steps = np.arange(tip_t, along.min() + 1, -1.0); count = np.array([((along <= hi) & (along > hi - 1)).sum() for hi in steps])
+        peak = k = int(count[:max(3, int(0.7 * forearm))].argmax())
+        while k + 1 < len(count) and count[k + 1] <= count[k] * 1.03: k += 1
+        if k + 1 == len(count) or count[peak] < 1.4 * count[k]: return None
+        wrist_t = steps[k] - 0.5; length = tip_t - wrist_t; wrist = centres[arm[np.abs(along - wrist_t) <= 0.6]].mean(0)
+        ball = centres[arm[along > wrist_t + 0.35 * length]]; centre = ball.mean(0); f = (centre - wrist) / np.linalg.norm(centre - wrist)
+        flat = ball - centre; flat = flat - np.outer(flat @ f, f); size, axis = np.linalg.eigh(flat.T @ flat / len(flat))
+        front = np.array([0, -1.0, 0]) - f * -f[1]; front /= np.linalg.norm(front); across = axis[:, 2] * np.sign(axis[:, 2] @ front)
+        if size[2] < 1.5 * size[1] or across @ front < 0.7: across = front  # too round to tell, or not lying the way the animations expect
+        reach = flat @ across; centre = centre + across * (reach.max() + reach.min()) / 2
+        return {"wrist": wrist, "fingers": [wrist + f * length], "grip": centre, "fist": (reach.max() - reach.min()) / 2,
+                "palm": np.cross(f, across) * (1 if side == "Left" else -1), "across": across, "along": f, "length": length}
     length = float(np.clip((tip_t - web) / 0.58, tip_t - web + 1, tip_t + 0.35 * forearm)); wrist_t = tip_t - length
     def slab(at, index=arm):  # the middle of the hand, or of one piece of it, at this distance along
         d = np.abs((centres[index] - wr) @ a - at); return centres[index[d <= max(0.6, d.min() + 0.1)]].mean(0)
@@ -135,8 +155,9 @@ HANDS = {}
 if GEODESIC and os.environ.get("BONES", "humanoid") != "15" and os.environ.get("FINGERS", "1") != "0":
     for side, s in (("Left", "LEFT"), ("Right", "RIGHT")):
         found = hand(side, s)
-        if found is None: print(f"{side} hand: no thumb apart from the fingers, so no finger bones", file=sys.stderr); continue
-        print(f"{side} hand: {found['length']:.1f} sprite pixels long, wrist moved {np.linalg.norm(found['wrist'] - J[s + ' ARM']):.1f}", file=sys.stderr)
+        if found is None: print(f"{side} hand: no thumb apart from the fingers and no fist, so no finger bones and no grip", file=sys.stderr); continue
+        if "fist" in found: print(f"{side} hand: a closed fist {found['length']:.1f} sprite pixels long and {2 * found['fist']:.1f} across, so a grip but no finger bones; wrist moved {np.linalg.norm(found['wrist'] - J[s + ' ARM']):.1f}", file=sys.stderr)
+        else: print(f"{side} hand: {found['length']:.1f} sprite pixels long, wrist moved {np.linalg.norm(found['wrist'] - J[s + ' ARM']):.1f}", file=sys.stderr)
         HANDS[side] = found; J[s + " ARM"] = found["wrist"]
 
 # name, parent, where the joint is, where its bone ends
@@ -170,6 +191,7 @@ for side, s in (("Left", "LEFT"), ("Right", "RIGHT")):
 NO_SKIN = set()
 for side, found in HANDS.items():
     for chain, parts in (("Thumb", ("Metacarpal", "Proximal", "Distal")), ("Middle", ("Proximal", "Intermediate", "Distal"))):
+        if "fist" in found: continue
         joints = found["thumb" if chain == "Thumb" else "fingers"]
         for k, part in enumerate(parts): BONES.append((side + chain + part, side + (chain + parts[k - 1] if k else "Hand"), joints[k], joints[k + 1]))
     BONES.append((side + "Grip", side + "Hand", found["grip"], found["grip"] + found["across"])); NO_SKIN.add(side + "Grip")
@@ -257,7 +279,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         # the end and the widest place nearest an end (the guard), goes to the hand's <Side>Grip. It follows the
         # hand alone, and the fingers close round it in any animation that makes a fist.
         side = allowed.replace("Hand", "")
-        if side not in HANDS: sys.exit(f"{label}: held items need a hand with finger bones, as LeftHand or RightHand; found {sorted(HANDS)}")
+        if side not in HANDS: sys.exit(f"{label}: held items need a hand with a grip (finger bones, or a closed fist), as LeftHand or RightHand; found {sorted(HANDS)}")
         grasp = HANDS[side]; centre = pw.mean(0); axes = np.linalg.svd(pw - centre, full_matrices=False)[2]
         run = (pw - centre) @ axes[0]; wide = np.abs((pw - centre) @ axes[1]); steps = np.linspace(run.min(), run.max(), 41)
         guard = steps[np.argmax([wide[(run >= lo) & (run <= hi)].max(initial=0) for lo, hi in zip(steps[:-1], steps[1:])])]
@@ -265,6 +287,8 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         size = float(os.environ.get("HELD_LENGTH", "0.5")) * (world[:, 2].max() - world[:, 2].min()) / (run.max() - run.min())
         turn = np.stack([grasp["across"], grasp["along"], np.cross(grasp["across"], grasp["along"])], 1) @ np.stack([axes[0], axes[1], np.cross(axes[0], axes[1])], 1).T
         pw = (pw - centre - axes[0] * (run.min() + guard) / 2) * size @ turn.T + grasp["grip"]
+        if "fist" in grasp:  # the grip runs through a fist, so the guard has to clear the fist's side
+            pw = pw + grasp["across"] * max(0, grasp["fist"] + 0.5 - (guard - run.min()) / 2 * size)
         prelief = pnormals = None
     if os.environ.get("ALIGN", "1") == "1" and fit_kind not in ("loose", "held"):
         # The item came from a mesh fitted to the sprites on its own, and can sit a pixel or two off the body

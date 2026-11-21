@@ -30,7 +30,8 @@ machine with a 12 GB RTX 3060.
   it requires, by name.
 - **Hands that close,** on the painted path. Where the mesh has a thumb apart
   from the fingers, each hand gets a thumb, one chain for the four fingers
-  together, and a point that marks where a grip goes.
+  together, and a point that marks where a grip goes. A hand drawn as a
+  closed fist gets the grip point alone, which is enough to hold something.
 - **Stock animations.** Motions from a humanoid library made for another
   skeleton, carried over bone by bone.
 
@@ -182,7 +183,10 @@ gets seven more bones: `LeftThumbMetacarpal`, `LeftThumbProximal`,
 `LeftMiddleDistal` (the four fingers move as one, under the middle finger's
 names) and `LeftGrip`, which carries no skin and marks where a grip goes. A
 hand with no thumb to find, which is every 64 pixel hand and any hand drawn as
-a fist, gets none, and the script says so. `FINGERS=0` turns this off.
+a fist, gets no finger bones. If it is a fist (a ball wider than the wrist
+behind it), it gets its wrist moved to the narrowest place and `LeftGrip` or
+`RightGrip` in the middle of the fist. The script says which it found for each
+hand. `FINGERS=0` turns all of this off.
 
 ### 8. Animate
 
@@ -226,11 +230,13 @@ A held thing is made on its own: eight directions of the object upright
 sprites with `texture.py`, and thinned. `held` lays its longest line across
 the palm of the hand named, puts its grip at that hand's grip point, and makes
 it `HELD_LENGTH` of the body's height long (default 0.5). The file's own
-frame does not matter. It needs a hand with finger bones.
+frame does not matter. It needs a hand with a grip point: one with finger
+bones, or a closed fist. In a fist the grip runs through the fist from front
+to back, blade to the front, and the guard is kept clear of the fist's side.
 
 Then animate as in step 8. `retarget.py` carries the library's thumb and
 middle finger over, so the hand is a fist in a walk and closed round the grip
-in a sword attack.
+in a sword attack. A fist has no fingers to move and holds as drawn.
 
 ## In a game engine
 
@@ -266,9 +272,9 @@ swing. See step 31 of the research note.
   redraw's lighting is painted in.
 - **Separate fingers, eyes and a jaw** in the skeleton. The four fingers
   move as one, and only on the painted path.
-- **Held items beyond one sword in the right hand.** A hand drawn as a fist,
-  a shield, and two hands on one grip are untried, and the grip is not sized
-  to the hand.
+- **Held items beyond one sword in the right hand.** The left hand, a shield,
+  and two hands on one grip are untried, and the grip is not sized to the
+  hand. A fist cannot open, so it cannot let go or change its hold.
 - **Many bodies.** The items have been worn by two: the one they were cut on
   and one much heavier man, after `refit.py` reshaped them for him. Other
   heights and builds are untried.
