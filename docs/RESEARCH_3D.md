@@ -59,6 +59,7 @@ Last updated 17 November 2026.
 | 49 | The left hand, and a shield | PixelLab, Hunyuan3D-2mv, our scripts | The sword sits in either body's left hand with no change; a generated shield is strapped to the left forearm of both and stands upright through the library's motions | Keep. The shield is carried, not used: the library has no shield or left-handed motions. |
 | 50 | Two hands on one grip | PixelLab, Hunyuan3D-2mv, our scripts | A generated greatsword in both hands of both bodies through all twelve motions, by pulling the grip in front of the body and solving both arms at every moment | Keep as a baked fallback. Wrists bend past what a wrist can in some motions; real two-handed animations would be better. |
 | 51 | Motions made for two hands | Our scripts | Four two-handed motions (a guard, a walk, a jog and a cut) made by writing down the sword's path and solving both arms to it. Wrists stay within 52 degrees on the first body, where the bent one-handed motions reached 100 | Keep. Use these where a motion exists, and step 50's bent ones for the rest. |
+| 52 | Footwork for the two-handed attack | Our scripts | The cut now has a step: the hips wind up, the left foot steps out as the blade lands, and both legs are solved again. Feet stay on the ground and wrists are unchanged | Keep. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1403,6 +1404,33 @@ Not checked: how the motions read in play in an engine, the whole of each motion
 
 **Verdict.** Keep. For a motion that exists in this form, it beats bending a one-handed one: the wrists stay inside what a wrist does and the sword goes where it was told. It is not a replacement for an animator or for captured motion.
 
+## 52. Footwork for the two-handed attack
+
+**Question.** Step 51's attack moved the arms and leaned the spine over the idle's feet. Can the same written-down approach give it a step and a turn of the hips?
+
+**Setup.** `wield.py` takes one more list for a motion, `feet`: at a few moments, how far the hips move forward and down, how far they turn towards the leading side, and how far the foot on the other hand's side steps forward and lifts, in leg lengths. The hips are moved and turned first, so the chest, and the sword that rides on it, turn with them. Both legs are then solved again from hip to ankle, knees forward. The standing foot keeps the place and facing the idle gave it; the stepping foot keeps its facing.
+
+For `Great_Attack`: the hips turn 18 degrees towards the raised sword and shift back, the left foot lifts, and as the cut lands it comes down 0.45 leg lengths ahead with the hips forward, 0.14 leg lengths lower and turned 14 degrees the other way. Then everything returns.
+
+**Result.**
+
+![The two-handed attack with a step on both bodies: wound up, the foot leaving the ground, and the cut landed in a lunge](../website/public/research/3d/attack-footwork.png)
+
+- **Both feet reach their places at every moment** on both bodies, and the standing foot does not slide, since it is put where the idle had it.
+- **The arms are as they were:** wrists within 42 degrees on the first body and 69 on the second, both hands on the grip.
+- **The files are valid** and Godot 4.7.2 imports both with no errors and finds its 17 required bones. The first body's file is the same size, 2.9 MB.
+
+Flaws:
+
+- **A first try left a foot 2 centimetres short at rest.** The leg solver had the arms' limit of 97% of full reach, and a standing leg is straighter than that. Legs now get their full length.
+- **The stepping foot's toe does not roll.** It lifts and lands flat.
+- **The step is in place.** The character returns to where it stood; a game that wants the attack to carry it forward needs root motion, which is not written.
+- **The numbers were set once and looked at,** not searched as the arm poses were.
+
+Not checked: the motion in play in an engine or in the site's viewer, and the idle, walk and jog, which have no footwork of their own beyond the stock legs.
+
+**Verdict.** Keep. The attack reads as a lunge now, and the `feet` list is there for other motions.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1437,7 +1465,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Still to do: a handle sized to the hand, footwork and weight for the two-handed attack, a staff or spear, and motions made for a shield or a left-handed sword.
+- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step. Still to do: a handle sized to the hand, root motion, a staff or spear, and motions made for a shield or a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.

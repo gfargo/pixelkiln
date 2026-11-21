@@ -279,7 +279,8 @@ It adds `Great_Idle`, `Great_Walk`, `Great_Jog` and `Great_Attack`: the
 sword's path is written in the script, both arms are solved to it, and the
 legs and trunk come from the stock idle, walk and jog. It prints how far each
 wrist bends, how far the blade is off its edge and whether a hand fell short.
-To add a motion, add an entry to `MOTIONS` at the top of the script.
+To add a motion, add an entry to `MOTIONS` at the top of the script. An entry's
+`feet` list moves and turns the hips and steps a foot, as the attack does.
 
 Then animate as in step 8. `retarget.py` carries the library's thumb and
 middle finger over, so the hand is a fist in a walk and closed round the grip
