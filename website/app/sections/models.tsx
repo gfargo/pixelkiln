@@ -40,7 +40,7 @@ export function ModelsSection() {
             its animations and the list of which skin each item hides. The
             second body wears the very same items, reshaped for him.
           </p>
-          <MeshViewer subjects={["parts", "heavy", "great", "pixel", "knight", "hero"]} />
+          <MeshViewer subjects={["parts", "heavy", "great", "spear", "pixel", "knight", "hero"]} />
         </div>
 
         <div className="builder-block" id="paths">

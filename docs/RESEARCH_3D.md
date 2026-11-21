@@ -60,6 +60,7 @@ Last updated 17 November 2026.
 | 50 | Two hands on one grip | PixelLab, Hunyuan3D-2mv, our scripts | A generated greatsword in both hands of both bodies through all twelve motions, by pulling the grip in front of the body and solving both arms at every moment | Keep as a baked fallback. Wrists bend past what a wrist can in some motions; real two-handed animations would be better. |
 | 51 | Motions made for two hands | Our scripts | Four two-handed motions (a guard, a walk, a jog and a cut) made by writing down the sword's path and solving both arms to it. Wrists stay within 52 degrees on the first body, where the bent one-handed motions reached 100 | Keep. Use these where a motion exists, and step 50's bent ones for the rest. |
 | 52 | Footwork for the two-handed attack | Our scripts | The cut now has a step: the hips wind up, the left foot steps out as the blade lands, and both legs are solved again. Feet stay on the ground and wrists are unchanged | Keep. |
+| 53 | A spear, hands apart | PixelLab, Hunyuan3D-2mv, our scripts | A generated spear held left hand forward with the right behind it on the shaft, and four motions made for it: a guard, a walk, a jog and a thrust with a step | Keep for the first body. The second body's rear wrist bends 82 to 86 degrees, and stock motions fit a shaft poorly. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1431,6 +1432,46 @@ Not checked: the motion in play in an engine or in the site's viewer, and the id
 
 **Verdict.** Keep. The attack reads as a lunge now, and the `feet` list is there for other motions.
 
+## 53. A spear, hands apart
+
+**Question.** The greatsword of steps 50 to 52 has both hands together under a guard. A spear or staff has no guard and the hands go apart on the shaft. Does the same approach carry it?
+
+**Setup.**
+
+- *The spear.* One PixelLab object in eight directions at 128 pixels. The first try (25 generations) came back short, with a head half its length. A second (25 more) that asked for a pole taking up almost the whole height, with a small tip, gave a long spear with a ribbon under the head. It was meshed by Hunyuan3D-2mv in 145 seconds, coloured from the sprites and thinned from 30,000 triangles to 1,499.
+
+![A spear in eight directions](../website/public/research/3d/spear-sprites.png)
+
+- *Where the hands go.* Two settings for `rig.py`'s `two-handed` kind. `GRIP_AT` says where the leading hand's middle is, as a share of the item's length from its butt, and `GRIP_APART` how far below it the other hand is. Here 0.45 and 0.2, on a spear 1.1 times the body's height: the hands are about 40 centimetres apart. The spear is given to the left hand, `Spear=spear.glb:LeftHand:two-handed`, so the left hand is forward and the right is at the rear, as a right-hander holds one. That is also the first time the left hand has led.
+- *The motions.* `wield.py` with `SET=spear` makes `Spear_Idle`, `Spear_Walk` and `Spear_Jog`, the spear level with its butt outside the right hip and its point ahead, and `Spear_Thrust`, 1.2 seconds: drawn back, then driven out with a step of the left foot, the hips 0.15 leg lengths lower and the trunk leaning 17 degrees. A shaft has no edge, so the blade term is off.
+
+**Result.**
+
+![Both armoured bodies with a spear: on guard, walking, drawn back, and the thrust landed in a lunge](../website/public/research/3d/spear.png)
+
+- **Both hands are on the shaft and both feet reach, at every moment of the four motions, on both bodies,** with no pull-in needed.
+- **First body:** the forward wrist bends at most 28 degrees and the rear one 48 to 51, and 72 in the thrust.
+- **Second body:** the forward wrist at most 41, the rear one 82 to 86 in all four. That is past what a wrist does.
+- **The files are valid.** The first body's is 17,997 triangles and 2.9 MB with sixteen motions. Godot 4.7.2 imports both with no errors and finds its 17 required bones. The viewer has the first body as "Two hands on a spear" and opens it on the spear walk.
+
+Three things went wrong on the way:
+
+- **The spear went on backwards.** `rig.py` takes an item's widest place for a sword's guard and puts that end in the hand. A spear's widest place is its head. With `GRIP_AT` set the item is now turned the other way.
+- **The butt went through the body.** The first guard had the rear hand 15 centimetres from the middle of the body. The shaft now angles across so that the rear hand is outside the hip.
+- **The rear wrist bent 100 degrees.** With its elbow down, as every arm here has had it, the rear forearm lies along the shaft. A motion can now say where the other arm's elbow goes (`elbow`), and the spear motions put it back and up, so the forearm hangs to the shaft as on a cue. That brought the first body's rear wrist to the figures above.
+
+Flaws:
+
+- **Stock motions fit a shaft poorly.** `offhand.py` was written for hands together. On the first body the rear hand is on the shaft through three of the twelve stock motions and up to 5 centimetres off in the rest; on the second it is up to 23 centimetres off (the roll). The four made motions are the ones to use.
+- **The silhouette match of the spear's mesh is 64%,** against about 90% for the swords. On a shape four pixels wide a pixel's slip costs a lot, and the mesh looks right in the hand, but it was not looked into further.
+- **The poses were set on the first body and not searched** as the greatsword's were, which is why the second body's rear wrist is where it is.
+- **The body faces forward throughout.** A spear stance is side-on; only the thrust turns the hips, by 13 degrees.
+- **Nothing keeps the shaft out of the cape or the hip.**
+
+Not checked: the model's picture in the site viewer (it loads, lists its motions and reports no errors), a staff with no head, the hands sliding on the shaft as they do in a real thrust, and the motions in play in an engine.
+
+**Verdict.** Keep for the first body. The grip, the left hand leading and the rear elbow all carried over with small changes. The second body needs its own poses or wrist limits before his spear is usable.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1465,7 +1506,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step. Still to do: a handle sized to the hand, root motion, a staff or spear, and motions made for a shield or a left-handed sword.
+- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart. Still to do: a handle sized to the hand, root motion, poses searched for each body, and motions made for a shield or a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
@@ -1563,6 +1604,7 @@ No public tool was found that takes several directional pixel sprites and return
 - The sword of step 47: 25 generations for the eight directions, and six and a half minutes of GPU time for its mesh.
 - The shield of step 49: 25 generations for the eight directions, and eight and a half minutes of GPU time for its mesh.
 - The greatsword of step 50: 25 generations for the eight directions, and a little over two minutes of GPU time for its mesh.
+- The spear of step 53: 50 generations for two tries at the eight directions, and about five minutes of GPU time for two meshes.
 - Nine meshes in step 27: about two minutes of GPU time each. Five paint runs in step 29: five to six minutes each.
 
 ## Running the scripts

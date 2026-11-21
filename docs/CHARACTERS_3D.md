@@ -282,6 +282,21 @@ wrist bends, how far the blade is off its edge and whether a hand fell short.
 To add a motion, add an entry to `MOTIONS` at the top of the script. An entry's
 `feet` list moves and turns the hips and steps a foot, as the attack does.
 
+A spear or staff has no guard and its hands go apart. Say where they go, give
+it to the hand that is forward, and ask for the spear motions:
+
+```bash
+HELD_LENGTH=1.1 GRIP_AT=0.45 GRIP_APART=0.2 ITEMS="Spear=<spear.glb>:LeftHand:two-handed" python3 research/scripts/rig.py <body-light.glb> <body.rig.json> - - <character.glb>
+python3 research/scripts/retarget.py <character.glb> <library.glb> <animated.glb>
+SET=spear python3 research/scripts/wield.py <animated.glb> <with-spear-motions.glb>
+```
+
+`GRIP_AT` is where the forward hand's middle is, as a share of the item's
+length from its butt, and `GRIP_APART` how far behind it the other hand is.
+That adds `Spear_Idle`, `Spear_Walk`, `Spear_Jog` and `Spear_Thrust`. The
+stock one-handed motions do not suit a shaft; `offhand.py` can still be run
+on them, but the rear hand is often off the shaft.
+
 Then animate as in step 8. `retarget.py` carries the library's thumb and
 middle finger over, so the hand is a fist in a walk and closed round the grip
 in a sword attack. A fist has no fingers to move and holds as drawn.
