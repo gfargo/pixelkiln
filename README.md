@@ -74,8 +74,9 @@ crisp small sprites. No model chooses artwork for you.
 
 ![PixelKiln candidate review UI](https://raw.githubusercontent.com/gfargo/pixelkiln/main/website/public/review-ui-showcase.jpg)
 
-Left/Right inspects alternatives, Enter or 1–9 selects, 0 leaves a row
-unresolved, and closing without **Apply selections** applies nothing
+Up/Down moves through the queue, Left/Right steps frames or alternatives, A
+accepts, F flags a frame, R rerolls under `gen`, and closing without **Apply**
+applies nothing
 ([CLI reference](https://pixelkiln.griffen.codes/docs/cli/pick)). [`pixelkiln gallery`](https://pixelkiln.griffen.codes/docs/cli/gallery)
 is its companion: every generation at integer zoom with its prompt, cost, hashes,
 lineage, and quality record, side-by-side comparison, and a `--workspace` view

@@ -56,6 +56,10 @@ const ReviewAssetSchema = z.object({
   status: z.enum(["pending", "applied"]),
   /** The chosen candidate index, or null while nothing is chosen. */
   chosen: z.number().int().nonnegative().nullable(),
+  /** Frames (or candidates) the reviewer flagged as bad on the pick page. */
+  flagged: z.array(z.number().int().nonnegative()).optional(),
+  /** Set aside on the pick page to decide later. */
+  later: z.boolean().optional(),
   updatedAt: z.string(),
 })
 
@@ -227,6 +231,8 @@ export async function cacheReviewCandidates(
     candidates,
     status: "pending",
     chosen: previous?.chosen ?? null,
+    ...(previous?.flagged?.length ? { flagged: previous.flagged } : {}),
+    ...(previous?.later ? { later: true } : {}),
     updatedAt: new Date().toISOString(),
   }
   // Reload before writing: another asset may have been recorded meanwhile.

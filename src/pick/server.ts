@@ -18,7 +18,7 @@ import {
   type ReviewAsset,
 } from "./candidates.ts"
 import type { JobState } from "../provider.ts"
-import { renderSheet, type RenderSheetOptions, type SheetGroup } from "./sheet.ts"
+import { renderSheet, renderableGroups, type RenderSheetOptions, type SheetGroup } from "./sheet.ts"
 import { serveReviewPage } from "./review-server.ts"
 
 export interface PickResult {
@@ -69,6 +69,12 @@ export interface PrepareReviewOptions {
    * since dropped is still reviewable and appliable from that cache.
    */
   lockPath?: string
+  /**
+   * First number for this session's media routes. A reroll prepares one asset
+   * again while the page is open, and its new frames need routes no earlier
+   * group used.
+   */
+  routeBase?: number
 }
 
 /**
@@ -204,12 +210,12 @@ export async function prepareReview(
           continue
         }
         frameSizes.push(cached.contentType === "image/png" ? pngSize(await readFile(cached.path).catch(() => Buffer.alloc(0))) : null)
-        const route = `${prefix}/review-frame/${encodeURIComponent(String(groups.length))}/${index}`
+        const route = `${prefix}/review-frame/${encodeURIComponent(String((opts.routeBase ?? 0) + groups.length))}/${index}`
         frameAssets.push([route, cached])
         frameUrls.push(route)
       }
       const sourceRoute = spec?.revision
-        ? `${prefix}/revision-source/${encodeURIComponent(String(groups.length))}`
+        ? `${prefix}/revision-source/${encodeURIComponent(String((opts.routeBase ?? 0) + groups.length))}`
         : null
       if (sourceRoute && spec?.revision) {
         reviewAssets.set(sourceRoute, {
@@ -219,7 +225,7 @@ export async function prepareReview(
       }
       const current = await currentArt(entry, spec)
       const currentRoute = current
-        ? `${prefix}/current-art/${encodeURIComponent(String(groups.length))}`
+        ? `${prefix}/current-art/${encodeURIComponent(String((opts.routeBase ?? 0) + groups.length))}`
         : null
       if (current && currentRoute) {
         reviewAssets.set(currentRoute, { path: current.path, contentType: current.contentType })
@@ -402,6 +408,179 @@ export async function prepareReview(
   }
 }
 
+/** What the page remembers about one asset between visits. */
+export interface PageAssetState {
+  chosen: number | null
+  flagged: number[]
+  later: boolean
+}
+
+export interface RerollStatus {
+  state: "running" | "failed"
+  error?: string
+}
+
+/**
+ * Resubmit one asset with `--force` and wait until it is back in review. It
+ * mutates and saves the lockfile itself; it throws when the asset cannot be
+ * regenerated (a budget refusal, a provider failure, a job that never
+ * reached review).
+ */
+export type RerollAsset = (key: string) => Promise<void>
+
+/**
+ * The live side of one review page: the groups on it (which change when an
+ * asset is rerolled), the media routes, the remembered selections, and the
+ * JSON routes the page calls.
+ */
+export interface ReviewHost {
+  groups(): SheetGroup[]
+  assets: Map<string, { path: string; contentType: string }>
+  html(): string
+  apply(body: unknown): Promise<PickResult>
+  handleRequest(method: string, url: string, body: unknown): Promise<{ status: number; body: unknown } | undefined>
+  /** Settles once every reroll started so far has finished (for tests and shutdown). */
+  idle(): Promise<void>
+}
+
+export function createReviewHost(
+  provider: Provider,
+  lock: Lock,
+  lockPath: string,
+  first: ReviewSession,
+  opts: { specs?: ResolvedSpec[]; onProgress?: (msg: string) => void; reroll?: RerollAsset } = {},
+): ReviewHost {
+  const log = opts.onProgress ?? (() => {})
+  const statePath = reviewStatePathFor(lockPath)
+  let groups = [...first.groups]
+  const owner = new Map(groups.map((g) => [g.key, first]))
+  const assets = new Map(first.assets)
+  // Selections for assets with no review-state record (nothing cached).
+  const memory = new Map<string, PageAssetState>()
+  const rerolls = new Map<string, RerollStatus>()
+  const running = new Set<Promise<void>>()
+  let nextRoute = groups.length
+
+  const readState = async (): Promise<Record<string, PageAssetState>> => {
+    const saved = (await loadReviewState(statePath)).assets
+    const out: Record<string, PageAssetState> = {}
+    for (const g of groups) {
+      const record = saved[g.key]
+      out[g.key] =
+        record && record.jobId === g.reviewObjectId && record.status === "pending"
+          ? { chosen: record.chosen, flagged: record.flagged ?? [], later: record.later ?? false }
+          : memory.get(g.key) ?? { chosen: null, flagged: [], later: false }
+    }
+    return out
+  }
+
+  const writeState = async (body: unknown) => {
+    const { key, chosen, flagged, later } = (body ?? {}) as Partial<PageAssetState> & { key?: unknown }
+    const group = groups.find((g) => g.key === key)
+    if (!group) throw new Error(`${String(key)} is not on this review page`)
+    const count = group.frameUrls.length
+    const index = (n: unknown) => typeof n === "number" && Number.isInteger(n) && n >= 0 && n < count
+    if (chosen !== null && chosen !== undefined && !index(chosen)) throw new Error(`chosen must be a candidate index below ${count}`)
+    if (flagged !== undefined && (!Array.isArray(flagged) || !flagged.every(index))) throw new Error("flagged must list frame indexes")
+    const next: PageAssetState = {
+      chosen: chosen ?? null,
+      flagged: [...new Set(flagged ?? [])].sort((a, b) => a - b),
+      later: later === true,
+    }
+    const saved = await updateReviewAsset(statePath, group.key, (asset) =>
+      asset.jobId !== group.reviewObjectId
+        ? asset
+        : {
+            ...asset,
+            chosen: next.chosen,
+            ...(next.flagged.length ? { flagged: next.flagged } : { flagged: undefined }),
+            ...(next.later ? { later: true } : { later: undefined }),
+          },
+    )
+    if (!saved || saved.jobId !== group.reviewObjectId) memory.set(group.key, next)
+    return next
+  }
+
+  const startReroll = (key: string) => {
+    if (!opts.reroll) throw new Error("this review page cannot reroll; run gen --force for the asset")
+    if (!groups.some((g) => g.key === key)) throw new Error(`${key} is not on this review page`)
+    if (rerolls.get(key)?.state === "running") return
+    rerolls.set(key, { state: "running" })
+    log(`  rerolling ${key} (--force)…`)
+    const job = (async () => {
+      await opts.reroll!(key)
+      const session = await prepareReview(provider, lock, {
+        keys: [key],
+        specs: opts.specs,
+        onProgress: log,
+        lockPath,
+        routeBase: nextRoute,
+      })
+      const fresh = session?.groups.find((g) => g.key === key)
+      if (!session || !fresh) throw new Error(`${key} did not come back into review`)
+      nextRoute += session.groups.length
+      for (const [route, asset] of session.assets) assets.set(route, asset)
+      groups = groups.map((g) => (g.key === key ? fresh : g))
+      owner.set(key, session)
+      memory.delete(key)
+      rerolls.delete(key)
+      log(`  ${key}: new candidate ready on the review page`)
+    })().catch((err) => {
+      const message = err instanceof Error ? err.message : String(err)
+      rerolls.set(key, { state: "failed", error: message })
+      log(`  reroll ${key} failed: ${message}`)
+    })
+    running.add(job)
+    void job.finally(() => running.delete(job))
+  }
+
+  return {
+    groups: () => groups,
+    assets,
+    html: () => renderSheet(groups, { sessionUrl: "/session", stateUrl: "/state", rerollUrl: opts.reroll ? "/reroll" : undefined }),
+    async apply(body) {
+      if ([...rerolls.values()].some((r) => r.state === "running")) {
+        throw new Error("a reroll is still running; apply once it is back")
+      }
+      const { selections } = (body ?? {}) as { selections?: { key: string; index: number }[] }
+      if (!Array.isArray(selections)) throw new Error("selections must be a list")
+      const bySession = new Map<ReviewSession, { key: string; index: number }[]>()
+      for (const selection of selections) {
+        const session = owner.get(selection?.key)
+        if (!session) continue
+        bySession.set(session, [...(bySession.get(session) ?? []), selection])
+      }
+      let selected = 0
+      for (const [session, picks] of bySession) selected += (await session.apply({ selections: picks }, lockPath)).selected
+      return { selected, skipped: groups.length - selected }
+    },
+    async handleRequest(method, url, body) {
+      if (method === "GET" && url === "/session") {
+        return {
+          status: 200,
+          body: {
+            groups: renderableGroups(groups),
+            state: await readState(),
+            rerolls: Object.fromEntries(rerolls),
+            canReroll: Boolean(opts.reroll),
+          },
+        }
+      }
+      if (method === "POST" && url === "/state") return { status: 200, body: await writeState(body) }
+      if (method === "POST" && url === "/reroll") {
+        const key = (body as { key?: unknown } | null)?.key
+        if (typeof key !== "string") throw new Error("key is required")
+        startReroll(key)
+        return { status: 202, body: { key, ...rerolls.get(key) } }
+      }
+      return undefined
+    },
+    async idle() {
+      while (running.size) await Promise.all([...running])
+    },
+  }
+}
+
 /**
  * Serves the contact sheet on localhost, waits for the selections to be
  * applied, then shuts down.
@@ -409,6 +588,8 @@ export async function prepareReview(
  * Selections are committed through the provider (`select-frames` promotes the chosen
  * candidate to its own object and drops the rest) and written to the lockfile
  * before the browser gets its response, so a closed tab never loses a choice.
+ * Choices made before apply are saved to the review state as they happen, so
+ * a refresh or a restarted run reopens the page where it was left.
  */
 export async function runPicker(
   provider: Provider,
@@ -430,6 +611,8 @@ export async function runPicker(
      * the rest. `gen --yes` sets this so an unattended run cannot block.
      */
     autoAcceptSingle?: boolean
+    /** Regenerates one asset from the page; without it the page offers no reroll. */
+    reroll?: RerollAsset
   } = {},
 ): Promise<PickResult> {
   const log = opts.onProgress ?? (() => {})
@@ -449,30 +632,34 @@ export async function runPicker(
       log(`  --yes: accepted ${res.selected} single-candidate asset(s)`)
       const rest = session.groups.filter((g) => !singles.includes(g)).map((g) => g.key)
       session = rest.length
-        ? await prepareReview(provider, lock, { onProgress: log, keys: rest, specs: opts.specs })
+        ? await prepareReview(provider, lock, { onProgress: log, keys: rest, specs: opts.specs, lockPath })
         : null
       if (!session) return { selected: autoSelected, skipped: 0 }
     }
   }
-  const live = session
-  const groups = live.groups
+  const host = createReviewHost(provider, lock, lockPath, session, {
+    specs: opts.specs,
+    onProgress: log,
+    reroll: opts.reroll,
+  })
 
   const served = await serveReviewPage<PickResult>({
-    html: live.html(),
+    html: host.html,
     port: opts.port,
     open: opts.open,
     onProgress: log,
-    assets: live.assets,
+    assets: host.assets,
+    handleRequest: host.handleRequest,
     onReady: (url) => {
-      const info = { url, keys: groups.map((group) => group.key) }
+      const info = { url, keys: host.groups().map((group) => group.key) }
       if (opts.onReady) {
         opts.onReady(info)
       } else {
-        log(`\n  ${groups.length} asset(s) awaiting selection: ${url}`)
+        log(`\n  ${info.keys.length} asset(s) awaiting selection: ${url}`)
         log(`  (leave this running; it exits once you apply)\n`)
       }
     },
-    handleApply: (body) => live.apply(body, lockPath),
+    handleApply: host.apply,
   })
   return { selected: served.selected + autoSelected, skipped: served.skipped }
 }

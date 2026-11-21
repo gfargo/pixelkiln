@@ -149,7 +149,7 @@ without applying discards no provider objects.
 ![PixelKiln local candidate review UI](../website/public/review-ui-showcase.jpg)
 
 The sheet is served only on localhost and selection remains human-controlled.
-Only rows submitted with **Apply selections** are recorded; unresolved rows can
+Only assets accepted when you press **Apply** are recorded; unresolved ones can
 be reopened later with [`pixelkiln pick`](CLI.md#pick).
 
 If a run stops between stages, rerun `plan`. It points `processing` work to

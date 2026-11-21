@@ -23,6 +23,7 @@
   },
   "scripts": {
     "pixelkiln": "tsx src/cli.ts",
+    "pick:fixture": "tsx scripts/pick-fixture.ts",
     "build": "tsup",
     "prepack": "npm run build",
     "release": "semantic-release",

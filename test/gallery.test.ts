@@ -1159,7 +1159,7 @@ describe("createGenerateHandlers", () => {
     expect(session).not.toBeNull()
     expect(session!.groups.map((group) => [group.key, group.frameUrls.length])).toEqual([["base/anvil", 4]])
     const html = session!.html({ applyUrl: `/review/${job.id}/apply`, embedded: true })
-    expect(html).toContain(`"url":"/review/${job.id}/apply"`)
+    expect(html).toContain(`"applyUrl":"/review/${job.id}/apply"`)
     expect(html).toContain('"embedded":true')
 
     const result = await handlers.applyReview(job.id, { selections: [{ key: "base/anvil", index: 2 }] })
@@ -1284,8 +1284,8 @@ describe("serveGallery with a session budget", () => {
       const sheet = await fetch(new URL(`/review/${job.id}`, server.url))
       expect(sheet.status).toBe(200)
       const sheetHtml = await sheet.text()
-      expect(sheetHtml).toContain("pick candidates")
-      expect(sheetHtml).toContain(`"url":"/review/${job.id}/apply"`)
+      expect(sheetHtml).toContain("Review candidates")
+      expect(sheetHtml).toContain(`"applyUrl":"/review/${job.id}/apply"`)
       expect(sheetHtml).toContain(`"X-Pixelkiln-Session":"${server.session}"`)
       expect((await fetch(new URL(`/review/${"0".repeat(16)}`, server.url))).status).toBe(404)
 

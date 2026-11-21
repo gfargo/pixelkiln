@@ -424,45 +424,38 @@ describe("contact sheet", () => {
     expect(html).toContain("https://example.test/0.png")
   })
 
-  it("supports keyboard review beyond the first nine candidates", () => {
+  it("binds every review action to a key", () => {
     const html = renderSheet([{ ...group, frameUrls: Array.from({ length: 16 }, (_, i) => `u${i}`) }])
-    expect(html).toContain("e.key === 'ArrowRight'")
-    expect(html).toContain("e.key === 'Enter'")
-    expect(html).toContain("activate(active + 1, frames)")
-    expect(html).toContain("Choose candidate ' + (i + 1)")
+    for (const key of ["'ArrowDown'", "'ArrowUp'", "'ArrowRight'", "'ArrowLeft'", "' '", "'a'", "'r'", "'x'", "'f'", "'l'", "'c'"]) {
+      expect(html).toContain(`k === ${key}`)
+    }
+    expect(html).toContain("(e.metaKey || e.ctrlKey) && e.key === 'Enter'")
   })
 
-  it("lets people pause frame-set playback and respects reduced motion", () => {
+  it("pauses playback for reduced motion and when the tab is hidden", () => {
     const html = renderSheet([{ ...group, mode: "frame-set" as const, fps: 12 }])
-    expect(html).toContain("Play preview")
-    expect(html).toContain("Pause preview")
     expect(html).toContain("prefers-reduced-motion: reduce")
-    expect(html).toContain("IntersectionObserver")
-    expect(html).toContain("document.hidden")
+    expect(html).toContain("let playing = !reduced")
+    expect(html).toContain("visibilitychange")
+    expect(html).toContain("Animated frame-set preview")
   })
 
-  it("builds candidate image URLs through DOM properties instead of HTML interpolation", () => {
+  it("loads each frame once and draws it to canvases at a whole-number scale", () => {
     const html = renderSheet([group])
-    expect(html).toContain("preview.src = url")
+    expect(html).toContain("const images = new Map()")
+    expect(html).toContain("Math.floor(s)")
+    expect(html).toContain("image-rendering:pixelated")
     expect(html).not.toContain("'<img src=\"' + url")
   })
 
-  it("preserves non-square aspect ratios and caps oversized previews", () => {
-    const html = renderSheet([{ ...group, width: 2048, height: 1024 }])
-    expect(html).toContain("Math.round(g.width * displayScale)")
-    expect(html).toContain("Math.round(g.height * displayScale)")
-    expect(html).toContain("Math.min(preferredScale, 560 / largestSide)")
-    expect(html).not.toContain("preview.width = g.size")
+  it("offers reroll and server persistence only when the host provides them", () => {
+    expect(renderSheet([group])).toContain('"rerollUrl":null')
+    const hosted = renderSheet([group], { sessionUrl: "/session", stateUrl: "/state", rerollUrl: "/reroll" })
+    expect(hosted).toContain('"rerollUrl":"/reroll"')
+    expect(hosted).toContain('"stateUrl":"/state"')
   })
 
-  it("constrains the review surface on ultrawide displays", () => {
-    const html = renderSheet([group])
-    expect(html).toContain("--content: 1440px")
-    expect(html).toContain('<div class="bar">')
-    expect(html).toContain("width:min(100%,var(--content))")
-  })
-
-  it("shows the immutable revision source beside generated candidates", () => {
+  it("carries the revision source as a comparison view", () => {
     const html = renderSheet([{
       ...group,
       revision: {
@@ -475,8 +468,7 @@ describe("contact sheet", () => {
     }])
     expect(html).toContain("/revision-source/0")
     expect(html).toContain("rough-tower")
-    expect(html).toContain("g.revision.mode.toUpperCase()")
-    expect(html).toContain("grid-template-columns:minmax(180px,280px)")
+    expect(html).toContain("'Revision source'")
   })
 
   // The prompt is arbitrary author text and reaches both innerHTML and a <script>.
