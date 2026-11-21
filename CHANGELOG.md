@@ -1,3 +1,16 @@
+# [0.131.0](https://github.com/gfargo/pixelkiln/compare/v0.130.0...v0.131.0) (2026-11-21)
+
+
+### Bug Fixes
+
+* cache review candidates locally so apply survives an expired provider job ([#369](https://github.com/gfargo/pixelkiln/issues/369)) ([b1527b9](https://github.com/gfargo/pixelkiln/commit/b1527b98f584d1b6678728e84d99557dcb5f690d))
+* gen --yes accepts single-candidate assets instead of blocking on the pick page ([#373](https://github.com/gfargo/pixelkiln/issues/373)) ([bc6b38f](https://github.com/gfargo/pixelkiln/commit/bc6b38f79ab3953852504eb3392ce92d31e165a3)), closes [#370](https://github.com/gfargo/pixelkiln/issues/370)
+
+
+### Features
+
+* **site:** the spear's rear elbow out at the side, research step 54 ([17ef9b1](https://github.com/gfargo/pixelkiln/commit/17ef9b1a9e7f06d1da6bbd9df7ec4f385d3b83c9))
+
 # [0.130.0](https://github.com/gfargo/pixelkiln/compare/v0.129.0...v0.130.0) (2026-11-21)
 
 
