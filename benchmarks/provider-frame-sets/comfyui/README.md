@@ -328,10 +328,55 @@ The LoRA fixes identity and the prop hand, and costs pose. The training frames
 came from lanes whose poses barely moved, so the LoRA learned the stance along
 with the character.
 
+## Run 5: a looser LoRA, November 2026
+
+Does a weaker LoRA, or an earlier checkpoint, let the pose move the figure
+again? Five lanes, 160 frames at a median of 31.6 s. The comparisons are in
+[`results/run5/`](results/run5); each sheet's rows are run 4's L (LoRA at 0.8),
+then the five new lanes.
+
+![The knight: L-0.8, L-0.6, L-0.5, LI-0.6, LE2, LE4](results/run5/compare-knight.png)
+
+![The goblin, the same rows](results/run5/compare-goblin.png)
+
+GIFs: [knight idle](results/run5/compare-knight-idle.gif),
+[walk](results/run5/compare-knight-walk.gif),
+[attack](results/run5/compare-knight-attack.gif);
+[goblin idle](results/run5/compare-goblin-idle.gif),
+[walk](results/run5/compare-goblin-walk.gif),
+[attack](results/run5/compare-goblin-attack.gif).
+
+- **L-0.6 and L-0.5, the final LoRA at a lower strength:** the same character
+  as at 0.8, and nearly the same poses. The knight raises the sword in a few
+  more walk frames at 0.5, which reads as the attack pose leaking into the
+  walk, not as more stride. The goblin's face starts to drift in the attack
+  frames.
+- **LI-0.6, plus IP-Adapter at 0.6:** the stillest walk, a cloudy background,
+  and the most artifacts (a loose blade in the knight's attack, a stray pole
+  beside the goblin).
+- **LE2 and LE4, the checkpoints after epoch 2 and 4 of 6, at 0.8:** identity
+  holds as well as the final LoRA. LE4 gives the knight the most lean and a
+  trailing cape in the walk. LE2 adds a second, dagger-like blade in two
+  attack frames.
+
+None of the five changes the motion much. Every row has a still idle, small
+leg changes in the walk and a clear attack. Run 1's frames, which used no LoRA,
+also moved the legs only a little in the walk, so the LoRA is not the only
+cause: the pose ControlNet at 0.75 does not force a full stride either.
+Strength and early checkpoints are not the lever; the next tries are a stronger
+pose ControlNet (0.9 to 1.0) with LE4, and a LoRA retrained on frames in
+varied poses.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, run 5.** Lowering the character LoRA to 0.5 or 0.6, or
+  using its epoch 2 or 4 checkpoint, keeps the identity and barely changes the
+  motion. Adding IP-Adapter on top makes it worse. The epoch 4 checkpoint is
+  the best of the set by a small margin. The walk was already stiff without a
+  LoRA, so the pose ControlNet strength is the next thing to raise.
 
 - **November 2026, run 4.** A per-character LoRA trained on about 24 matching
   frames holds the face, outfit and prop hand across every frame and motion,

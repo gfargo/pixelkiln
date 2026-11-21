@@ -258,8 +258,9 @@ fixes on SDXL base with Pixel Art XL:
 | Sheet plus that LoRA and IP-Adapter at 0.6 | holds, props drift | holds | loosely |
 
 A character LoRA is the only strategy that kept the prop in the same hand, but
-at 0.8 it also overrides the pose. Train it on frames with varied poses, and
-try a lower strength before relying on it for motion. The benchmark's
+at 0.8 it also overrides the pose. A lower strength (0.5 to 0.6) or an earlier
+epoch checkpoint did not free the motion in the benchmark, so train it on
+frames with varied poses. The benchmark's
 `train-lora.py` trains one with kohya sd-scripts in about 25 minutes on a
 12 GB card, waiting for a shared ComfyUI to be idle first.
 
