@@ -1,3 +1,10 @@
+# [0.130.0](https://github.com/gfargo/pixelkiln/compare/v0.129.0...v0.130.0) (2026-11-21)
+
+
+### Features
+
+* **site:** a spear with the hands apart, research step 53 ([6c9fb3b](https://github.com/gfargo/pixelkiln/commit/6c9fb3b54d97c0cd90c9e41ba36097841ab21511))
+
 # [0.129.0](https://github.com/gfargo/pixelkiln/compare/v0.128.0...v0.129.0) (2026-11-21)
 
 
