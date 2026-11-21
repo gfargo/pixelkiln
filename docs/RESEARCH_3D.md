@@ -55,6 +55,7 @@ Last updated 17 November 2026.
 | 45 | Bones for the cape, and a simulation that swings them | Our scripts | Twelve cape bones in three chains; the cape streams in a sprint, hangs in an idle and falls in a roll, baked into every animation | Keep. It works in any engine with no physics set up. |
 | 46 | Put the first body's items on a second, heavier body | PixelLab, our scripts | The same four items fit a much broader man, after reshaping each to his bones and thickness | Keep. Scaling by ratio failed; adding the difference in thickness works. |
 | 47 | Finger bones, and a sword in the hand | PixelLab, Hunyuan3D-2mv, Quaternius's library, our scripts | A thumb and one finger chain a hand, found on the mesh; the library's fists and sword grip carry over; a generated sword sits in the closed right hand | Keep for 256 pixel sources. A 64 pixel hand and a hand drawn as a fist get no finger bones. |
+| 48 | A grip for a hand drawn as a fist | Our scripts | The heavier second body holds the same sword: the fist and its wrist are found on the mesh, the grip runs through the fist. No new generations | Keep. A fist holds but cannot open, and which way it faces is assumed, not measured. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1241,6 +1242,40 @@ Not checked: the left hand holding something, two-handed grips, a shield, the he
 
 **Verdict.** Keep, for the painted path. A thumb and one chain is what the mesh shows, and it is enough to hold a sword through a stock attack.
 
+## 48. A sword in a hand drawn as a fist
+
+**Question.** Step 47 left the second body without a sword: his hands are closed fists, with no thumb to find and so no finger bones. Does a fist need finger bones to hold something?
+
+**Setup.**
+
+- *What a fist is on the mesh.* Along the arm, the second body's cross-section shrinks towards the wrist, grows into a ball 13.8 sprite pixels across and 10 thick, and ends. The wrist joint estimated on the sprites sat in the middle of that ball.
+- *Finding it.* When `rig.py` finds no thumb, it now walks back from the end of the hand through slices one pixel thick: to the thickest slice, then on to the narrowest before the forearm widens again. That narrowest slice is the wrist. A ball at least 1.4 times the wrist's cross-section counts as a fist; anything less gets nothing, as before.
+- *The grip.* The middle of the fist, with the handle running through it from back to front and the blade leaving to the front. That is the thumb's side of a fist held out palm down, which is how the first body's open hands were drawn and what the animation library expects. The fist's wider side is used for the handle's line where it runs front to back (it does on this body, within 12 degrees); a fist too round to have one takes straight ahead.
+- *The guard.* A handle half way through a fist 13.8 pixels across would bury the guard, so a held item in a fist is slid along its handle until the guard clears the fist's side.
+- *Bones.* `LeftGrip` and `RightGrip` only. There are no finger bones, and the fist is skinned to the hand bone as drawn.
+- *Nothing new was generated.* The sword, the body and the refitted items are those of steps 46 and 47.
+
+**Result.** The second body at rest, in the library's sword idle, and in its sword attack:
+
+![The heavy armoured man with a sword through his right fist, at rest, on guard and lunging](../website/public/research/3d/fist-sword.png)
+
+- **Both fists were found:** 10.5 and 9.5 sprite pixels long and 13.8 and 13.7 across. The wrists moved 7.5 and 6.7 pixels back along the arm, out of the fist, so the hand now bends at the wrist and not through the knuckles.
+- **He holds the sword** through the same eleven library animations, pommel behind the fist and guard in front of it. The handle is inside the fist's mesh, so its thickness does not show.
+- **The first body is unchanged:** its hands measure 9.9 and 10.8 pixels as in step 47.
+- **One file of 2.6 MB,** 17,994 triangles, valid, 35 bones (21 for the body, 2 grips, 12 for the cape). Godot 4.7.2 imports it with no errors and finds every bone its humanoid profile requires.
+- **The 64 pixel body's hands count as fists too:** 7.5 pixels long and 6.8 across. Its bare body holds the sword through the sword idle, though the blade points lower than on the other two. The site's 64 pixel model was not rebuilt.
+
+Flaws:
+
+- **A fist cannot open.** He cannot let go, and with the sword taken off he keeps his fists, which is at least how he was drawn.
+- **Which way the fist faces is assumed.** Palm down, thumb to the front. A fist drawn thumb up would get the handle the wrong way through.
+- **The handle passes through solid mesh.** Nothing shows from outside, but a cut-away or a transparent body would show it.
+- **The sword is small on him.** It is half his height, like the first body's, and he is short and very broad.
+
+Not checked: the left fist holding something, the item fit at the moved wrists beyond the views above, and the sword on the dressed 64 pixel model.
+
+**Verdict.** Keep. A hand that is already closed needs a wrist and a grip point, not finger bones.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1275,7 +1310,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Step 47 puts a sword in the right hand. Still to do: a hand drawn as a fist, the left hand, a shield, two hands on one grip, and a handle sized to the hand.
+- **Held items.** Step 47 puts a sword in the right hand and step 48 in a hand drawn as a fist. Still to do: the left hand, a shield, two hands on one grip, and a handle sized to the hand.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
