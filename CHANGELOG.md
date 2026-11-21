@@ -1,3 +1,10 @@
+# [0.128.0](https://github.com/gfargo/pixelkiln/compare/v0.127.0...v0.128.0) (2026-11-21)
+
+
+### Features
+
+* **site:** motions made for two hands, research step 51 ([4b157dc](https://github.com/gfargo/pixelkiln/commit/4b157dc35b4ca4da6228f1863f7f4543c871f1e7))
+
 # [0.127.0](https://github.com/gfargo/pixelkiln/compare/v0.126.0...v0.127.0) (2026-11-21)
 
 
