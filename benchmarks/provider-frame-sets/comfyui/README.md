@@ -427,10 +427,51 @@ ControlNet strength: SDXL's OpenPose ControlNet draws a smaller stride than the
 map shows, so the map has to overshoot. The best setting so far is the epoch 4
 LoRA at 0.8 with pose 0.75 on the exaggerated maps.
 
+## Run 8: a LoRA retrained on the wide walk, November 2026
+
+Each character LoRA was trained again with run 7's best wide-walk frames added
+to its set (`train-lora.py --set w`, sets in [`lora/`](lora) as
+`pixelkiln-lora-<character>-w/`): all 8 knight frames from LE4-W plus frames 0
+and 4 from LE4-W-P1.0, and 9 goblin frames, leaving out the ones with the stray
+claw shape. The new frames are 832x1024 crops, so the sword and cape fit, and
+kohya buckets by size without upscaling, so both crop sizes train at their own
+pixel scale. Captions add "walking with a long stride".
+
+| Character | Images | Steps | Time | Final loss |
+|---|---|---|---|---|
+| knight | 33 | 1980 | 41:58 | 0.069 |
+| goblin | 34 | 2040 | 42:59 | 0.073 |
+
+**Renders.** Lanes LW-W (the final LoRA) and LWE4-W (its epoch 4 save), LoRA
+0.8, pose 0.75, wide walk maps, idle and attack on their usual maps: 64 frames
+at a median of 31.6 s. Results in [`results/run8`](results/run8), with
+`compare-<character>-walk-vs-run7.png` setting the walk beside run 7's LE4-W.
+
+- **Walk:** the stride holds, about as wide as run 7. The goblin is cleaner:
+  the stray foot pieces in frames 0 and 1 are mostly gone, with one small claw
+  left behind the back foot in frame 0. The knight's walk is about the same as
+  run 7's, with sharper, more contrasted plate armour (a small style shift
+  from the new frames).
+- **Idle:** unchanged; the added walk frames did not leak a stride into it.
+- **Attack:** still stiff. The knight keeps the sword low and forward and the
+  goblin keeps the club upright in all four frames, the same as runs 4 to 7.
+  The attack maps were never exaggerated, so this is the next thing to fix.
+- **LW-W against LWE4-W:** hard to tell apart.
+
+Retraining on the wide walk tidies the goblin's feet and keeps the stride,
+without hurting idle. It does not change the attack: the motion comes from the
+maps, and the attack maps still undershoot.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, run 8.** Retraining the character LoRA with the approved
+  wide-walk frames added keeps the full stride and cleans up the goblin's feet,
+  without changing idle. The attack is still stiff, so its pose maps need the
+  same overshoot as the walk. Training took about 42 minutes per character
+  with 33 to 34 images at mixed sizes.
 
 - **November 2026, run 7.** Exaggerated walk maps (stride 330 px instead of
   190, knee lift doubled, a bob) give a real stride with the character LoRA

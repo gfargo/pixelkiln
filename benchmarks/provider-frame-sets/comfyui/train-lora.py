@@ -2,7 +2,7 @@
 
   python train-lora.py --character knight --data H:/pixelkiln-comfy/lora/data \
       --out H:/pixelkiln-comfy/lora/out --loras F:/ComfyUI-Shared/models/loras/pixelkiln \
-      [--wait-idle 600] [--max-steps 0] [--host http://127.0.0.1:8188]
+      [--set w] [--wait-idle 600] [--max-steps 0] [--host http://127.0.0.1:8188]
 
 Steps:
   1. Wait until ComfyUI's queue is empty and the GPU is under 10% busy for --wait-idle
@@ -17,6 +17,9 @@ Steps:
 
 --data holds lora/pixelkiln-lora-<character>/ from this benchmark (512x1024 crops of frames
 that match the keyframe, each with a caption starting with the trigger word pxk<character>).
+--set w adds lora/pixelkiln-lora-<character>-w/ (run 7's wide-walk frames, 832x1024 crops)
+to the base set and names the LoRA pxk-<character>-w. Kohya buckets by size without
+upscaling, so the 512x1024 and 832x1024 crops both train at their own pixel scale.
 Python standard library only; run it with the kohya venv's interpreter.
 """
 import argparse
@@ -41,8 +44,12 @@ train_data_dir = "{img}"
 output_dir = "{out}"
 output_name = "{name}"
 save_model_as = "safetensors"
-resolution = "512,1024"
-enable_bucket = false
+resolution = "832,1024"
+enable_bucket = true
+bucket_no_upscale = true
+min_bucket_reso = 256
+max_bucket_reso = 1024
+bucket_reso_steps = 64
 caption_extension = ".txt"
 network_module = "networks.lora"
 network_dim = 16
@@ -101,13 +108,17 @@ def main():
     p.add_argument("--loras", required=True)
     p.add_argument("--host", default="http://127.0.0.1:8188")
     p.add_argument("--wait-idle", type=int, default=600)
+    p.add_argument("--set", default="", help="an extra training set to add, e.g. w for pixelkiln-lora-<character>-w")
     p.add_argument("--max-steps", type=int, default=0, help="stop early, for a speed check")
     a = p.parse_args()
-    name = f"pxk-{a.character}" + (f"-smoke{a.max_steps}" if a.max_steps else "")
+    name = f"pxk-{a.character}" + (f"-{a.set}" if a.set else "") + (f"-smoke{a.max_steps}" if a.max_steps else "")
     trigger = f"pxk{a.character}"
     img = os.path.join(a.out, name, "img")
     shutil.rmtree(img, ignore_errors=True)
     shutil.copytree(os.path.join(a.data, f"pixelkiln-lora-{a.character}"), os.path.join(img, f"{REPEATS}_{trigger}"))
+    if a.set:
+        shutil.copytree(os.path.join(a.data, f"pixelkiln-lora-{a.character}-{a.set}"), os.path.join(img, f"{REPEATS}_{trigger}"),
+                        dirs_exist_ok=True)
     config = os.path.join(a.out, name, "train.toml")
     with open(config, "w") as fh:
         fh.write(CONFIG.format(checkpoint=CHECKPOINT, style=STYLE_LORA, img=img.replace("\\", "/"),
@@ -132,6 +143,10 @@ def main():
     final = os.path.join(a.out, name, f"{name}.safetensors")
     shutil.copy(final, os.path.join(a.loras, f"{name}.safetensors"))
     print("copied", os.path.join(a.loras, f"{name}.safetensors"), flush=True)
+    for epoch in range(2, EPOCHS, 2):  # kohya's mid-run saves, as <name>-e<epoch> for run 5's lanes
+        saved = os.path.join(a.out, name, f"{name}-{epoch:06d}.safetensors")
+        if os.path.exists(saved):
+            shutil.copy(saved, os.path.join(a.loras, f"{name}-e{epoch}.safetensors"))
 
 
 if __name__ == "__main__":

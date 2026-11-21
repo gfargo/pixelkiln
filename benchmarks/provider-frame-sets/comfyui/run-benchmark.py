@@ -41,6 +41,9 @@ Lanes, each over every motion in poses/ (idle 4, walk 8, attack 4) for each char
   LE4-W      LE4, LE4-P1.0 and L-0.5 on the exaggerated walk maps in poses/walk-wide/
   LE4-W-P1.0 (longer stride, higher knee, more arm swing, a bob); saved under walk/.
   L-0.5-W
+  LW-W       run 8: the LoRA retrained with run 7's best wide-walk frames added (train-lora.py
+  LWE4-W     --set w), final and epoch 4, on the wide walk maps; LW-W also renders idle and
+             attack on their usual maps.
   K-0.55   keyframe: every frame starts from the character's keyframe (--keyframes
   K-0.70   <dir>/<character>.png) encoded as the latent, redrawn at denoise 0.55 or 0.70 with
            the pose ControlNet at 0.90, so colours, props and proportions carry over.
@@ -90,14 +93,18 @@ LORA_LANES = {"L": {}, "LI": {"ip": True}, "LSI": {"ip": True, "sheet": True},
               # run 7: the exaggerated walk maps (poses/walk-wide/); render with --motions walk
               "LE4-W": {"epoch": 4, "poses": {"walk": "walk-wide"}},
               "LE4-W-P1.0": {"epoch": 4, "pose": 1.0, "poses": {"walk": "walk-wide"}},
-              "L-0.5-W": {"strength": 0.5, "poses": {"walk": "walk-wide"}}}
+              "L-0.5-W": {"strength": 0.5, "poses": {"walk": "walk-wide"}},
+              # run 8: LoRAs retrained with run 7's wide-walk frames added (train-lora.py --set w)
+              "LW-W": {"set": "w", "poses": {"walk": "walk-wide"}},
+              "LWE4-W": {"set": "w", "epoch": 4, "poses": {"walk": "walk-wide"}}}
 CHAR_LORA = "pixelkiln\\pxk-{character}{suffix}.safetensors"
 CHAR_LORA_STRENGTH = 0.8
 
 
 def lane_lora(lane, character):
     spec = LORA_LANES[lane]
-    name = CHAR_LORA.format(character=character, suffix=f"-e{spec['epoch']}" if "epoch" in spec else "")
+    suffix = (f"-{spec['set']}" if "set" in spec else "") + (f"-e{spec['epoch']}" if "epoch" in spec else "")
+    name = CHAR_LORA.format(character=character, suffix=suffix)
     return name, spec.get("strength", CHAR_LORA_STRENGTH)
 HIRES_SCALE = 1.5
 HIRES_DENOISE = 0.5
