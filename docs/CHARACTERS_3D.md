@@ -294,6 +294,10 @@ SET=spear python3 research/scripts/wield.py <animated.glb> <with-spear-motions.g
 `GRIP_AT` is where the forward hand's middle is, as a share of the item's
 length from its butt, and `GRIP_APART` how far behind it the other hand is.
 That adds `Spear_Idle`, `Spear_Walk`, `Spear_Jog` and `Spear_Thrust`. The
+idle is a side-on stance: the hips turned 45 degrees so the forward shoulder
+leads, the forward foot ahead, the other behind and turned out, and the head
+looking along the shaft. The walk and jog turn the hips less (28 and 14
+degrees), and the thrust squares them up as the point goes out. The
 stock one-handed motions do not suit a shaft; `offhand.py` can still be run
 on them, but the rear hand is often off the shaft.
 

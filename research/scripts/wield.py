@@ -26,8 +26,13 @@ The animations, each named after what it is for (SET=great, the default):
   Great_Attack   a cut from over the leading shoulder down to the front, with a step: the hips wind up, the other
                  foot steps out as the cut lands, and the trunk leans into it
 
-With SET=spear, for a shaft held with the hands apart (rig.py's GRIP_AT): Spear_Idle, Spear_Walk and Spear_Jog carry
-it level at the hip, point ahead, and Spear_Thrust draws it back and drives it out with a step of the leading foot.
+With SET=spear, for a shaft held with the hands apart (rig.py's GRIP_AT): Spear_Idle is a side-on stance, the hips
+turned 45 degrees, the leading foot ahead, the other behind and turned out, the head looking along the shaft.
+Spear_Walk and Spear_Jog carry the spear level with the hips turned less (28 and 14 degrees), and Spear_Thrust draws
+it back and drives it out with a step of the leading foot, the hips squaring up behind it.
+
+A motion's footwork may also put the other foot back (a seventh number in each row of its feet), turn that foot out
+(rear_foot, degrees) and keep the head looking where the base had it while the hips turn (look).
 
 Environment:
   SET     which motions to make: great or spear (default great)
@@ -83,28 +88,37 @@ GREAT = [
               (0.84, 0.08, 0.04, -4, 0.14, 0.06),    # and comes back
               (1.00, 0.00, 0.00, 0, 0.00, 0.00)]},
 ]
-# A spear or staff: the leading hand is the one nearer the point, the other a way behind it on the shaft. On guard the
-# butt is at the other hand's hip and the point ahead; the thrust draws back, then drives the point out with a step of
-# the leading foot.
-LEVEL = ((-0.10, -0.50, 0.68), (0.50, 0.15, 0.85))
+# A spear or staff: the leading hand is the one nearer the point, the other a way behind it on the shaft. The stance is
+# side-on: the hips turned 45 degrees so the leading shoulder is forward, the leading foot ahead and the other behind and
+# turned out, the head looking over the leading shoulder along the shaft. The grip is written from the chest, so each
+# pose's handle is turned towards the leading side by as much as the hips are turned away, and the point stays ahead.
+# A walk is turned less and a jog less again. The thrust draws back, then squares the hips and drives the point out
+# with a step of the leading foot.
+STANCE = ((0.50, -0.42, 0.50), (0.77, 0.05, 0.64))
+STRIDE = ((0.25, -0.48, 0.62), (0.57, 0.10, 0.82))
+LEVEL = ((0.05, -0.50, 0.68), (0.42, 0.15, 0.90))
 REAR = (0.6, 0.4, 0.3)  # the rear arm's elbow goes out to its side, a little up and forward, so its forearm comes down to the shaft
+STOOD = (0.00, 0.06, -45, 0.22, 0.00, 0.18)  # hips forward, down, turned; the leading foot ahead, its lift; the other foot back
 SPEAR = [
-    {'name': 'Spear_Idle', 'base': 0, 'length': None, 'sway': 0.012, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]},
-    {'name': 'Spear_Walk', 'base': 1, 'length': None, 'sway': 0.0, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]},
-    {'name': 'Spear_Jog', 'base': 2, 'length': None, 'sway': 0.0, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]},
-    {'name': 'Spear_Thrust', 'base': 0, 'length': 1.2, 'sway': 0.0, 'step': 'lead', 'elbow': REAR,
-     'moments': [(0.00, *LEVEL, 0),
-                 (0.30, (-0.12, -0.52, 0.50), (0.50, 0.12, 0.86), -4),   # drawn back
-                 (0.46, (0.00, -0.38, 0.95), (0.42, 0.05, 0.90), 16),   # driven out
-                 (0.58, (0.00, -0.38, 0.95), (0.42, 0.04, 0.90), 17),
-                 (1.00, *LEVEL, 0)],
-     'feet': [(0.00, 0.00, 0.00, 0, 0.00, 0.00),
-              (0.30, -0.05, 0.03, -10, 0.00, 0.00),
-              (0.38, 0.04, 0.03, -4, 0.14, 0.06),
-              (0.46, 0.24, 0.14, 12, 0.48, 0.00),
-              (0.58, 0.24, 0.15, 13, 0.48, 0.00),
-              (0.80, 0.08, 0.04, 3, 0.14, 0.06),
-              (1.00, 0.00, 0.00, 0, 0.00, 0.00)]},
+    {'name': 'Spear_Idle', 'base': 0, 'length': None, 'sway': 0.012, 'elbow': REAR, 'look': True, 'step': 'lead', 'rear_foot': 40,
+     'moments': [(0, *STANCE, 0), (1, *STANCE, 0)], 'feet': [(0, *STOOD), (1, *STOOD)]},
+    {'name': 'Spear_Walk', 'base': 1, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True,
+     'moments': [(0, *STRIDE, 0), (1, *STRIDE, 0)], 'feet': [(0, 0, 0.05, -28, 0, 0), (1, 0, 0.05, -28, 0, 0)]},
+    {'name': 'Spear_Jog', 'base': 2, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True,
+     'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)], 'feet': [(0, 0, 0.05, -14, 0, 0), (1, 0, 0.05, -14, 0, 0)]},
+    {'name': 'Spear_Thrust', 'base': 0, 'length': 1.2, 'sway': 0.0, 'step': 'lead', 'elbow': REAR, 'look': True, 'rear_foot': 40,
+     'moments': [(0.00, *STANCE, 0),
+                 (0.30, (0.44, -0.45, 0.36), (0.80, 0.04, 0.60), -3),   # drawn back
+                 (0.46, (0.20, -0.36, 0.90), (0.56, 0.02, 0.83), 14),   # driven out
+                 (0.58, (0.20, -0.36, 0.90), (0.56, 0.01, 0.83), 15),
+                 (1.00, *STANCE, 0)],
+     'feet': [(0.00, *STOOD),
+              (0.30, -0.05, 0.08, -52, 0.22, 0.00, 0.18),
+              (0.38, 0.04, 0.08, -40, 0.34, 0.06, 0.18),
+              (0.46, 0.22, 0.16, -30, 0.60, 0.00, 0.18),
+              (0.58, 0.22, 0.17, -29, 0.60, 0.00, 0.18),
+              (0.80, 0.08, 0.09, -38, 0.34, 0.06, 0.18),
+              (1.00, *STOOD)]},
 ]
 SETS = {'great': GREAT, 'spear': SPEAR}
 if env('SET', 'great') not in SETS: sys.exit(f"SET is one of {sorted(SETS)}")
@@ -282,7 +296,8 @@ for motion in MOTIONS:
         # solved again from hip to ankle. The feet keep the ground and the facing the base gave them.
         hips = named['Hips']; turn0, place0 = world(len(moments), moved)
         ahead = turn0[hips][0] @ np.array([0, 0, 1.0]); ahead[1] = 0; ahead = unit(ahead); sign = 1.0 if lead == 'Left' else -1.0
-        track = np.array([curve([m[0] for m in motion['feet']], [m[1:] for m in motion['feet']], s) for s in shares])  # forward, down, turn, step, lift
+        rows = [tuple(m) + (0.0,) * (7 - len(m)) for m in motion['feet']]
+        track = np.array([curve([m[0] for m in rows], [m[1:] for m in rows], s) for s in shares])  # forward, down, turn, step, lift, the other foot back
         above = turn0[parent[hips]] if hips in parent else np.repeat(np.eye(3)[None], len(moments), 0)
         shift = ahead[None] * (track[:, 0:1] * LEG) - np.array([0, 1.0, 0])[None] * (track[:, 1:2] * LEG)
         moved[(hips, 'translation')] = moved.get((hips, 'translation'), np.repeat(rest(hips, 'translation', [0, 0, 0])[None], len(moments), 0)) + np.einsum('kji,kj->ki', above, shift)
@@ -290,17 +305,29 @@ for motion in MOTIONS:
         x, y, z, w = was.T; s_, c_ = np.sin(half), np.cos(half)  # (0, s, 0, c) * was: a turn about the upright, before what the base does
         moved[(hips, 'rotation')] = np.stack([c_ * x + s_ * z, c_ * y + s_ * w, c_ * z - s_ * x, c_ * w - s_ * y], 1)
         turn, place = world(len(moments), moved)
+        toe = np.radians(motion.get('rear_foot', 0)) * -sign; splay = np.array([[np.cos(toe), 0, np.sin(toe)], [0, 1, 0], [-np.sin(toe), 0, np.cos(toe)]])
         for side in (lead, other):
             leg = LEGS[side]; u, f, h = leg['upper'], leg['fore'], leg['foot']; keys = {u: [], f: [], h: []}
             for k in range(len(moments)):
-                ankle = place0[h][k] + (ahead * track[k, 3] * LEG + np.array([0, track[k, 4] * LEG, 0]) if side == (lead if motion.get('step') == 'lead' else other) else 0)
+                stepping = side == (lead if motion.get('step') == 'lead' else other)
+                ankle = place0[h][k] + (ahead * track[k, 3] * LEG + np.array([0, track[k, 4] * LEG, 0]) if stepping else -ahead * track[k, 5] * LEG)
+                facing = turn0[h][k] if stepping or not motion.get('rear_foot') else splay @ turn0[h][k]
                 root = place[u][k]; knee_was = place0[f][k] - place0[u][k] + ahead * 0.3 * LEG
                 knee, reached, miss = bend(root, ankle, knee_was, leg['a'], leg['b'], 0.999); foot_short = max(foot_short, miss)
                 as_was = turn[u][k]; new_upper = between(as_was @ leg['one'], knee - root) @ as_was
                 new_fore = new_upper @ (as_was.T @ turn[f][k]); new_fore = between(new_fore @ leg['two'], reached - knee) @ new_fore
-                for node, local in ((u, turn[parent[u]][k].T @ new_upper), (f, new_upper.T @ new_fore), (h, new_fore.T @ turn0[h][k])):
+                for node, local in ((u, turn[parent[u]][k].T @ new_upper), (f, new_upper.T @ new_fore), (h, new_fore.T @ facing)):
                     q = np.array(quaternion(local)); keys[node].append(-q if keys[node] and q @ keys[node][-1] < 0 else q)
             for node, values in keys.items(): moved[(node, 'rotation')] = np.array(values)
+        if motion.get('look') and 'Head' in named:
+            # The head keeps looking where the base had it, over the leading shoulder: the neck takes half of the hips' turn back and the head the rest.
+            head = named['Head']; neck = parent[head]; turn, place = world(len(moments), moved); back = -np.radians(track[:, 2]) * sign
+            yaw = lambda a: np.stack([np.stack([np.cos(a), 0 * a, np.sin(a)], -1), np.stack([0 * a, 1 + 0 * a, 0 * a], -1), np.stack([-np.sin(a), 0 * a, np.cos(a)], -1)], -2)
+            new_neck = yaw(back / 2) @ turn[neck]; new_head = yaw(back) @ turn[head]
+            for node, local in ((neck, np.swapaxes(turn[parent[neck]], 1, 2) @ new_neck), (head, np.swapaxes(new_neck, 1, 2) @ new_head)):
+                values = []
+                for m in local: q = np.array(quaternion(m)); values.append(-q if values and q @ values[-1] < 0 else q)
+                moved[(node, 'rotation')] = np.array(values)
     turn, place = world(len(moments), moved)
     short = {lead: [], other: []}; bends = {lead: [], other: []}; flats = []; pulls = []; last = {lead: None, other: None}; before = None
     for k in list(range(len(moments))) * 2:  # twice round, keeping the second: a loop then starts with the roll it ends on
