@@ -24,7 +24,12 @@ Environment:
            "held" ("Sword=sword.glb:RightHand:held") marks a rigid thing the hand holds: it is turned and placed in
            the grip of that hand, whatever frame its file is in, and follows the hand alone. In a hand drawn as
            a closed fist it runs through the fist, with its guard clear of the fist's side.
+           "strapped" ("Shield=shield.glb:LeftLowerArm:strapped") marks a rigid, flat thing carried on a forearm.
+           Its file must have it upright with its face to the front, as its sprites show it. Its back goes to the
+           back of the forearm, its top towards the elbow, and it follows the forearm alone.
   HELD_LENGTH  how long a held item is made, as a share of the body's height (default 0.5)
+  STRAPPED_LENGTH  how tall a strapped item is made, as a share of the body's height (default 0.36)
+  STRAPPED_TURN    degrees to turn a strapped item about its face, for one carried across the arm (default 0)
   FINGERS  0 leaves out the finger bones. By default a hand whose thumb can be found on the mesh gets a thumb
            of three bones, one chain of three for the fingers, and <Side>Grip, which marks where a grip goes.
            A hand drawn as a closed fist gets <Side>Grip alone, in the middle of the fist.
@@ -290,7 +295,28 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         if "fist" in grasp:  # the grip runs through a fist, so the guard has to clear the fist's side
             pw = pw + grasp["across"] * max(0, grasp["fist"] + 0.5 - (guard - run.min()) / 2 * size)
         prelief = pnormals = None
-    if os.environ.get("ALIGN", "1") == "1" and fit_kind not in ("loose", "held"):
+    strapped = fit_kind == "strapped"
+    if strapped:
+        # A flat thing carried on the forearm (a shield). Its file has it as it was drawn: upright, its face to the
+        # viewer. Its thinnest direction is its face's normal, and that goes to the back of the forearm, which is
+        # the side away from the palm (straight up on a body drawn arms out, where no palm was found). Its top goes
+        # towards the elbow, so that it is upright when the arm hangs. Its back sits just off the arm's surface.
+        if not allowed.endswith("LowerArm"): sys.exit(f"{label}: strapped items go on LeftLowerArm or RightLowerArm")
+        b = names.index(allowed); side = allowed.replace("LowerArm", ""); elbow, wrist = head_pos[b], tail_pos[b]
+        line = (wrist - elbow) / np.linalg.norm(wrist - elbow)
+        out_way = -HANDS[side]["palm"] if side in HANDS else np.array([0, 0, 1.0]); out_way = out_way - line * (out_way @ line); out_way /= np.linalg.norm(out_way)
+        centre = (pw.max(0) + pw.min(0)) / 2; axes = np.linalg.svd(pw - pw.mean(0), full_matrices=False)[2]
+        face = axes[2] * (-1 if axes[2][1] > 0 else 1); up = np.array([0, 0, 1.0]) - face * face[2]; up /= np.linalg.norm(up)
+        tall = (pw - centre) @ up; size = float(os.environ.get("STRAPPED_LENGTH", "0.36")) * (world[:, 2].max() - world[:, 2].min()) / (tall.max() - tall.min())
+        spin = math.radians(float(os.environ.get("STRAPPED_TURN", "0"))); top = -line * math.cos(spin) + np.cross(out_way, -line) * math.sin(spin)
+        turn = np.stack([np.cross(top, out_way), top, out_way], 1) @ np.stack([np.cross(up, face), up, face], 1).T
+        pw = (pw - centre) * size @ turn.T; middle = np.linalg.norm(pw - np.outer(pw @ out_way, out_way), axis=1) < 0.3 * (tall.max() - tall.min()) * size
+        at = elbow + (wrist - elbow) * 0.6; along_arm = (world - elbow) @ line
+        arm = world[(along_arm > 0) & (along_arm < np.linalg.norm(wrist - elbow)) & (np.linalg.norm(world - elbow - np.outer(along_arm, line), axis=1) < 0.6 * np.linalg.norm(wrist - elbow))]
+        pw = pw + at + out_way * (((arm - at) @ out_way).max() + 0.4 - (pw[middle] @ out_way).min())
+        prelief = pnormals = None
+    rigid = held or strapped
+    if os.environ.get("ALIGN", "1") == "1" and fit_kind not in ("loose", "held", "strapped"):
         # The item came from a mesh fitted to the sprites on its own, and can sit a pixel or two off the body
         # along an arm, where the outline barely changes. Slide it until it is the same distance from the skin
         # all the way round: least squares on the distance of every vertex near the body.
@@ -301,7 +327,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
             step = np.linalg.lstsq(np.hstack([n[near], -np.ones((near.sum(), 1))]), -d[near], rcond=None)[0][:3]
             step = np.clip(step, -1, 1); pw = pw + step; moved += step
         print(f"{label}: slid {np.round(moved, 2).tolist()} sprite pixels to sit on the body", file=sys.stderr)
-    if FIT > 0 and not held:
+    if FIT > 0 and not rigid:
         # An item is drawn a pixel outside the body and meshed on its own, so some of it lands inside the
         # body's mesh. Drop the triangles buried deep in the body that face inward, which nobody can see, and move what is
         # left out to just above the skin. FIT is how far above, in sprite pixels; 0 leaves the item alone.
@@ -323,7 +349,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         if len(banned) == len(names): sys.exit(f"{label}: none of {allowed} is a bone; bones are {names}")
         pd[:, banned] = 1e9
     pj, pwt = skin(pd)
-    if held: pj = np.zeros((len(pw), 4), np.uint8); pj[:, 0] = names.index(allowed); pwt = np.zeros((len(pw), 4), np.float32); pwt[:, 0] = 1
+    if rigid: pj = np.zeros((len(pw), 4), np.uint8); pj[:, 0] = names.index(allowed); pwt = np.zeros((len(pw), 4), np.float32); pwt[:, 0] = 1
     if label in CHAINS:
         # A hanging item gets bones of its own: columns of links running down it, hung from the bone the item
         # may follow. The top of the item (a collar) stays on the body; below that each vertex follows the two
@@ -359,7 +385,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
     # Which of the body's vertices this item covers: those with the item's surface within COVER sprite pixels.
     # A loose item (a cape) covers nothing, since it swings away from what is behind it.
     covers = np.zeros(len(world), bool)
-    if fit_kind not in ("loose", "held"):
+    if fit_kind not in ("loose", "held", "strapped"):
         cloud = trimesh.sample.sample_surface(trimesh.Trimesh(pw, pf, process=False), 300000, seed=5)[0]
         covers = cKDTree(cloud).query(world)[0] < float(os.environ.get("COVER", "1.2"))
     ITEMS.append({"name": label, "covers": covers, "world": pw, "faces": pf, "uv": puv, "joints": pj, "weights": pwt, "texture": ptex, "relief": prelief, "given_normals": pnormals})

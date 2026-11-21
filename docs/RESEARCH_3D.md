@@ -56,6 +56,7 @@ Last updated 17 November 2026.
 | 46 | Put the first body's items on a second, heavier body | PixelLab, our scripts | The same four items fit a much broader man, after reshaping each to his bones and thickness | Keep. Scaling by ratio failed; adding the difference in thickness works. |
 | 47 | Finger bones, and a sword in the hand | PixelLab, Hunyuan3D-2mv, Quaternius's library, our scripts | A thumb and one finger chain a hand, found on the mesh; the library's fists and sword grip carry over; a generated sword sits in the closed right hand | Keep for 256 pixel sources. A 64 pixel hand and a hand drawn as a fist get no finger bones. |
 | 48 | A grip for a hand drawn as a fist | Our scripts | The heavier second body holds the same sword: the fist and its wrist are found on the mesh, the grip runs through the fist. No new generations | Keep. A fist holds but cannot open, and which way it faces is assumed, not measured. |
+| 49 | The left hand, and a shield | PixelLab, Hunyuan3D-2mv, our scripts | The sword sits in either body's left hand with no change; a generated shield is strapped to the left forearm of both and stands upright through the library's motions | Keep. The shield is carried, not used: the library has no shield or left-handed motions. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1276,6 +1277,43 @@ Not checked: the left fist holding something, the item fit at the moved wrists b
 
 **Verdict.** Keep. A hand that is already closed needs a wrist and a grip point, not finger bones.
 
+## 49. The left hand, and a shield
+
+**Question.** Steps 47 and 48 put a sword in the right hand of both bodies. Does the same work on the left, and can the other arm carry a shield?
+
+**Setup.**
+
+- *The left hand.* Nothing new: `Sword=sword.glb:LeftHand:held` on each bare body.
+- *The shield.* One PixelLab object, a heater shield upright with its face to the viewer in eight directions at 128 pixels, for 25 generations. Its front, left, back and right went to Hunyuan3D-2mv (eight and a half minutes), the mesh was coloured from the eight sprites and thinned from 29,999 triangles to 1,500.
+
+![A black and gold heater shield in eight directions, its wooden back with two straps](../website/public/research/3d/shield-sprites.png)
+
+- *Carrying it.* A shield is not gripped like a sword: it is strapped to the forearm. A new kind of item in `rig.py`, `Shield=shield.glb:LeftLowerArm:strapped`. The item's thinnest direction is its face's normal. That goes to the back of the forearm, the side away from the palm the hand measurement found. Its top goes towards the elbow, so it is upright when the arm hangs. Its back is set 0.4 sprite pixels off the arm's surface, 60% of the way from elbow to wrist. It is made 0.36 of the body's height tall and follows the forearm bone alone.
+- *Which way is its front.* Unlike the sword, a shield has a front and a top that its shape does not give away, so the file has to keep the frame of its sprites: upright, face to the viewer. `texture.py` fits the mesh to the sprites and leaves it in that frame.
+
+**Result.**
+
+- **The left hand holds the sword** on both bodies, the first with its finger bones and the second in its fist, with no change to the script:
+
+![Each bare body with the sword in its left hand](../website/public/research/3d/left-hand-sword.png)
+
+- **The shield stands upright on the left forearm** of both, face outward, through the sword idle, the walk and the sword attack (first body above, second below):
+
+![Both armoured bodies with sword and shield: on guard, walking from the front and the side, and lunging](../website/public/research/3d/sword-and-shield.png)
+
+- **Each file is valid:** 19,497 triangles and 2.8 MB for the first body, 19,494 and 2.7 MB for the second, with the shield as a sixth separate item. Godot 4.7.2 imports both with no errors. The viewer lists the shield among the things worn on both.
+- **The shield's paint is cleaner than the sword's.** Its broad flat faces take the sprites' colours well; the silhouette matches the sprites 92%.
+
+Flaws:
+
+- **The shield is carried, not used.** The library has no block or shield motions, so the left arm does what it does with nothing on it.
+- **A sword in the left hand cuts through the thigh in the idle,** for the same reason: every sword motion in the library is right-handed.
+- **The left hand does not grip anything.** The shield hangs from the forearm, and the straps on its back are paint.
+
+Not checked: whether the shield passes through the cape or the body in motions that bring the arm across (nothing keeps a rigid item out of other meshes), a shield on the right arm, a round shield or a buckler held in the fist, the shield on the 64 pixel body, and both items in Godot's own renderer.
+
+**Verdict.** Keep. Two kinds of rigid item now cover the common cases: `held` for what a hand closes round, `strapped` for what an arm carries.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1310,7 +1348,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Step 47 puts a sword in the right hand and step 48 in a hand drawn as a fist. Still to do: the left hand, a shield, two hands on one grip, and a handle sized to the hand.
+- **Held items.** Steps 47 to 49 put a sword in either hand, open or drawn as a fist, and a shield on a forearm. Still to do: two hands on one grip, a handle sized to the hand, and motions that use a shield or a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
@@ -1406,6 +1444,7 @@ No public tool was found that takes several directional pixel sprites and return
 - A-poses in step 21: 20 generations for the two states, 0.25 for importing the knight, 1.6 for sixteen joint estimates.
 - The body and its five layers in step 26: 52.8 generations (2 for the body, 10 for each layer, 0.8 for the joints), read from the balance before and after.
 - The sword of step 47: 25 generations for the eight directions, and six and a half minutes of GPU time for its mesh.
+- The shield of step 49: 25 generations for the eight directions, and eight and a half minutes of GPU time for its mesh.
 - Nine meshes in step 27: about two minutes of GPU time each. Five paint runs in step 29: five to six minutes each.
 
 ## Running the scripts

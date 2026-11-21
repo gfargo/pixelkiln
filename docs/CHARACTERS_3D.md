@@ -50,7 +50,7 @@ wrong one.
 | GPU time, body and four items | About 45 minutes | About two hours |
 | Build | About four heads tall | About seven heads tall |
 | Surface | The sprite's colours, soft up close; meant to be drawn small with a pixel filter | Plates, trim, faces and cloth painted in |
-| The example file | 9,300 triangles, 1.0 MB | 18,000 triangles with a sword, 2.6 MB |
+| The example file | 9,300 triangles, 1.0 MB | 19,500 triangles with a sword and shield, 2.8 MB |
 
 **Take the pixel path** when the game is pixel art, the camera is far, and
 cost matters. Its limits are known:
@@ -234,6 +234,22 @@ frame does not matter. It needs a hand with a grip point: one with finger
 bones, or a closed fist. In a fist the grip runs through the fist from front
 to back, blade to the front, and the guard is kept clear of the fist's side.
 
+Either hand works: name `LeftHand` for the left.
+
+A shield, or anything flat carried on an arm, is `strapped` to a forearm:
+
+```bash
+ITEMS="Shield=<shield.glb>:LeftLowerArm:strapped;Sword=<sword.glb>:RightHand:held" python3 research/scripts/rig.py <body-light.glb> <body.rig.json> - - <character.glb>
+```
+
+Make it the same way as the sword, drawn upright with its face to the viewer;
+unlike a held thing, its file has to keep that frame, which `texture.py`
+gives it. Its back goes to the back of the forearm, its top towards the
+elbow, so it stands upright when the arm hangs, and it is made
+`STRAPPED_LENGTH` of the body's height tall (default 0.36). `STRAPPED_TURN=90`
+lays it across the arm. It follows the forearm alone and needs no hand
+bones.
+
 Then animate as in step 8. `retarget.py` carries the library's thumb and
 middle finger over, so the hand is a fist in a walk and closed round the grip
 in a sword attack. A fist has no fingers to move and holds as drawn.
@@ -241,7 +257,7 @@ in a sword attack. A fist has no fingers to move and holds as drawn.
 ## In a game engine
 
 The example file was imported into Godot 4.7.2 with no errors: one skeleton of
-47 bones (21 for the body, 14 for the hands, 12 for the cape), ten skinned meshes, twelve animations, and each body piece's
+47 bones (21 for the body, 14 for the hands, 12 for the cape), eleven skinned meshes, twelve animations, and each body piece's
 `hiddenBy` list in its node metadata. Godot drops a trailing `_Loop` from
 animation names, so the library's `Walk_Loop` arrives as `Walk`.
 
@@ -272,9 +288,10 @@ swing. See step 31 of the research note.
   redraw's lighting is painted in.
 - **Separate fingers, eyes and a jaw** in the skeleton. The four fingers
   move as one, and only on the painted path.
-- **Held items beyond one sword in the right hand.** The left hand, a shield,
-  and two hands on one grip are untried, and the grip is not sized to the
-  hand. A fist cannot open, so it cannot let go or change its hold.
+- **Held items beyond a sword and a shield.** Two hands on one grip and a
+  shield gripped in the fist are untried, the grip is not sized to the hand,
+  and the animation library has no left-handed or shield motions, so a shield
+  is carried, not used. A fist cannot open, so it cannot let go or change its hold.
 - **Many bodies.** The items have been worn by two: the one they were cut on
   and one much heavier man, after `refit.py` reshaped them for him. Other
   heights and builds are untried.
