@@ -1,3 +1,10 @@
+# [0.125.0](https://github.com/gfargo/pixelkiln/compare/v0.124.0...v0.125.0) (2026-11-21)
+
+
+### Features
+
+* **site:** a sword in a hand drawn as a fist, research step 48 ([af9a96a](https://github.com/gfargo/pixelkiln/commit/af9a96a14977c97f353d1a91dd5db10c4b7f3b0b))
+
 # [0.124.0](https://github.com/gfargo/pixelkiln/compare/v0.123.0...v0.124.0) (2026-11-20)
 
 
