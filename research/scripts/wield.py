@@ -87,7 +87,7 @@ GREAT = [
 # butt is at the other hand's hip and the point ahead; the thrust draws back, then drives the point out with a step of
 # the leading foot.
 LEVEL = ((-0.10, -0.50, 0.68), (0.50, 0.15, 0.85))
-REAR = (0.5, 0.4, -1.0)  # the rear arm's elbow goes back and up, so its forearm hangs to the shaft as on a cue
+REAR = (0.6, 0.4, 0.3)  # the rear arm's elbow goes out to its side, a little up and forward, so its forearm comes down to the shaft
 SPEAR = [
     {'name': 'Spear_Idle', 'base': 0, 'length': None, 'sway': 0.012, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]},
     {'name': 'Spear_Walk', 'base': 1, 'length': None, 'sway': 0.0, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]},
