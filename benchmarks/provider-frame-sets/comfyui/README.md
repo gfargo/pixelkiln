@@ -367,10 +367,44 @@ Strength and early checkpoints are not the lever; the next tries are a stronger
 pose ControlNet (0.9 to 1.0) with LE4, and a LoRA retrained on frames in
 varied poses.
 
+## Run 6: a stronger pose ControlNet, November 2026
+
+Three lanes with the pose ControlNet raised from 0.75: the epoch 4 LoRA at
+pose 0.9 and 1.0, and the final LoRA at 0.5 with pose 1.0. 96 frames at a
+median of 31.5 s. The comparisons are in [`results/run6/`](results/run6); each
+sheet's rows are run 1's B-0.90 (no LoRA, pose 0.9), run 5's LE4, then the
+three new lanes.
+
+![The knight: B-0.90, LE4, LE4-P0.9, LE4-P1.0, L-0.5-P1.0](results/run6/compare-knight.png)
+
+![The goblin, the same rows](results/run6/compare-goblin.png)
+
+- **The knight** raises his sword upright in two or three walk frames in every
+  new lane, and L-0.5-P1.0 opens the stride a little in frames 7 and 12. The
+  legs still never reach a full step. Pose 0.9 and 1.0 look the same.
+- **The goblin** is unchanged from LE4 in all three lanes: same face, same club
+  hand, small foot and tail shifts in the walk, a clear crouch in the attack.
+- Identity and the prop hand hold in every lane, with no new artifacts.
+
+A stronger pose control does not give a full stride. Run 1's B-0.90 row, with
+no LoRA at all, also keeps the walk's legs close together, so the limit sits
+before the LoRA: the OpenPose ControlNet on this SDXL stack follows arm and
+torso changes but barely the leg spread in these walk maps. The next things to
+try are a pose set with wider leg spread (an exaggerated walk), a depth or
+lineart control from a posed reference instead of OpenPose, or a LoRA retrained
+on frames that already show a full stride.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, run 6.** Raising the pose ControlNet to 0.9 or 1.0 with
+  the character LoRA changes almost nothing: the knight gains a raised sword
+  in a few walk frames, the goblin nothing. Without a LoRA the walk was just as
+  narrow, so the stiff walk comes from the OpenPose control and the walk maps,
+  not the LoRA. Settings: LE4 (epoch 4 checkpoint, LoRA 0.8, pose 0.75) is the
+  best identity setting found so far.
 
 - **November 2026, run 5.** Lowering the character LoRA to 0.5 or 0.6, or
   using its epoch 2 or 4 checkpoint, keeps the identity and barely changes the
