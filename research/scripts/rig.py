@@ -24,6 +24,9 @@ Environment:
            "held" ("Sword=sword.glb:RightHand:held") marks a rigid thing the hand holds: it is turned and placed in
            the grip of that hand, whatever frame its file is in, and follows the hand alone. In a hand drawn as
            a closed fist it runs through the fist, with its guard clear of the fist's side.
+           "two-handed" ("Greatsword=greatsword.glb:RightHand:two-handed") is a held thing with room for the
+           other hand: the hand named sits under the guard, and a bone <Side>Grip2 marks where the other goes.
+           offhand.py then brings the other hand there in every animation.
            "strapped" ("Shield=shield.glb:LeftLowerArm:strapped") marks a rigid, flat thing carried on a forearm.
            Its file must have it upright with its face to the front, as its sprites show it. Its back goes to the
            back of the forearm, its top towards the elbow, and it follows the forearm alone.
@@ -256,6 +259,8 @@ joints_attr, weights_attr = skin(dist)
 # the nearest point inside the body, plus the gap to it, and may only follow the bones its slot names: a cape
 # hangs from the spine however close it comes to a leg.
 ITEMS = []
+in_file = lambda v: [float(v[0]), float(v[2]), float(-v[1])]  # a direction in the sprites' frame, as the file has it
+NODE_EXTRAS = {side + "Grip": {"across": in_file(found["across"]), "palm": in_file(found["palm"])} for side, found in HANDS.items()}  # what offhand.py needs to turn a hand onto a grip
 EXTRA = []  # bones added for hanging items: (name, parent index, joint, end), in the sprites' frame
 # CHAINS="Cape=3x4" gives the item called Cape three columns of four links to hang from.
 CHAINS = {label: tuple(int(n) for n in shape.split("x")) for label, shape in (entry.split("=") for entry in filter(None, os.environ.get("CHAINS", "").split(";")))}
@@ -277,7 +282,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
     pf = np.asarray(part.faces); puv = np.asarray(part.visual.uv, np.float64)
     prelief = sized(getattr(part.visual.material, "normalTexture", None), "TEX_NORMAL")
     pnormals = np.asarray(part.vertex_normals, np.float32) if prelief is not None else None
-    held = fit_kind == "held"
+    held = fit_kind in ("held", "two-handed")
     if held:
         # A held thing (a sword) is rigid and comes in a frame of its own. Its longest line is laid across the
         # palm, leaving on the thumb's side; its flat faces the way the fingers point; the grip, half way between
@@ -294,6 +299,20 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         pw = (pw - centre - axes[0] * (run.min() + guard) / 2) * size @ turn.T + grasp["grip"]
         if "fist" in grasp:  # the grip runs through a fist, so the guard has to clear the fist's side
             pw = pw + grasp["across"] * max(0, grasp["fist"] + 0.5 - (guard - run.min()) / 2 * size)
+        if fit_kind == "two-handed":
+            # Two hands on one grip. The hand named leads and sits just under the guard; the other goes under it,
+            # towards the pommel. Where the other hand goes is written into the file as a bone, <Side>Grip2, on the
+            # leading hand: it has no skin, and offhand.py brings the other hand to it in every animation.
+            other = "Left" if side == "Right" else "Right"
+            if other not in HANDS: sys.exit(f"{label}: the {other.lower()} hand has no grip to put on it")
+            breadth = lambda h: 2 * h["fist"] if "fist" in h else 0.7 * h["length"]  # how much of a handle a hand covers
+            first, second = breadth(grasp), breadth(HANDS[other]); handle = (guard - run.min()) * size
+            down = min(first / 2 + 0.5 + first / 2 + second / 2 + 0.3, max(first / 2 + 0.5, 0.9 * handle - second / 2))  # the second hand's middle, below the guard
+            pw = pw + grasp["across"] * (first / 2 + 0.5 - ((pw - grasp["grip"]) @ grasp["across"]).max() + (run.max() - guard) * size)
+            below = grasp["grip"] - grasp["across"] * (down - first / 2 - 0.5)
+            EXTRA.append((side + "Grip2", names.index(allowed), below, below + grasp["across"]))
+            NODE_EXTRAS[side + "Grip2"] = {"hand": other + "Hand", "handle": in_file(grasp["across"])}
+            print(f"{label}: a handle {handle:.1f} sprite pixels long for hands {first:.1f} and {second:.1f} across" + ("" if handle >= first + second + 1.5 else ", too short for both, so they overlap"), file=sys.stderr)
         prelief = pnormals = None
     strapped = fit_kind == "strapped"
     if strapped:
@@ -541,7 +560,7 @@ for part in PARTS:
         part["image"] = PARTS[part["image_of"]]["image"]; part["relief_image"] = PARTS[part["image_of"]].get("relief_image"); continue
     part["image"] = picture(part["texture"])
     part["relief_image"] = picture(part["relief"]) if part.get("relief") is not None else None
-nodes = [{"name": n, "translation": (jpos[i] - (jpos[parent[i]] if parent[i] >= 0 else 0)).tolist()} for i, n in enumerate(names)]
+nodes = [{"name": n, "translation": (jpos[i] - (jpos[parent[i]] if parent[i] >= 0 else 0)).tolist(), **({"extras": NODE_EXTRAS[n]} if n in NODE_EXTRAS else {})} for i, n in enumerate(names)]
 for i, p in enumerate(parent):
     if p >= 0: nodes[p].setdefault("children", []).append(i)
 for i, part in enumerate(PARTS): nodes.append({"name": part["name"], "mesh": i, "skin": 0, **({"extras": part["extras"]} if part.get("extras") else {})})
