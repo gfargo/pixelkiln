@@ -31,8 +31,12 @@ turned 45 degrees, the leading foot ahead, the other behind and turned out, the 
 Spear_Walk and Spear_Jog carry the spear level with the hips turned less (28 and 14 degrees), and Spear_Thrust draws
 it back and drives it out with a step of the leading foot, the hips squaring up behind it.
 
-A motion's footwork may also put the other foot back (a seventh number in each row of its feet), turn that foot out
-(rear_foot, degrees) and keep the head looking where the base had it while the hips turn (look).
+Spear_Advance is that stance moving forward in place: the leading foot steps, the other follows half a beat later, and
+neither passes the other, so the leading foot stays ahead. Played backwards it is a retreat. The report gives how far
+the ground goes by in one loop (groundMetresALoop), for the game to move the character by.
+
+A motion's footwork may also put the other foot back and lift it (a seventh and eighth number in each row of its feet),
+turn that foot out (rear_foot, degrees) and keep the head looking where the base had it while the hips turn (look).
 
 Environment:
   SET     which motions to make: great or spear (default great)
@@ -99,9 +103,31 @@ STRIDE = ((0.25, -0.48, 0.62), (0.57, 0.10, 0.82))
 LEVEL = ((0.05, -0.50, 0.68), (0.42, 0.15, 0.90))
 REAR = (0.6, 0.4, 0.3)  # the rear arm's elbow goes out to its side, a little up and forward, so its forearm comes down to the shaft
 STOOD = (0.00, 0.06, -45, 0.22, 0.00, 0.18)  # hips forward, down, turned; the leading foot ahead, its lift; the other foot back
+ADVANCE = {'stride': 0.26, 'swing': 0.32, 'lift': 0.07, 'seconds': 0.9, 'dip': 0.10}
+
+
+def shuffle(stride, swing, lift, dip, cycles, stood):
+    """Feet for an advance in place, as rows of footwork. A foot on the ground goes back under the body at a steady pace,
+    stride leg lengths in all; for a swing's share of each cycle it is lifted and brought forward again, leaving and
+    landing at the ground's pace. The other foot does the same half a cycle later. The hips sink as the feet part."""
+    def foot(p):
+        p %= 1.0
+        if p >= swing: return stride / 2 - stride * (p - swing) / (1 - swing), 0.0
+        u = p / swing; m = -stride * swing / (1 - swing)
+        x = (2 * u ** 3 - 3 * u ** 2 + 1) * -stride / 2 + (u ** 3 - 2 * u ** 2 + u) * m + (-2 * u ** 3 + 3 * u ** 2) * stride / 2 + (u ** 3 - u ** 2) * m
+        return x, lift * np.sin(np.pi * u) ** 2
+    rows = []
+    for n in range(cycles * 24 + 1):
+        a, up_a = foot(n / 24); b, up_b = foot(n / 24 + 0.5)
+        rows.append((n / (cycles * 24), stood[0], stood[1] + dip * max(a - b, 0), stood[2], stood[3] + a, up_a, stood[5] - b, up_b))
+    return rows
+
+
 SPEAR = [
     {'name': 'Spear_Idle', 'base': 0, 'length': None, 'sway': 0.012, 'elbow': REAR, 'look': True, 'step': 'lead', 'rear_foot': 40,
      'moments': [(0, *STANCE, 0), (1, *STANCE, 0)], 'feet': [(0, *STOOD), (1, *STOOD)]},
+    {'name': 'Spear_Advance', 'base': 0, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True, 'step': 'lead', 'rear_foot': 40,
+     'moments': [(0, *STANCE, 0), (1, *STANCE, 0)], 'advance': ADVANCE},
     {'name': 'Spear_Walk', 'base': 1, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True,
      'moments': [(0, *STRIDE, 0), (1, *STRIDE, 0)], 'feet': [(0, 0, 0.05, -28, 0, 0), (1, 0, 0.05, -28, 0, 0)]},
     {'name': 'Spear_Jog', 'base': 2, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True,
@@ -291,13 +317,17 @@ for motion in MOTIONS:
         x, y, z, w = was.T; s, c = np.sin(leans / 2), np.cos(leans / 2)  # was * (s, 0, 0, c)
         moved[(spine, 'rotation')] = np.stack([w * s + x * c, y * c + z * s, z * c - y * s, w * c - x * s], 1)
     turns = {ARMS[s][part]: [] for s in ARMS for part in ('upper', 'fore', 'hand')}; foot_short = 0.0
+    ground = None
+    if motion.get('advance'):
+        a = motion['advance']; cycles = max(1, int(round(length / a['seconds'])))
+        motion['feet'] = shuffle(a['stride'], a['swing'], a['lift'], a['dip'], cycles, STOOD); ground = cycles * a['stride'] / (1 - a['swing']) * LEG
     if motion.get('feet'):
         # Footwork: the hips move and turn, the foot on the other hand's side steps out and back, and both legs are
         # solved again from hip to ankle. The feet keep the ground and the facing the base gave them.
         hips = named['Hips']; turn0, place0 = world(len(moments), moved)
         ahead = turn0[hips][0] @ np.array([0, 0, 1.0]); ahead[1] = 0; ahead = unit(ahead); sign = 1.0 if lead == 'Left' else -1.0
-        rows = [tuple(m) + (0.0,) * (7 - len(m)) for m in motion['feet']]
-        track = np.array([curve([m[0] for m in rows], [m[1:] for m in rows], s) for s in shares])  # forward, down, turn, step, lift, the other foot back
+        rows = [tuple(m) + (0.0,) * (8 - len(m)) for m in motion['feet']]
+        track = np.array([curve([m[0] for m in rows], [m[1:] for m in rows], s) for s in shares])  # forward, down, turn, step, lift, the other foot back, its lift
         above = turn0[parent[hips]] if hips in parent else np.repeat(np.eye(3)[None], len(moments), 0)
         shift = ahead[None] * (track[:, 0:1] * LEG) - np.array([0, 1.0, 0])[None] * (track[:, 1:2] * LEG)
         moved[(hips, 'translation')] = moved.get((hips, 'translation'), np.repeat(rest(hips, 'translation', [0, 0, 0])[None], len(moments), 0)) + np.einsum('kji,kj->ki', above, shift)
@@ -310,7 +340,7 @@ for motion in MOTIONS:
             leg = LEGS[side]; u, f, h = leg['upper'], leg['fore'], leg['foot']; keys = {u: [], f: [], h: []}
             for k in range(len(moments)):
                 stepping = side == (lead if motion.get('step') == 'lead' else other)
-                ankle = place0[h][k] + (ahead * track[k, 3] * LEG + np.array([0, track[k, 4] * LEG, 0]) if stepping else -ahead * track[k, 5] * LEG)
+                ankle = place0[h][k] + (ahead * track[k, 3] * LEG + np.array([0, track[k, 4] * LEG, 0]) if stepping else -ahead * track[k, 5] * LEG + np.array([0, track[k, 6] * LEG, 0]))
                 facing = turn0[h][k] if stepping or not motion.get('rear_foot') else splay @ turn0[h][k]
                 root = place[u][k]; knee_was = place0[f][k] - place0[u][k] + ahead * 0.3 * LEG
                 knee, reached, miss = bend(root, ankle, knee_was, leg['a'], leg['b'], 0.999); foot_short = max(foot_short, miss)
@@ -389,7 +419,7 @@ for motion in MOTIONS:
     report.append({'name': motion['name'], 'from': base_name, 'seconds': round(float(length), 2),
                    'furthestShortMetres': round(float(max(max(short[lead]), max(short[other]))), 3),
                    'gripPulledMetres': round(float(max(pulls)), 3), 'footShortMetres': round(float(foot_short), 3), 'wristBendDegrees': {lead: round(float(np.degrees(max(bends[lead])))), other: round(float(np.degrees(max(bends[other]))))},
-                   'wristWorstAtShare': round(float(shares[int(np.argmax(np.maximum(bends[lead], bends[other])))]), 2), 'bladeOffItsEdgeDegrees': {'typical': round(float(np.median(flats))), 'most': round(float(max(flats)))}, 'firstToLastDegrees': round(seam)})
+                   'wristWorstAtShare': round(float(shares[int(np.argmax(np.maximum(bends[lead], bends[other])))]), 2), 'bladeOffItsEdgeDegrees': {'typical': round(float(np.median(flats))), 'most': round(float(max(flats)))}, 'firstToLastDegrees': round(seam), **({'groundMetresALoop': round(float(ground), 3)} if ground else {})})
 
 doc['buffers'][0]['byteLength'] = len(blob)
 text = json.dumps(doc, separators=(',', ':')).encode(); text += b' ' * ((4 - len(text) % 4) % 4)
