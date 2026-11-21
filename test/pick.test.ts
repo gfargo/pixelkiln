@@ -67,6 +67,43 @@ describe("runPicker", () => {
     expect(res).toEqual({ selected: 0, skipped: 0 })
   })
 
+  it("autoAcceptSingle applies a lone candidate without serving a page", async () => {
+    // FakeProvider completes a one-candidate job outright, so force a review.
+    class OneCandidate extends FakeProvider {
+      override async poll(jobId: string): Promise<JobState> {
+        const state = await super.poll(jobId)
+        return state.status === "ready" ? { status: "review", candidateUrls: [state.sourceUrl!], billed: null } as JobState : state
+      }
+    }
+    const { provider, lock } = await projectInReview(1, new OneCandidate({ candidates: 1 }))
+    const key = lockKey("base", "anvil")
+    const onReady = vi.fn()
+    const res = await runPicker(provider, lock, lockPath, { open: false, autoAcceptSingle: true, onReady })
+    expect(res).toEqual({ selected: 1, skipped: 0 })
+    expect(onReady).not.toHaveBeenCalled()
+    expect(lock.entries[key]!.status).toBe("selected")
+    expect(lock.entries[key]!.candidateIndex).toBe(0)
+  })
+
+  it("autoAcceptSingle still blocks for an asset with several candidates", async () => {
+    const { provider, lock } = await projectInReview(3)
+    const key = lockKey("base", "anvil")
+    let url = ""
+    const picked = runPicker(provider, lock, lockPath, {
+      open: false,
+      autoAcceptSingle: true,
+      onReady: (ready) => { url = ready.url },
+    })
+    await vi.waitFor(() => expect(url).not.toBe(""))
+    expect(lock.entries[key]!.status).toBe("review")
+    await fetch(url + "apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selections: [{ key, index: 1 }] }),
+    })
+    expect(await picked).toEqual({ selected: 1, skipped: 0 })
+  })
+
   it("promotes the chosen candidate and persists it to the lockfile", async () => {
     const { provider, lock } = await projectInReview(4)
     const key = lockKey("base", "anvil")

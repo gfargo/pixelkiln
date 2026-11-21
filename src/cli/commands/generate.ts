@@ -211,6 +211,7 @@ async function runLifecycle(args: Args, wave: number, spent: Map<string, number>
         open: !args.noOpen,
         onProgress: log,
         onReady: announceReviewReady,
+        autoAcceptSingle: args.yes,
         keys: providerSpecsForRun.map((spec) => lockKey(spec.styleId, spec.assetId)),
         specs: providerSpecsForRun,
       })

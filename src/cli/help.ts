@@ -245,7 +245,8 @@ Options
   --json              Machine-readable output where supported, including quality checks
                       and the gallery snapshot (no server)
   --check             plan/audit/cache: exit nonzero when the selected state is unsafe
-  --yes, -y           Skip the confirmation prompt
+  --yes, -y           Skip the confirmation prompt; gen also accepts assets with a single
+                      candidate or one frame set (2+ candidates still open the pick page)
   --no-open           Do not auto-open the browser (pick, salvage, gallery) or editor (edit)
   --edit              gallery: allow manifest edits from the page (never spends)
   --no-editor         gallery: do not offer or serve the in-browser editor

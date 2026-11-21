@@ -22,6 +22,7 @@ export function announceReviewReady(
   info: ReviewReadyInfo,
   stdout: CliWritable = process.stdout,
   stderr: CliWritable = process.stderr,
+  stdinIsTTY: boolean | undefined = process.stdin.isTTY,
 ): void {
   const stream = stdout.isTTY ? stdout : stderr
   const count = info.keys.length
@@ -29,6 +30,12 @@ export function announceReviewReady(
     `\n  ${count} asset${count === 1 ? "" : "s"} awaiting selection: ${info.url}\n` +
       "  (leave this running; it exits once you apply)\n\n",
   )
+  if (!stdinIsTTY) {
+    stream.write(
+      "  hint: stdin is not a terminal; `gen --yes` accepts single-candidate assets without waiting, " +
+        "or POST {\"selections\":[{\"key\":\"<style>/<asset>\",\"index\":0}]} to " + info.url + "apply\n\n",
+    )
+  }
 }
 
 /** Same stream rule as review readiness: the live URL must not wait behind a pipe. */
