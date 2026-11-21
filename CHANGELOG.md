@@ -1,3 +1,10 @@
+# [0.126.0](https://github.com/gfargo/pixelkiln/compare/v0.125.0...v0.126.0) (2026-11-21)
+
+
+### Features
+
+* **site:** the left hand and a shield, research step 49 ([414fa5a](https://github.com/gfargo/pixelkiln/commit/414fa5a215540ef5c6567e2e6fc717fcaa674d23))
+
 # [0.125.0](https://github.com/gfargo/pixelkiln/compare/v0.124.0...v0.125.0) (2026-11-21)
 
 
