@@ -7,6 +7,7 @@ const SUBJECTS = [
   { id: "parts", label: "Painted, from 256 px sprites", pixel: false },
   { id: "heavy", label: "Second body, same items", pixel: false },
   { id: "great", label: "Two hands on a greatsword", pixel: false },
+  { id: "spear", label: "Two hands on a spear", pixel: false },
   { id: "pixel", label: "Pixel, from 64 px sprites", pixel: true },
   { id: "cards", label: "Sprite cards on bones", pixel: true },
   { id: "knight", label: "First knight, one piece", pixel: true },
@@ -316,7 +317,7 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
         helper.visible = false;
         scene.add(helper);
         mixer = new THREE.AnimationMixer(gltf.scene);
-        const first = gltf.animations.find((entry) => entry.name === "Great_Walk") ?? gltf.animations.find((entry) => entry.name === "Walk_Loop") ?? gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
+        const first = gltf.animations.find((entry) => entry.name === "Great_Walk") ?? gltf.animations.find((entry) => entry.name === "Spear_Walk") ?? gltf.animations.find((entry) => entry.name === "Walk_Loop") ?? gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
         if (first) {
           action = mixer.clipAction(first);
           action.play();
@@ -512,6 +513,18 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             other motions are stock one-handed ones bent until the
             second hand reaches the grip, and some of those bend a wrist
             further than a wrist goes.
+          </p>
+        ) : subject === "spear" ? (
+          <p className="spin-note">
+            Drag to turn it. The first body with a generated spear, the
+            left hand forward and the right a way behind it on the
+            shaft. The four motions named Spear were made here the same
+            way as the greatsword&apos;s: the shaft&apos;s path is
+            written down and both arms are solved to it. Pick the spear
+            thrust, which steps out with the left foot. The other
+            motions are stock one-handed ones bent towards the shaft,
+            and in those the right hand is often a few centimetres off
+            it.
           </p>
         ) : subject === "pixel" ? (
           <p className="spin-note">
