@@ -62,6 +62,7 @@ Last updated 17 November 2026.
 | 52 | Footwork for the two-handed attack | Our scripts | The cut now has a step: the hips wind up, the left foot steps out as the blade lands, and both legs are solved again. Feet stay on the ground and wrists are unchanged | Keep. |
 | 53 | A spear, hands apart | PixelLab, Hunyuan3D-2mv, our scripts | A generated spear held left hand forward with the right behind it on the shaft, and four motions made for it: a guard, a walk, a jog and a thrust with a step | Keep for the first body. The second body's rear wrist bends 82 to 86 degrees, and stock motions fit a shaft poorly. |
 | 54 | The spear's rear elbow | Our scripts | The rear arm's elbow moved from back and up to out at the side, found by trying 37 places for it on both bodies | Keep. The second body's rear wrist went from 82 to 86 degrees down to 8 to 19, the first body's from 47 to 72 down to 15 to 20. |
+| 55 | A side-on spear stance | Our scripts | The spear motions rewritten with the hips turned (45 degrees standing, 28 walking, 14 jogging), the feet split and the head looking along the shaft | Keep. Both bodies hold it with wrists under 36 degrees and both feet on the ground. The walk's legs still walk straight under turned hips. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1508,6 +1509,48 @@ Not checked: the rebuilt model's picture in the site viewer, whether the rear ar
 
 **Verdict.** Keep. The second body's spear is usable. The fault was the elbow, not the poses.
 
+## 55. A side-on spear stance
+
+**Question.** Step 53's spear motions face square to the front. A spearman stands turned, the leading shoulder forward. Can the motions be made side-on with what `wield.py` already has?
+
+**What was tried.** Three small additions to a motion's footwork, then the four spear motions written again.
+
+- *The other foot back.* A row of a motion's `feet` could step one foot. It can now also put the other foot behind (a seventh number), so a stance has its feet apart for its whole length.
+- *That foot turned out* (`rear_foot`, degrees), as a rear foot is.
+- *The head keeps looking ahead* (`look`). When the hips turn, the neck takes half the turn back and the head the rest.
+- *The motions.* `Spear_Idle` is the stance: hips turned 45 degrees away from the leading side and 0.06 leg lengths lower, the leading foot 0.22 ahead, the other 0.18 behind and turned out 40 degrees. `Spear_Walk` and `Spear_Jog` keep the stock legs and turn the hips 28 and 14 degrees. `Spear_Thrust` starts in the stance, winds to 52 degrees, then steps the leading foot out to 0.60 as the hips come round to 30. The grip is written from the chest, so each pose's shaft is turned towards the leading side by about what the hips are turned away, and the point stays ahead.
+- *The poses.* The stance's grip was picked from 96 tried on both bodies, the thrust's furthest reach from 48.
+
+**Result.**
+
+![Both bodies in the side-on stance from the side and from above, walking, and with the thrust landed](../website/public/research/3d/spear-stance.png)
+
+- **Both hands are on the shaft and both feet reach at every moment of all four motions on both bodies,** with no pull-in.
+- **Wrist bend, most through each motion, in degrees (forward hand, rear hand):**
+
+| | Stance | Walk | Jog | Thrust |
+|---|---|---|---|---|
+| First body | 19, 9 | 18, 2 | 24, 16 | 26, 29 |
+| Second body | 13, 14 | 22, 14 | 35, 22 | 34, 29 |
+
+- **Both files are valid** and Godot 4.7.2 imports both with its 17 required bones. The viewer's spear model is rebuilt.
+
+Two things went wrong on the way:
+
+- **The feet came off the ground in the walk and jog,** by up to 2.7 centimetres on the second body: with the hips turned, a leg at full stretch falls short. The hips are 0.05 leg lengths lower in both, and the feet reach.
+- **The thrust's forward wrist bent 54 degrees** with the hips squared to 20 degrees and the shaft straight ahead of them. The straight-wristed poses have the shaft further across the chest, so the hips now stop at 30.
+
+Flaws:
+
+- **The walk and jog are stock legs under turned hips.** The feet go where they went and point where they pointed. A real advance with a spear is a shuffle that keeps the leading foot ahead; this is a walk with the trunk turned.
+- **The point is not dead ahead.** In the stance and at the end of the thrust the shaft is about 5 degrees across the line the body faces.
+- **Three stances that do not match.** Standing is turned 45 degrees, walking 28, jogging 14, and the feet are split only when standing. An engine blending between them will swing the trunk.
+- **Nothing keeps the shaft's butt out of the cape,** as before.
+
+Not checked: the rebuilt model's picture in the site viewer, any moment but the four pictured on each body, the motions in play in an engine, and the right hand leading.
+
+**Verdict.** Keep. The stance and the thrust read as a spearman's. The walk and jog are a stopgap until the legs are made for the stance.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1542,7 +1585,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, and step 54 moved its rear elbow so both bodies hold it with easy wrists. Still to do: a handle sized to the hand, root motion, a side-on spear stance, and motions made for a shield or a left-handed sword.
+- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, step 54 moved its rear elbow so both bodies hold it with easy wrists, and step 55 turned the spear motions side-on. Still to do: a handle sized to the hand, root motion, a spear advance with legs of its own, and motions made for a shield or a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
