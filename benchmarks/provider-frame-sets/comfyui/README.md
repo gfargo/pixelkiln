@@ -188,10 +188,290 @@ each frame got is in
   the graph, would fix both. Neither is tested yet.
 - **It takes about 20 s a frame** on an M1 Max, almost all of it in the fixer.
 
+## Run 2: consistency lanes, November 2026
+
+Run 1's frames were each drawn from fresh noise, so props, helmets and faces
+jumped between frames. Run 2 tried four ways of holding one character across a
+loop, on the same machine and graph. Raw renders stay in `runs/run2`; the
+comparisons are in [`results/run2/`](results/run2), made with
+[`compare-lanes.py`](compare-lanes.py).
+
+![The knight: run 1, then each run 2 lane, one row each](results/run2/compare-knight.png)
+
+![The goblin, the same rows](results/run2/compare-goblin.png)
+
+The lanes playing side by side:
+[knight idle](results/run2/compare-knight-idle.gif),
+[walk](results/run2/compare-knight-walk.gif),
+[attack](results/run2/compare-knight-attack.gif);
+[goblin idle](results/run2/compare-goblin-idle.gif),
+[walk](results/run2/compare-goblin-walk.gif),
+[attack](results/run2/compare-goblin-attack.gif).
+
+- **S, one sheet per motion** ([`poses/make-pose-sheets.py`](poses/make-pose-sheets.py)):
+  every frame of a loop in one 1536x640 image (the walk 1536x1280). Frames
+  within a loop match each other far better than run 1's. Each motion is a
+  separate sheet, though, so each motion is a different design: the knight is
+  hooded in his idle and attack and wears a plumed helmet in his walk. Arms
+  follow the pose loosely.
+- **Sheet size.** At 1x the native frames are 48x80, consistent but chunky. At
+  1.5x (2304x960 for a row of four) the idle came out 72x120 and still
+  consistent. At 2x the design drifted between cells, and the 1.5x walk
+  (two rows, 4.4 MP) fell apart: past about 2.2 MP, SDXL stops drawing one
+  character. The grid stays 8px at every size.
+- **SH, sheet plus a hires pass** (latent 1.5x, redrawn at denoise 0.5): keeps
+  the 1x layout and enlarges the pixel blocks. It does not give finer pixels.
+- **K, keyframe img2img** (run 1's B-0.75 idle frame 0 as the start latent, pose
+  ControlNet at 0.90): at denoise 0.55 to 0.85 the keyframe wins and the poses
+  are mostly ignored. Same character everywhere, but the upper body stays in
+  the idle pose, so there is little motion.
+- **I, IP-Adapter** (Plus, SDXL, ViT-H, fed the keyframe; pose ControlNet 0.75):
+  the best identity across motions, the same knight and the same goblin with
+  his club in every loop, and the legs follow the walk. The reference pulls
+  arms and props back toward the keyframe, so the attack is smaller than the
+  skeleton asks for. At 0.9 identity is stronger and pose weaker; 0.6 is the
+  better balance. Small parts still drift frame to frame: the sword can change
+  hands and the goblin's face changes. IP-Adapter passes the reference as one
+  CLIP embedding of a 224px image, which carries the overall look but not
+  which hand holds what.
+
+## Run 3: the keyframe in the sheet, November 2026
+
+Three lanes that combine run 2's two fixes, 22 renders in 23 minutes. The
+comparisons are in [`results/run3/`](results/run3); each sheet's rows are
+run 1 (B-0.75), run 2's I-0.6, then the three new lanes.
+
+![The knight: run 1, I-0.6, SI, IC, ICI](results/run3/compare-knight.png)
+
+![The goblin, the same rows](results/run3/compare-goblin.png)
+
+GIFs: [knight idle](results/run3/compare-knight-idle.gif),
+[walk](results/run3/compare-knight-walk.gif),
+[attack](results/run3/compare-knight-attack.gif);
+[goblin idle](results/run3/compare-goblin-idle.gif),
+[walk](results/run3/compare-goblin-walk.gif),
+[attack](results/run3/compare-goblin-attack.gif).
+
+- **IC, the keyframe fixed in cell 0 of a five-cell row**
+  ([`poses/make-incontext-sheets.py`](poses/make-incontext-sheets.py); the
+  latent noise is masked to cells 1-4): it does not work with SDXL base. The
+  model ignores the fixed cell. The knight came out hooded, the background went
+  dark, and swords float beside the figure. Copying from a neighbouring cell
+  needs a model trained to inpaint, which this one is not.
+- **ICI, the same plus IP-Adapter at 0.6:** the best knight so far. Same plume,
+  cape and sword hand through each loop, and close to the keyframe in every
+  motion. The goblin keeps his face and vest, but his club comes and goes
+  (missing in two idle frames and most of the walk). The gain over I-0.6 comes
+  from IP-Adapter, not from the fixed cell.
+- **SI, sheet plus IP-Adapter at 0.6:** every motion is now the same character
+  (run 2's S drew a different knight per motion), and frames within a loop
+  match. Props are still the weak point: the goblin's walk sheet has extra
+  clubs and an axe, and the knight's attack sheet swaps the sword for an axe
+  in one cell.
+
+## Run 4: a LoRA per character, November 2026
+
+One LoRA per character, trained on frames from earlier runs that match the
+keyframe, then three lanes that use it. The comparisons are in
+[`results/run4/`](results/run4); each sheet's rows are run 1 (B-0.75), I-0.6,
+ICI, then the three LoRA lanes.
+
+![The knight: run 1, I-0.6, ICI, L, LI, LSI](results/run4/compare-knight.png)
+
+![The goblin, the same rows](results/run4/compare-goblin.png)
+
+GIFs: [knight idle](results/run4/compare-knight-idle.gif),
+[walk](results/run4/compare-knight-walk.gif),
+[attack](results/run4/compare-knight-attack.gif);
+[goblin idle](results/run4/compare-goblin-idle.gif),
+[walk](results/run4/compare-goblin-walk.gif),
+[attack](results/run4/compare-goblin-attack.gif).
+
+**Training.** [`train-lora.py`](train-lora.py) runs kohya sd-scripts on the
+same GPU as a shared ComfyUI. It waits until ComfyUI's queue is empty and the
+GPU has been under 10% busy for a set time, asks ComfyUI to unload its models
+(`POST /free`), trains, and copies the LoRA into ComfyUI's `loras` folder. The
+base is SDXL with Pixel Art XL merged in at 0.85 (`--base_weights`), the stack
+the benchmark renders with, so the LoRA only has to learn the character. UNet
+only, rank 16, AdamW8bit, bf16, 10 repeats for 6 epochs, about 1.06 s a step
+on the RTX 3060.
+
+| Character | Images | Steps | Time | Final loss |
+|---|---|---|---|---|
+| knight | 23 | 1380 | 24:29 | 0.067 |
+| goblin | 25 | 1500 | 26:27 | 0.075 |
+
+The training sets are in [`lora/`](lora): 512x1024 crops of run 2's I-0.6 and
+I-0.9 frames and run 1's idle frame 0, each with a caption that starts with the
+trigger word (`pxkknight`, `pxkgoblin`). ComfyUI's own trainer
+(`TrainLoraNode`) also runs, but took 40 to 540 s a step on 12 GB, against
+about 1 s for kohya.
+
+**Renders.** 64 frames at a median of 34.8 s and 6 sheets at 71.9 s, LoRA at
+0.8.
+
+- **L, the LoRA with the pose ControlNet:** the same character in every frame
+  of every motion. The knight holds the sword low in the front hand through
+  idle and walk and raises it in the attack; the goblin keeps one face, one
+  vest and the club in the same hand. The cost is motion: the goblin's frames
+  are nearly identical across idle, walk and attack, and the knight's walk
+  legs barely move. The goblin also comes out over-sharpened and crowds the
+  cell edges.
+- **LI, plus IP-Adapter at 0.6:** the most uniform row, and about as still as
+  L. Some knight frames gain a small ground ellipse.
+- **LSI, a sheet plus the LoRA and IP-Adapter:** follows the poses best of the
+  three (wider strides, a raised sword, lunges), but props drift again: extra
+  blades in the knight's walk, a spade-like shape in the last attack frame,
+  the goblin's club leaving the cell in two attack frames.
+
+The LoRA fixes identity and the prop hand, and costs pose. The training frames
+came from lanes whose poses barely moved, so the LoRA learned the stance along
+with the character.
+
+## Run 5: a looser LoRA, November 2026
+
+Does a weaker LoRA, or an earlier checkpoint, let the pose move the figure
+again? Five lanes, 160 frames at a median of 31.6 s. The comparisons are in
+[`results/run5/`](results/run5); each sheet's rows are run 4's L (LoRA at 0.8),
+then the five new lanes.
+
+![The knight: L-0.8, L-0.6, L-0.5, LI-0.6, LE2, LE4](results/run5/compare-knight.png)
+
+![The goblin, the same rows](results/run5/compare-goblin.png)
+
+GIFs: [knight idle](results/run5/compare-knight-idle.gif),
+[walk](results/run5/compare-knight-walk.gif),
+[attack](results/run5/compare-knight-attack.gif);
+[goblin idle](results/run5/compare-goblin-idle.gif),
+[walk](results/run5/compare-goblin-walk.gif),
+[attack](results/run5/compare-goblin-attack.gif).
+
+- **L-0.6 and L-0.5, the final LoRA at a lower strength:** the same character
+  as at 0.8, and nearly the same poses. The knight raises the sword in a few
+  more walk frames at 0.5, which reads as the attack pose leaking into the
+  walk, not as more stride. The goblin's face starts to drift in the attack
+  frames.
+- **LI-0.6, plus IP-Adapter at 0.6:** the stillest walk, a cloudy background,
+  and the most artifacts (a loose blade in the knight's attack, a stray pole
+  beside the goblin).
+- **LE2 and LE4, the checkpoints after epoch 2 and 4 of 6, at 0.8:** identity
+  holds as well as the final LoRA. LE4 gives the knight the most lean and a
+  trailing cape in the walk. LE2 adds a second, dagger-like blade in two
+  attack frames.
+
+None of the five changes the motion much. Every row has a still idle, small
+leg changes in the walk and a clear attack. Run 1's frames, which used no LoRA,
+also moved the legs only a little in the walk, so the LoRA is not the only
+cause: the pose ControlNet at 0.75 does not force a full stride either.
+Strength and early checkpoints are not the lever; the next tries are a stronger
+pose ControlNet (0.9 to 1.0) with LE4, and a LoRA retrained on frames in
+varied poses.
+
+## Run 6: a stronger pose ControlNet, November 2026
+
+Three lanes with the pose ControlNet raised from 0.75: the epoch 4 LoRA at
+pose 0.9 and 1.0, and the final LoRA at 0.5 with pose 1.0. 96 frames at a
+median of 31.5 s. The comparisons are in [`results/run6/`](results/run6); each
+sheet's rows are run 1's B-0.90 (no LoRA, pose 0.9), run 5's LE4, then the
+three new lanes.
+
+![The knight: B-0.90, LE4, LE4-P0.9, LE4-P1.0, L-0.5-P1.0](results/run6/compare-knight.png)
+
+![The goblin, the same rows](results/run6/compare-goblin.png)
+
+- **The knight** raises his sword upright in two or three walk frames in every
+  new lane, and L-0.5-P1.0 opens the stride a little in frames 7 and 12. The
+  legs still never reach a full step. Pose 0.9 and 1.0 look the same.
+- **The goblin** is unchanged from LE4 in all three lanes: same face, same club
+  hand, small foot and tail shifts in the walk, a clear crouch in the attack.
+- Identity and the prop hand hold in every lane, with no new artifacts.
+
+A stronger pose control does not give a full stride. Run 1's B-0.90 row, with
+no LoRA at all, also keeps the walk's legs close together, so the limit sits
+before the LoRA: the OpenPose ControlNet on this SDXL stack follows arm and
+torso changes but barely the leg spread in these walk maps. The next things to
+try are a pose set with wider leg spread (an exaggerated walk), a depth or
+lineart control from a posed reference instead of OpenPose, or a LoRA retrained
+on frames that already show a full stride.
+
+## Run 7: an exaggerated walk, November 2026
+
+New walk maps in [`poses/walk-wide/`](poses/walk-wide), drawn by
+[`poses/make-poses.py`](poses/make-poses.py): a 330 px stride instead of 190,
+the knee lifted to 115 px instead of 55, twice the arm swing, a 10 degree lean,
+and a bob (the hips drop 30 px on contact). Three lanes render only the walk
+on them: LE4-W (the epoch 4 LoRA, pose 0.75), LE4-W-P1.0 (pose 1.0) and L-0.5-W
+(the final LoRA at 0.5). 48 frames at a median of 31.6 s. The comparisons are
+in [`results/run7/`](results/run7); the first two rows are run 5's LE4 and run
+6's L-0.5-P1.0 on the old walk maps.
+
+![The knight's walk: LE4, L-0.5-P1.0, LE4-W, LE4-W-P1.0, L-0.5-W](results/run7/compare-knight.png)
+
+![The goblin's walk, the same rows](results/run7/compare-goblin.png)
+
+GIFs: [knight walk](results/run7/compare-knight-walk.gif),
+[goblin walk](results/run7/compare-goblin-walk.gif).
+
+- **LE4-W:** the first real walk in the benchmark. Both characters step out
+  in frames 0 and 4 and bring the legs together in between, the torso leans,
+  and the character, outfit and weapon hand stay the same through the cycle.
+  The goblin's feet and tail get messy at the widest steps (frames 0 and 1
+  show extra claw-like shapes by the back foot).
+- **LE4-W-P1.0:** nearly the same as LE4-W, so the pose strength again adds
+  little. One stray boot fragment in the knight's frame 3.
+- **L-0.5-W:** a narrower stride, and with the LoRA at 0.5 the goblin drifts
+  (a bigger head, darker outfit, the club held low or out of the frame).
+
+The stiff walk in runs 1 to 6 came from the walk maps, not the LoRA or the
+ControlNet strength: SDXL's OpenPose ControlNet draws a smaller stride than the
+map shows, so the map has to overshoot. The best setting so far is the epoch 4
+LoRA at 0.8 with pose 0.75 on the exaggerated maps.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, run 7.** Exaggerated walk maps (stride 330 px instead of
+  190, knee lift doubled, a bob) give a real stride with the character LoRA
+  still holding identity and the weapon hand. The ControlNet undershoots the
+  map, so pose maps for SDXL should overshoot the motion wanted. Feet and
+  tails get messy at the widest steps.
+
+- **November 2026, run 6.** Raising the pose ControlNet to 0.9 or 1.0 with
+  the character LoRA changes almost nothing: the knight gains a raised sword
+  in a few walk frames, the goblin nothing. Without a LoRA the walk was just as
+  narrow, so the stiff walk comes from the OpenPose control and the walk maps,
+  not the LoRA. Settings: LE4 (epoch 4 checkpoint, LoRA 0.8, pose 0.75) is the
+  best identity setting found so far.
+
+- **November 2026, run 5.** Lowering the character LoRA to 0.5 or 0.6, or
+  using its epoch 2 or 4 checkpoint, keeps the identity and barely changes the
+  motion. Adding IP-Adapter on top makes it worse. The epoch 4 checkpoint is
+  the best of the set by a small margin. The walk was already stiff without a
+  LoRA, so the pose ControlNet strength is the next thing to raise.
+
+- **November 2026, run 4.** A per-character LoRA trained on about 24 matching
+  frames holds the face, outfit and prop hand across every frame and motion,
+  which no earlier lane did. It also learns the stance of its training frames,
+  so the pose ControlNet barely moves the figure; a sheet gets the motion back
+  and the prop drift with it. Kohya trains one in about 25 minutes on a 12 GB
+  card; ComfyUI's built-in trainer is too slow there. Next: LoRA strength 0.5
+  to 0.6, the epoch 2 or 4 checkpoint, and training frames with varied poses.
+
+- **November 2026, run 3.** IP-Adapter does the work; a fixed keyframe cell
+  beside the frames does nothing with SDXL base (no inpainting model). Sheet or
+  row plus IP-Adapter gives one character per loop and across loops. What still
+  drifts is props: the pose map has no joint for them and the reference image
+  does not say where they go. Next: a prop drawn into the pose or control image,
+  a per-character LoRA, or an inpainting model for the in-context row.
+
+- **November 2026, run 2.** Two kinds of drift need two fixes. Drawing a whole
+  loop in one image holds a character within the loop; a reference image
+  (IP-Adapter at 0.6) holds it across loops. Neither holds which hand carries a
+  prop or the details of a face. Keyframe img2img holds identity by giving up
+  the motion. Larger canvases do not give finer pixels: SDXL with Pixel Art XL
+  keeps an 8px grid, and past about 2.2 MP a sheet stops being one character.
 
 - **November 2026, lane D on run 1.** SDXL with Pixel Art XL draws on a steady
   8px grid at 1024px, so every frame in a set refines to the same 128x128 grid.

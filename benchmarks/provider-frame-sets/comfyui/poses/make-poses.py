@@ -134,14 +134,20 @@ def idle(i, n=4):
 STRIDE, LIFT = 190, 55
 
 
-def walk_foot(phase):
+# walk-wide/: the same cycle exaggerated, because SDXL's OpenPose ControlNet drew the
+# walk above with the legs nearly together (runs 1-6). Longer stride, higher knee, more
+# arm swing and lean, and a bob: the hips drop on contact and rise when passing.
+WIDE_STRIDE, WIDE_LIFT, WIDE_ARM, WIDE_LEAN, WIDE_BOB = 330, 115, 55, 10, 30
+
+
+def walk_foot(phase, stride=STRIDE, lift=LIFT):
     """A foot through one cycle: planted and sliding back under the body for the first
     half, then lifted and carried forward in an arc."""
     phase %= 1.0
     if phase < 0.5:
-        return (STRIDE / 2 - STRIDE * phase / 0.5, 0)
+        return (stride / 2 - stride * phase / 0.5, 0)
     t = (phase - 0.5) / 0.5
-    return (-STRIDE / 2 + STRIDE * t, LIFT * math.sin(math.pi * t))
+    return (-stride / 2 + stride * t, lift * math.sin(math.pi * t))
 
 
 def walk(i, n=8):
@@ -150,6 +156,15 @@ def walk(i, n=8):
     t = 2 * math.pi * phase
     return body(lean=4, crouch=10, near_foot=walk_foot(phase), far_foot=walk_foot(phase + 0.5),
                 near_arm=(-26 * math.cos(t), 25), far_arm=(26 * math.cos(t), 25))
+
+
+def walk_wide(i, n=8):
+    """The walk above, exaggerated (see WIDE_*)."""
+    phase = i / n
+    t = 2 * math.pi * phase
+    return body(lean=WIDE_LEAN, crouch=10 + WIDE_BOB * (1 + math.cos(2 * t)) / 2,
+                near_foot=walk_foot(phase, WIDE_STRIDE, WIDE_LIFT), far_foot=walk_foot(phase + 0.5, WIDE_STRIDE, WIDE_LIFT),
+                near_arm=(-WIDE_ARM * math.cos(t), 30), far_arm=(WIDE_ARM * math.cos(t), 30))
 
 
 def attack(i):
@@ -169,7 +184,8 @@ def attack(i):
 
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
-    motions = {"idle": [idle(i) for i in range(4)], "walk": [walk(i) for i in range(8)], "attack": [attack(i) for i in range(4)]}
+    motions = {"idle": [idle(i) for i in range(4)], "walk": [walk(i) for i in range(8)], "attack": [attack(i) for i in range(4)],
+               "walk-wide": [walk_wide(i) for i in range(8)]}
     rows = []
     for name, frames in motions.items():
         os.makedirs(os.path.join(here, name), exist_ok=True)
