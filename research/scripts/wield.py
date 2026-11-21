@@ -19,14 +19,18 @@ blade whose edge, not its flat, faces the way it is swung; the other's for a str
 are then triangles from shoulder to wrist, elbows down, out and a little back. If an arm cannot reach, the
 grip is pulled in by what it fell short; the report says how far.
 
-The animations, each named after what it is for:
+The animations, each named after what it is for (SET=great, the default):
   Great_Idle     a guard, the blade upright before the body, breathing
   Great_Walk     the same guard carried on the walk
   Great_Jog      the same, the hands a little lower and nearer
   Great_Attack   a cut from over the leading shoulder down to the front, with a step: the hips wind up, the other
                  foot steps out as the cut lands, and the trunk leans into it
 
+With SET=spear, for a shaft held with the hands apart (rig.py's GRIP_AT): Spear_Idle, Spear_Walk and Spear_Jog carry
+it level at the hip, point ahead, and Spear_Thrust draws it back and drives it out with a step of the leading foot.
+
 Environment:
+  SET     which motions to make: great or spear (default great)
   FPS     samples a second (default 30)
   ROLLS   how many rolls round the handle are tried at each moment (default 72)
   SMOOTH  how much a change of roll from the moment before costs (default 1)
@@ -54,7 +58,7 @@ COMPONENTS = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4, 'MAT4': 16}
 # the spine leans forward, in degrees. sway adds a slow breath to the grip, in arm lengths.
 GUARD = ((0.20, -0.50, 0.50), (0.00, 0.90, 0.30))
 CARRY = ((0.20, -0.58, 0.42), (0.00, 0.95, 0.30))
-MOTIONS = [
+GREAT = [
     {'name': 'Great_Idle', 'base': 0, 'length': None, 'sway': 0.012, 'moments': [(0, *GUARD, 0), (1, *GUARD, 0)]},
     {'name': 'Great_Walk', 'base': 1, 'length': None, 'sway': 0.0, 'moments': [(0, *GUARD, 0), (1, *GUARD, 0)]},
     {'name': 'Great_Jog', 'base': 2, 'length': None, 'sway': 0.0, 'moments': [(0, *CARRY, 0), (1, *CARRY, 0)]},
@@ -79,6 +83,33 @@ MOTIONS = [
               (0.84, 0.08, 0.04, -4, 0.14, 0.06),    # and comes back
               (1.00, 0.00, 0.00, 0, 0.00, 0.00)]},
 ]
+# A spear or staff: the leading hand is the one nearer the point, the other a way behind it on the shaft. On guard the
+# butt is at the other hand's hip and the point ahead; the thrust draws back, then drives the point out with a step of
+# the leading foot.
+LEVEL = ((-0.10, -0.50, 0.68), (0.50, 0.15, 0.85))
+REAR = (0.5, 0.4, -1.0)  # the rear arm's elbow goes back and up, so its forearm hangs to the shaft as on a cue
+SPEAR = [
+    {'name': 'Spear_Idle', 'base': 0, 'length': None, 'sway': 0.012, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]},
+    {'name': 'Spear_Walk', 'base': 1, 'length': None, 'sway': 0.0, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]},
+    {'name': 'Spear_Jog', 'base': 2, 'length': None, 'sway': 0.0, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]},
+    {'name': 'Spear_Thrust', 'base': 0, 'length': 1.2, 'sway': 0.0, 'step': 'lead', 'elbow': REAR,
+     'moments': [(0.00, *LEVEL, 0),
+                 (0.30, (-0.12, -0.52, 0.50), (0.50, 0.12, 0.86), -4),   # drawn back
+                 (0.46, (0.00, -0.38, 0.95), (0.42, 0.05, 0.90), 16),   # driven out
+                 (0.58, (0.00, -0.38, 0.95), (0.42, 0.04, 0.90), 17),
+                 (1.00, *LEVEL, 0)],
+     'feet': [(0.00, 0.00, 0.00, 0, 0.00, 0.00),
+              (0.30, -0.05, 0.03, -10, 0.00, 0.00),
+              (0.38, 0.04, 0.03, -4, 0.14, 0.06),
+              (0.46, 0.24, 0.14, 12, 0.48, 0.00),
+              (0.58, 0.24, 0.15, 13, 0.48, 0.00),
+              (0.80, 0.08, 0.04, 3, 0.14, 0.06),
+              (1.00, 0.00, 0.00, 0, 0.00, 0.00)]},
+]
+SETS = {'great': GREAT, 'spear': SPEAR}
+if env('SET', 'great') not in SETS: sys.exit(f"SET is one of {sorted(SETS)}")
+MOTIONS = SETS[env('SET', 'great')]
+if env('SET') == 'spear' and not env('EDGE'): EDGE = 0.0  # a shaft has no edge to keep
 
 
 def matrix(q):
@@ -262,7 +293,7 @@ for motion in MOTIONS:
         for side in (lead, other):
             leg = LEGS[side]; u, f, h = leg['upper'], leg['fore'], leg['foot']; keys = {u: [], f: [], h: []}
             for k in range(len(moments)):
-                ankle = place0[h][k] + (ahead * track[k, 3] * LEG + np.array([0, track[k, 4] * LEG, 0]) if side == other else 0)
+                ankle = place0[h][k] + (ahead * track[k, 3] * LEG + np.array([0, track[k, 4] * LEG, 0]) if side == (lead if motion.get('step') == 'lead' else other) else 0)
                 root = place[u][k]; knee_was = place0[f][k] - place0[u][k] + ahead * 0.3 * LEG
                 knee, reached, miss = bend(root, ankle, knee_was, leg['a'], leg['b'], 0.999); foot_short = max(foot_short, miss)
                 as_was = turn[u][k]; new_upper = between(as_was @ leg['one'], knee - root) @ as_was
@@ -284,6 +315,8 @@ for motion in MOTIONS:
         across_swing = unit(np.cross(handle, point - before)) if speed > 1.5 else to_lead
         before = point
         hang = {lead: np.array([0, -1.0, 0]) + 0.5 * to_lead - 0.3 * front, other: np.array([0, -1.0, 0]) - 0.5 * to_lead - 0.3 * front}
+        if motion.get('elbow'):  # where the other arm's elbow wants to be, when down and out is wrong for it: (out, up, front)
+            e = motion['elbow']; hang[other] = -to_lead * e[0] + up * e[1] + front * e[2]
         guess = unit(np.cross(handle, up) if abs(handle @ up) < 0.95 else np.cross(handle, front)); side_way = np.cross(handle, guess)
         # A body with a broad chest or short arms may not reach a grip written for another. The grip is then pulled, a few
         # times over, by what the arms fell short.

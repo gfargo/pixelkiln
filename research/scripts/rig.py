@@ -31,6 +31,9 @@ Environment:
            Its file must have it upright with its face to the front, as its sprites show it. Its back goes to the
            back of the forearm, its top towards the elbow, and it follows the forearm alone.
   HELD_LENGTH  how long a held item is made, as a share of the body's height (default 0.5)
+  GRIP_AT      for a two-handed shaft with no guard: where the leading hand's middle is, as a share of the item's
+               length from its butt. Unset, the leading hand sits under the guard.
+  GRIP_APART   with GRIP_AT: how far below it the other hand is, as a share of the item's length (default 0.25)
   FIST_LEAN    the angle between a closed fist's hold and its forearm, in degrees, thumb end away from the elbow (default 80)
   STRAPPED_LENGTH  how tall a strapped item is made, as a share of the body's height (default 0.36)
   STRAPPED_TURN    degrees to turn a strapped item about its face, for one carried across the arm (default 0)
@@ -299,6 +302,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         run = (pw - centre) @ axes[0]; wide = np.abs((pw - centre) @ axes[1]); steps = np.linspace(run.min(), run.max(), 41)
         guard = steps[np.argmax([wide[(run >= lo) & (run <= hi)].max(initial=0) for lo, hi in zip(steps[:-1], steps[1:])])]
         if guard - run.min() > run.max() - guard: axes[0] = -axes[0]; run = -run; guard = -guard
+        if fit_kind == "two-handed" and os.environ.get("GRIP_AT"): axes[0] = -axes[0]; run = -run; guard = -guard  # a shaft's widest place is its head, not a guard by the butt
         size = float(os.environ.get("HELD_LENGTH", "0.5")) * (world[:, 2].max() - world[:, 2].min()) / (run.max() - run.min())
         turn = np.stack([grasp["across"], grasp["along"], np.cross(grasp["across"], grasp["along"])], 1) @ np.stack([axes[0], axes[1], np.cross(axes[0], axes[1])], 1).T
         pw = (pw - centre - axes[0] * (run.min() + guard) / 2) * size @ turn.T + grasp["grip"]
@@ -315,9 +319,17 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
             down = min(first / 2 + 0.5 + first / 2 + second / 2 + 0.3, max(first / 2 + 0.5, 0.9 * handle - second / 2))  # the second hand's middle, below the guard
             pw = pw + grasp["across"] * (first / 2 + 0.5 - ((pw - grasp["grip"]) @ grasp["across"]).max() + (run.max() - guard) * size)
             below = grasp["grip"] - grasp["across"] * (down - first / 2 - 0.5)
+            if os.environ.get("GRIP_AT"):
+                # A shaft (a spear, a staff) has no guard to sit under, and its hands go apart. GRIP_AT says where the
+                # leading hand's middle is, as a share of the item's length from its butt; GRIP_APART how far the
+                # other hand is below it, as a share of that length.
+                reach = (pw - grasp["grip"]) @ grasp["across"]; whole = reach.max() - reach.min()
+                pw = pw - grasp["across"] * (reach.min() + float(os.environ["GRIP_AT"]) * whole)
+                apart = float(os.environ.get("GRIP_APART", "0.25")) * whole; below = grasp["grip"] - grasp["across"] * apart
+                print(f"{label}: hands {apart:.1f} sprite pixels apart on a shaft {whole:.1f} long", file=sys.stderr)
             EXTRA.append((side + "Grip2", names.index(allowed), below, below + grasp["across"]))
             NODE_EXTRAS[side + "Grip2"] = {"hand": other + "Hand", "handle": in_file(grasp["across"])}
-            print(f"{label}: a handle {handle:.1f} sprite pixels long for hands {first:.1f} and {second:.1f} across" + ("" if handle >= first + second + 1.5 else ", too short for both, so they overlap"), file=sys.stderr)
+            if not os.environ.get("GRIP_AT"): print(f"{label}: a handle {handle:.1f} sprite pixels long for hands {first:.1f} and {second:.1f} across" + ("" if handle >= first + second + 1.5 else ", too short for both, so they overlap"), file=sys.stderr)
         prelief = pnormals = None
     strapped = fit_kind == "strapped"
     if strapped:
