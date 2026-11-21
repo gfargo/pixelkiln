@@ -314,7 +314,12 @@ export async function fetchAssets(
             if (!source.url) {
               throw new Error(`no source URL or cached bytes remain for ${source.role ?? "asset"}`)
             }
-            raw = await provider.download(source.url)
+            // A candidate applied from the local candidate cache names its
+            // file directly; not every provider's download reads file://.
+            const localFile = source.url.startsWith("file://") ? source.url.slice("file://".length) : null
+            raw = localFile && existsSync(localFile)
+              ? await readFile(localFile)
+              : await provider.download(source.url)
           }
 
           let mediaType: MediaKind
@@ -410,7 +415,7 @@ export async function fetchAssets(
   return result
 }
 
-async function readCachedMedia(
+export async function readCachedMedia(
   cacheDir: string,
   hash: string,
   mediaType: MediaKind,

@@ -508,6 +508,7 @@ export function createGenerateHandlers(opts: GenerateHandlerOptions): GalleryGen
         specs,
         onProgress: (line) => say(job, line),
         routePrefix: options.routePrefix,
+        lockPath: ctx.lockPath,
       })
       if (session) reviews.set(jobId, session)
       return session

@@ -1,4 +1,5 @@
 import path from "node:path"
+import { encodeRgbaPng } from "../src/png.ts"
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -205,6 +206,10 @@ describe("PixelLab provider: batch submit and poll", () => {
           created_at: "now", rotation_urls: {}, status: "review",
           frame_urls: Array.from({ length: 16 }, (_, i) => `https://cdn.test/obj-1/frame-${i}.png`),
         }), { status: 200 })
+      }
+      if (url.hostname === "cdn.test") {
+        // poll caches each candidate as soon as the job reaches review.
+        return new Response(new Uint8Array(encodeRgbaPng(1, 1, Buffer.from([1, 2, 3, 255]))), { status: 200 })
       }
       if (url.pathname === "/v2/background-jobs/bg-1") {
         // billedForJob's lookup; a clean 200 so it never engages the shared
