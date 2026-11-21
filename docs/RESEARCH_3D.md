@@ -61,6 +61,7 @@ Last updated 17 November 2026.
 | 51 | Motions made for two hands | Our scripts | Four two-handed motions (a guard, a walk, a jog and a cut) made by writing down the sword's path and solving both arms to it. Wrists stay within 52 degrees on the first body, where the bent one-handed motions reached 100 | Keep. Use these where a motion exists, and step 50's bent ones for the rest. |
 | 52 | Footwork for the two-handed attack | Our scripts | The cut now has a step: the hips wind up, the left foot steps out as the blade lands, and both legs are solved again. Feet stay on the ground and wrists are unchanged | Keep. |
 | 53 | A spear, hands apart | PixelLab, Hunyuan3D-2mv, our scripts | A generated spear held left hand forward with the right behind it on the shaft, and four motions made for it: a guard, a walk, a jog and a thrust with a step | Keep for the first body. The second body's rear wrist bends 82 to 86 degrees, and stock motions fit a shaft poorly. |
+| 54 | The spear's rear elbow | Our scripts | The rear arm's elbow moved from back and up to out at the side, found by trying 37 places for it on both bodies | Keep. The second body's rear wrist went from 82 to 86 degrees down to 8 to 19, the first body's from 47 to 72 down to 15 to 20. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1470,7 +1471,42 @@ Flaws:
 
 Not checked: the model's picture in the site viewer (it loads, lists its motions and reports no errors), a staff with no head, the hands sliding on the shaft as they do in a real thrust, and the motions in play in an engine.
 
-**Verdict.** Keep for the first body. The grip, the left hand leading and the rear elbow all carried over with small changes. The second body needs its own poses or wrist limits before his spear is usable.
+**Verdict.** Keep for the first body. The grip, the left hand leading and the rear elbow all carried over with small changes. The second body needs its own poses or wrist limits before his spear is usable. Step 54 found the cause and fixed it for both.
+
+## 54. The spear's rear elbow
+
+**Question.** Step 53 left the second body's rear wrist bent 82 to 86 degrees on the spear, and blamed poses that were set on the first body. Does he need poses of his own?
+
+**What was tried.** No. The grip and the shaft's direction were left alone and only the place the rear arm's elbow is asked to go was varied: 37 places (out, up and forward or back from the shoulder), each solved on both bodies as a held guard, ranked by the worse wrist of the two bodies. Step 53 had put that elbow back and up after trying a handful of places on the first body alone.
+
+**Result.**
+
+![The second body from behind with his cape hidden: before, the rear arm folded behind the back; after, the elbow out at the side and the forearm down to the shaft](../website/public/research/3d/spear-rear-elbow.png)
+
+- **The elbow belongs out at the side, a little up and a little forward** (0.6, 0.4, 0.3), not behind the back. The nine best places of the 37 all have the elbow forward of the shoulder; the one step 53 used came 29th.
+- **Wrist bend, most through each motion, in degrees:**
+
+| | Guard | Walk | Jog | Thrust |
+|---|---|---|---|---|
+| First body, forward hand | 4 | 3 | 8 | 28 |
+| First body, rear hand, before | 48 | 47 | 51 | 72 |
+| First body, rear hand, after | 15 | 16 | 16 | 20 |
+| Second body, forward hand | 17 | 16 | 20 | 41 |
+| Second body, rear hand, before | 82 | 84 | 85 | 86 |
+| Second body, rear hand, after | 8 | 8 | 16 | 19 |
+
+- **Both hands still reach at every moment on both bodies,** with no pull-in, and the loops close within 2 degrees.
+- **Both files are valid** and Godot 4.7.2 imports both with its 17 required bones. The viewer's spear model is rebuilt with the new elbow.
+
+Flaws:
+
+- **The first body's rear elbow now stands out from his side** more than a spearman's would. It reads as a braced arm, not a broken one, but it is a wider pose than before.
+- **The search was on a held guard only.** The thrust was not searched; its figures come from running the whole motion with the elbow the guard chose.
+- **One elbow place serves every body.** A body shaped unlike these two could want another, and nothing searches for it when a file is made.
+
+Not checked: the rebuilt model's picture in the site viewer, whether the rear arm passes through the cuirass or the cape at any moment (the pictures show four moments on each body and no pass-through), and the motions in play in an engine.
+
+**Verdict.** Keep. The second body's spear is usable. The fault was the elbow, not the poses.
 
 ## What has not worked, in one place
 
@@ -1506,7 +1542,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart. Still to do: a handle sized to the hand, root motion, poses searched for each body, and motions made for a shield or a left-handed sword.
+- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, and step 54 moved its rear elbow so both bodies hold it with easy wrists. Still to do: a handle sized to the hand, root motion, a side-on spear stance, and motions made for a shield or a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
