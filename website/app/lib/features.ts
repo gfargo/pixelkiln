@@ -135,7 +135,6 @@ export const FEATURES: Feature[] = [
       { href: "#mesh", label: "A character in parts" },
       { href: "#paths", label: "Pixel path or painted path" },
       { href: "#pipeline", label: "How it is made" },
-      { href: "#cards", label: "Sprite cards on bones" },
       { href: "#turnaround", label: "Sixteen directions" },
     ],
     docs: [

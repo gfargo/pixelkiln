@@ -40,7 +40,7 @@ export function ModelsSection() {
             its animations and the list of which skin each item hides. The
             second body wears the very same items, reshaped for him.
           </p>
-          <MeshViewer subjects={["parts", "heavy", "great", "spear", "pixel", "knight", "hero"]} />
+          <MeshViewer subjects={["parts", "heavy", "great", "spear", "pixel"]} />
         </div>
 
         <div className="builder-block" id="paths">
@@ -101,19 +101,6 @@ export function ModelsSection() {
               Skeletons and rigging
             </TrackedLink>
           </div>
-        </div>
-
-        <div className="builder-block" id="cards">
-          <h3>Or keep the pixels and move them with bones.</h3>
-          <p>
-            A different answer to the same question. Nothing here is a
-            painted mesh: each bone carries a flat card showing a piece of
-            the drawn sprite, from whichever of eight directions fits how
-            you see that bone. The pixels on screen are the sprite&apos;s
-            own. The mesh is only there to say which pixel belongs to which
-            bone.
-          </p>
-          <MeshViewer subjects={["cards"]} />
         </div>
 
         <div className="builder-block" id="turnaround">
