@@ -462,10 +462,39 @@ Retraining on the wide walk tidies the goblin's feet and keeps the stride,
 without hurting idle. It does not change the attack: the motion comes from the
 maps, and the attack maps still undershoot.
 
+## Run 9: an exaggerated attack, November 2026
+
+New maps in `poses/attack-wide/` (from `make-poses.py`): the sword arm up and
+back on the wind-up and straight out in front on the strike, a longer lunge
+(feet 300 px apart instead of 230) and more lean. Lanes LW-A and LW-A-P1.0
+render them with run 8's LoRA (`pxk-<character>-w`) at pose 0.75 and 1.0: 16
+frames at about 31.6 s, in [`results/run9`](results/run9) beside run 8's attack.
+
+- **Legs:** they follow. Both characters lunge deeper on the strike and
+  follow-through than in run 8.
+- **Weapon arm and weapon:** they mostly don't. The knight never raises the
+  sword on the wind-up and pushes it only partway out on the strike; in the
+  recover frame it holds it straight up, which the map does not ask for. The
+  goblin holds the club upright in all four frames, as in every run since the
+  LoRA.
+- **Pose 1.0:** about the same as 0.75.
+
+Overshooting the map moves the body but not the weapon. The OpenPose map has
+no joint for the prop, and the LoRA has only seen it in one or two positions,
+so it draws the prop where its training frames had it. A weapon that swings
+needs to be in the control image (a prop line in the pose map, or a lineart or
+depth control) or in training frames that show it raised and swung.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, run 9.** Exaggerated attack maps move the legs (a deeper
+  lunge) but not the weapon: the LoRA keeps the prop where its training
+  frames held it, and the OpenPose map has no joint for it. The swing has to
+  come from a prop drawn into a control image or from training frames with
+  the weapon raised.
 
 - **November 2026, run 8.** Retraining the character LoRA with the approved
   wide-walk frames added keeps the full stride and cleans up the goblin's feet,

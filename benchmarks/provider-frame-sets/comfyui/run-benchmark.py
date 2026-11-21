@@ -44,6 +44,8 @@ Lanes, each over every motion in poses/ (idle 4, walk 8, attack 4) for each char
   LW-W       run 8: the LoRA retrained with run 7's best wide-walk frames added (train-lora.py
   LWE4-W     --set w), final and epoch 4, on the wide walk maps; LW-W also renders idle and
              attack on their usual maps.
+  LW-A       run 9: LW-W with the exaggerated attack maps in poses/attack-wide/ (sword arm
+  LW-A-P1.0  overhead, then straight out, a longer lunge), at pose 0.75 and 1.0.
   K-0.55   keyframe: every frame starts from the character's keyframe (--keyframes
   K-0.70   <dir>/<character>.png) encoded as the latent, redrawn at denoise 0.55 or 0.70 with
            the pose ControlNet at 0.90, so colours, props and proportions carry over.
@@ -96,7 +98,10 @@ LORA_LANES = {"L": {}, "LI": {"ip": True}, "LSI": {"ip": True, "sheet": True},
               "L-0.5-W": {"strength": 0.5, "poses": {"walk": "walk-wide"}},
               # run 8: LoRAs retrained with run 7's wide-walk frames added (train-lora.py --set w)
               "LW-W": {"set": "w", "poses": {"walk": "walk-wide"}},
-              "LWE4-W": {"set": "w", "epoch": 4, "poses": {"walk": "walk-wide"}}}
+              "LWE4-W": {"set": "w", "epoch": 4, "poses": {"walk": "walk-wide"}},
+              # run 9: the exaggerated attack maps (poses/attack-wide/); render with --motions attack
+              "LW-A": {"set": "w", "poses": {"walk": "walk-wide", "attack": "attack-wide"}},
+              "LW-A-P1.0": {"set": "w", "pose": 1.0, "poses": {"walk": "walk-wide", "attack": "attack-wide"}}}
 CHAR_LORA = "pixelkiln\\pxk-{character}{suffix}.safetensors"
 CHAR_LORA_STRENGTH = 0.8
 

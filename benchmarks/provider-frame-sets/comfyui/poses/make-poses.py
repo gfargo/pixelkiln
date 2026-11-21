@@ -182,10 +182,23 @@ def attack(i):
     return body(**poses[i])
 
 
+def attack_wide(i):
+    """The strike above, exaggerated like walk-wide: the sword arm straight up behind the head
+    on the wind-up and straight out in front on the strike, a longer lunge, and
+    more lean, because the ControlNet draws less motion than the map shows (run 8)."""
+    poses = [
+        dict(lean=-18, crouch=40, near_foot=(90, 0), far_foot=(-120, 0), near_arm=(-150, -40), far_arm=(40, 40), hip_shift=-40),
+        dict(lean=26, crouch=55, near_foot=(150, 0), far_foot=(-150, 0), near_arm=(95, 0), far_arm=(-50, 20), hip_shift=45),
+        dict(lean=32, crouch=60, near_foot=(145, 0), far_foot=(-155, 0), near_arm=(-25, 10), far_arm=(-60, 20), hip_shift=50),
+        dict(lean=2, crouch=30, near_foot=(80, 0), far_foot=(-80, 0), near_arm=(60, 80), far_arm=(-10, 40), hip_shift=5),
+    ]
+    return body(**poses[i])
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     motions = {"idle": [idle(i) for i in range(4)], "walk": [walk(i) for i in range(8)], "attack": [attack(i) for i in range(4)],
-               "walk-wide": [walk_wide(i) for i in range(8)]}
+               "walk-wide": [walk_wide(i) for i in range(8)], "attack-wide": [attack_wide(i) for i in range(4)]}
     rows = []
     for name, frames in motions.items():
         os.makedirs(os.path.join(here, name), exist_ok=True)
