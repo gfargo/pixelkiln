@@ -58,6 +58,7 @@ Last updated 17 November 2026.
 | 48 | A grip for a hand drawn as a fist | Our scripts | The heavier second body holds the same sword: the fist and its wrist are found on the mesh, the grip runs through the fist. No new generations | Keep. A fist holds but cannot open, and which way it faces is assumed, not measured. |
 | 49 | The left hand, and a shield | PixelLab, Hunyuan3D-2mv, our scripts | The sword sits in either body's left hand with no change; a generated shield is strapped to the left forearm of both and stands upright through the library's motions | Keep. The shield is carried, not used: the library has no shield or left-handed motions. |
 | 50 | Two hands on one grip | PixelLab, Hunyuan3D-2mv, our scripts | A generated greatsword in both hands of both bodies through all twelve motions, by pulling the grip in front of the body and solving both arms at every moment | Keep as a baked fallback. Wrists bend past what a wrist can in some motions; real two-handed animations would be better. |
+| 51 | Motions made for two hands | Our scripts | Four two-handed motions (a guard, a walk, a jog and a cut) made by writing down the sword's path and solving both arms to it. Wrists stay within 52 degrees on the first body, where the bent one-handed motions reached 100 | Keep. Use these where a motion exists, and step 50's bent ones for the rest. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1353,6 +1354,55 @@ Not checked: the left hand leading, a staff or a spear, the two-handed file in G
 
 **Verdict.** Keep as a fallback that works in any engine. An engine with an arm solver should use the `RightGrip2` bone live, and real two-handed animations would beat both.
 
+## 51. Motions made for two hands
+
+**Question.** Step 50 bent one-handed motions until the second hand reached the grip, and the wrists paid for it. Its verdict was that real two-handed motions would be better. Where do they come from?
+
+**Looked for first.** A free library that has them. [Quaternius's second animation library](https://quaternius.com/packs/universalanimationlibrary2.html) (CC0) lists sword combos, shield idles, farming and parkour in its free edition, and no two-handed weapon. The greatsword packs a search turned up are paid and made for one engine's skeleton. Nothing was downloaded.
+
+**Setup.** A new script, [`scripts/wield.py`](../research/scripts/wield.py), makes them. It goes the other way round from step 50: the path of the sword is written down, and both arms are solved to it.
+
+- *What is written.* For each motion, a few moments: where the grip is and which way the handle points, in a frame that rides on the chest and is measured in arm lengths, and how far the spine leans. The script draws a smooth curve through them.
+- *What is taken.* The legs, hips, spine and head of a stock motion the file already carries: the idle, the walk and the jog.
+- *What is solved.* At thirty moments a second the leading hand goes on the grip and the other on the `RightGrip2` bone of step 50. Each hand may still roll round the handle. The leading hand's roll is chosen for a straight wrist and a blade whose edge, not its flat, faces the way it is swung; the other's for a straight wrist. A loop is solved twice round so that it ends on the roll it starts with. If an arm cannot reach, the grip is pulled in by what it fell short.
+- *The four motions.* `Great_Idle`, a guard with the blade upright before the body; `Great_Walk` and `Great_Jog`, the same guard carried; `Great_Attack`, 1.4 seconds: the sword goes up over the right shoulder, cuts down to the front with the trunk leaning 24 degrees into it, and returns.
+- *How the poses were picked.* Each key pose was tried against a few dozen neighbours on both bodies, and the one with the straightest wrists kept.
+
+**Result.**
+
+![Both armoured bodies with a greatsword in two hands: on guard, walking, the sword raised over the shoulder, and the cut landed](../website/public/research/3d/two-handed-motions.png)
+
+How far a wrist bends at most, in degrees. Step 50's figures are for the motion the new one replaces, as measured then.
+
+| | Step 50, first body | First body | Second body |
+|---|---|---|---|
+| Idle on guard | 15 (sword idle) | 28 | 56 |
+| Walk | 50 | 29 | 58 |
+| Jog | about 100 | 52 | 56 |
+| Attack | 50 | 42 | 69 |
+
+- **Both hands are on the grip throughout,** on both bodies. The second body's grip is pulled in 5 centimetres in the guard and 10 in the jog, because his chest is broad for his arms; his hand is 2 millimetres short at one point of the attack.
+- **The loops close:** the arms at the last moment are within 4 degrees of the first.
+- **The files are valid.** The first body's is 17,997 triangles and 2.9 MB with sixteen motions; the four new ones add about 200 KB. Godot 4.7.2 imports both bodies' files with no errors and finds the 17 bones its humanoid profile requires. The viewer's greatsword model now opens on the new walk.
+
+Three things were learned on the way:
+
+- **A closed hand cannot lay a handle along its forearm.** The first attack ended with the arms out and the blade level, and the leading wrist bent 90 degrees. The cut now lands with the blade rising from the hands, and wrists stay within 42.
+- **This body cannot raise a sword over its head.** Its arms are short for its head, so hands "above the head" were at its chin and the blade went through the helm. The sword is raised over the leading shoulder instead, which also gave straighter wrists (16 degrees on the first body, against 33 or more before the brow).
+- **A fist's shape does not say how it holds a handle.** Step 48 took the grip's line from the fist's widest side. On the second body that line leaned 25 degrees towards the elbow, the wrong way, and the motions bent his wrist 60 to 90 degrees. `rig.py` now sets a fist's hold 80 degrees to the forearm, thumb end away from the elbow (`FIST_LEAN`). His wrists came down to the figures above, and step 50's bent motions improved with it: the sword attack from 1.2 centimetres short to 0.8, the dance from 7 to 4. His sword-and-shield model on the site is rebuilt with the new hold; his sword sits a little flatter in the idle.
+
+Flaws:
+
+- **The blade is not edge-on.** It sits 25 to 30 degrees off its edge on the first body and 40 to 50 on the second, because a straight wrist and a true edge pull against each other and the script splits the difference (`EDGE`).
+- **The second body's raised blade passes through the fur on his shoulder,** and nothing keeps the blade out of the body, the cape or the ground on either.
+- **Only the arms and the lean of the spine were made.** The attack stands on the idle's feet: there is no step, no turn of the hips, no weight. The jog carries the guard; it has no carry of its own.
+- **Four motions.** Death, the roll, the hit and the jump are still step 50's bent ones.
+- **The poses were picked on these two bodies.** A body with other proportions gets the pull-in and whatever wrists follow.
+
+Not checked: how the motions read in play in an engine, the whole of each motion beyond the four moments pictured and the script's own figures, the left hand leading, and a staff or spear.
+
+**Verdict.** Keep. For a motion that exists in this form, it beats bending a one-handed one: the wrists stay inside what a wrist does and the sword goes where it was told. It is not a replacement for an animator or for captured motion.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1387,7 +1437,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 50 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands. Still to do: a handle sized to the hand, wrist limits for the two-handed pass, and motions made for a shield, a left-handed sword or two hands.
+- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Still to do: a handle sized to the hand, footwork and weight for the two-handed attack, a staff or spear, and motions made for a shield or a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
