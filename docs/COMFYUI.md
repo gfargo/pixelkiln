@@ -254,6 +254,14 @@ fixes on SDXL base with Pixel Art XL:
 | Sheet plus IP-Adapter at 0.6 | holds | holds | loosely |
 | Keyframe img2img (denoise 0.55–0.85) | holds | holds | no, stays near the keyframe pose |
 | Keyframe in a fixed cell beside the frames | no effect without an inpainting model | no | yes |
+| A LoRA per character at 0.8, trained on about 24 approved frames | holds, prop hand included | holds | barely, keeps the training stance |
+| Sheet plus that LoRA and IP-Adapter at 0.6 | holds, props drift | holds | loosely |
+
+A character LoRA is the only strategy that kept the prop in the same hand, but
+at 0.8 it also overrides the pose. Train it on frames with varied poses, and
+try a lower strength before relying on it for motion. The benchmark's
+`train-lora.py` trains one with kohya sd-scripts in about 25 minutes on a
+12 GB card, waiting for a shared ComfyUI to be idle first.
 
 Start from IP-Adapter at 0.6 with a keyframe the person has approved. Keep a
 sheet under about 2.2 MP; past that SDXL stops drawing one character. A larger

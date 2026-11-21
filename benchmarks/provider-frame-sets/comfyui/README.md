@@ -269,10 +269,77 @@ GIFs: [knight idle](results/run3/compare-knight-idle.gif),
   clubs and an axe, and the knight's attack sheet swaps the sword for an axe
   in one cell.
 
+## Run 4: a LoRA per character, November 2026
+
+One LoRA per character, trained on frames from earlier runs that match the
+keyframe, then three lanes that use it. The comparisons are in
+[`results/run4/`](results/run4); each sheet's rows are run 1 (B-0.75), I-0.6,
+ICI, then the three LoRA lanes.
+
+![The knight: run 1, I-0.6, ICI, L, LI, LSI](results/run4/compare-knight.png)
+
+![The goblin, the same rows](results/run4/compare-goblin.png)
+
+GIFs: [knight idle](results/run4/compare-knight-idle.gif),
+[walk](results/run4/compare-knight-walk.gif),
+[attack](results/run4/compare-knight-attack.gif);
+[goblin idle](results/run4/compare-goblin-idle.gif),
+[walk](results/run4/compare-goblin-walk.gif),
+[attack](results/run4/compare-goblin-attack.gif).
+
+**Training.** [`train-lora.py`](train-lora.py) runs kohya sd-scripts on the
+same GPU as a shared ComfyUI. It waits until ComfyUI's queue is empty and the
+GPU has been under 10% busy for a set time, asks ComfyUI to unload its models
+(`POST /free`), trains, and copies the LoRA into ComfyUI's `loras` folder. The
+base is SDXL with Pixel Art XL merged in at 0.85 (`--base_weights`), the stack
+the benchmark renders with, so the LoRA only has to learn the character. UNet
+only, rank 16, AdamW8bit, bf16, 10 repeats for 6 epochs, about 1.06 s a step
+on the RTX 3060.
+
+| Character | Images | Steps | Time | Final loss |
+|---|---|---|---|---|
+| knight | 23 | 1380 | 24:29 | 0.067 |
+| goblin | 25 | 1500 | 26:27 | 0.075 |
+
+The training sets are in [`lora/`](lora): 512x1024 crops of run 2's I-0.6 and
+I-0.9 frames and run 1's idle frame 0, each with a caption that starts with the
+trigger word (`pxkknight`, `pxkgoblin`). ComfyUI's own trainer
+(`TrainLoraNode`) also runs, but took 40 to 540 s a step on 12 GB, against
+about 1 s for kohya.
+
+**Renders.** 64 frames at a median of 34.8 s and 6 sheets at 71.9 s, LoRA at
+0.8.
+
+- **L, the LoRA with the pose ControlNet:** the same character in every frame
+  of every motion. The knight holds the sword low in the front hand through
+  idle and walk and raises it in the attack; the goblin keeps one face, one
+  vest and the club in the same hand. The cost is motion: the goblin's frames
+  are nearly identical across idle, walk and attack, and the knight's walk
+  legs barely move. The goblin also comes out over-sharpened and crowds the
+  cell edges.
+- **LI, plus IP-Adapter at 0.6:** the most uniform row, and about as still as
+  L. Some knight frames gain a small ground ellipse.
+- **LSI, a sheet plus the LoRA and IP-Adapter:** follows the poses best of the
+  three (wider strides, a raised sword, lunges), but props drift again: extra
+  blades in the knight's walk, a spade-like shape in the last attack frame,
+  the goblin's club leaving the cell in two attack frames.
+
+The LoRA fixes identity and the prop hand, and costs pose. The training frames
+came from lanes whose poses barely moved, so the LoRA learned the stance along
+with the character.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, run 4.** A per-character LoRA trained on about 24 matching
+  frames holds the face, outfit and prop hand across every frame and motion,
+  which no earlier lane did. It also learns the stance of its training frames,
+  so the pose ControlNet barely moves the figure; a sheet gets the motion back
+  and the prop drift with it. Kohya trains one in about 25 minutes on a 12 GB
+  card; ComfyUI's built-in trainer is too slow there. Next: LoRA strength 0.5
+  to 0.6, the epoch 2 or 4 checkpoint, and training frames with varied poses.
 
 - **November 2026, run 3.** IP-Adapter does the work; a fixed keyframe cell
   beside the frames does nothing with SDXL base (no inpainting model). Sheet or

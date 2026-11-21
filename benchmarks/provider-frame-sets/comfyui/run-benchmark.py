@@ -26,6 +26,10 @@ Lanes, each over every motion in poses/ (idle 4, walk 8, attack 4) for each char
            The latent noise is masked to cells 1-4, so the model sees the finished character at
            every step. Saved as chunk-N.png.
   ICI      IC plus IP-Adapter at 0.6.
+  L        B-0.75 plus the character's own LoRA (train-lora.py) at 0.8, with its trigger
+           word (pxk<character>) in the prompt.
+  LI       L plus IP-Adapter at 0.6 fed the keyframe.
+  LSI      the S sheet plus the LoRA and IP-Adapter at 0.6.
   K-0.55   keyframe: every frame starts from the character's keyframe (--keyframes
   K-0.70   <dir>/<character>.png) encoded as the latent, redrawn at denoise 0.55 or 0.70 with
            the pose ControlNet at 0.90, so colours, props and proportions carry over.
@@ -64,6 +68,10 @@ REFERENCE_LANES = {"I-0.6": 0.6, "I-0.9": 0.9}
 IPADAPTER_FILE = "ip-adapter-plus_sdxl_vit-h.safetensors"
 CLIP_VISION_FILE = "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
 IC_IP_WEIGHT = 0.6  # lanes SI and ICI: run 2's best balance of identity and pose
+# lanes L, LI, LSI: the character LoRA from train-lora.py, in ComfyUI's loras folder
+LORA_LANES = {"L": {}, "LI": {"ip": True}, "LSI": {"ip": True, "sheet": True}}
+CHAR_LORA = "pixelkiln\\pxk-{character}.safetensors"
+CHAR_LORA_STRENGTH = 0.8
 HIRES_SCALE = 1.5
 HIRES_DENOISE = 0.5
 HIRES_STEPS = 24
@@ -95,9 +103,9 @@ def upload(host, path):
     return json.loads(request(host, "/upload/image", body, {"Content-Type": f"multipart/form-data; boundary={boundary}"}))["name"]
 
 
-def graph(prompt, pose_name, strength, seed, size=None, negative=None, keyframe=None, denoise=None, hires=False, reference=None, ip_weight=None, incontext=None):
+def graph(prompt, pose_name, strength, seed, size=None, negative=None, keyframe=None, denoise=None, hires=False, reference=None, ip_weight=None, incontext=None, char_lora=None, trigger=None):
     w = copy.deepcopy(json.load(open(os.path.join(HERE, "workflow-pose-api.json"))))
-    w["6"]["inputs"]["text"] = prompt
+    w["6"]["inputs"]["text"] = prompt.replace("pixel art, ", f"pixel art, {trigger}, ", 1) if trigger else prompt
     if negative:
         w["7"]["inputs"]["text"] = negative
     if size:
@@ -134,6 +142,14 @@ def graph(prompt, pose_name, strength, seed, size=None, negative=None, keyframe=
         w["41"] = {"class_type": "KSampler", "inputs": {**w["3"]["inputs"], "latent_image": ["40", 0],
                    "denoise": HIRES_DENOISE, "steps": HIRES_STEPS}}
         w["8"]["inputs"]["samples"] = ["41", 0]
+    if char_lora:
+        # the character's LoRA after Pixel Art XL: everything that read node 10 reads node 11
+        for node in w.values():
+            for key, value in node["inputs"].items():
+                if isinstance(value, list) and value[0] == "10":
+                    node["inputs"][key] = ["11", value[1]]
+        w["11"] = {"class_type": "LoraLoader", "inputs": {"model": ["10", 0], "clip": ["10", 1], "lora_name": char_lora,
+                                                         "strength_model": CHAR_LORA_STRENGTH, "strength_clip": CHAR_LORA_STRENGTH}}
     w["9"]["inputs"]["filename_prefix"] = "pixelkiln/bench"
     if pose_name is None:
         # Prompt only: the sampler takes the text conditioning straight, and the pose nodes go.
@@ -188,7 +204,7 @@ def main():
             continue
         for character in args.characters.split(","):
             for motion in args.motions.split(","):
-                jobs.append((lane, None if lane.startswith(("S", "IC")) else {**LANES, **KEYFRAME_LANES, **REFERENCE_LANES}[lane], character, motion))
+                jobs.append((lane, None if lane.startswith(("S", "IC")) or lane == "LSI" else 0.75 if lane in LORA_LANES else {**LANES, **KEYFRAME_LANES, **REFERENCE_LANES}[lane], character, motion))
 
     for lane, strength, character, motion in jobs:
         if lane.startswith("IC"):
@@ -214,7 +230,7 @@ def main():
                 json.dump(runs, open(log_path, "w"), indent=1)
                 print(f"{lane} {character} {motion} chunk-{chunk} {seconds}s", flush=True)
             continue
-        if lane.startswith("S"):
+        if lane.startswith("S") or lane == "LSI":
             target = os.path.join(args.out, lane, character, motion, "sheet.png")
             if os.path.exists(target):
                 continue
@@ -225,19 +241,20 @@ def main():
                 head = fh.read(24)
             scale = float(lane[2:]) if lane.startswith("S-") else 1.0  # SH renders at 1x, then the hires pass
             size = tuple(int(int.from_bytes(head[i:i + 4], "big") * scale) // 64 * 64 for i in (16, 20))  # PNG IHDR
-            reference = upload(args.host, os.path.join(args.keyframes, f"{character}.png")) if lane == "SI" else None
+            reference = upload(args.host, os.path.join(args.keyframes, f"{character}.png")) if lane in ("SI", "LSI") else None
+            lora = dict(char_lora=CHAR_LORA.format(character=character), trigger=f"pxk{character}") if lane == "LSI" else {}
             png, seconds = render(args.host, graph(sheet_prompt(CHARACTERS[character], frames), upload(args.host, sheet),
                                                    0.75, SEED, size=size, negative=SHEET_NEGATIVE, hires=lane == "SH",
-                                                   reference=reference, ip_weight=IC_IP_WEIGHT if reference else None))
+                                                   reference=reference, ip_weight=IC_IP_WEIGHT if reference else None, **lora))
             open(target, "wb").write(png)
-            runs.append({"lane": lane, "character": character, "motion": motion, "frame": "sheet.png", "seed": SEED,
+            runs.append({"lane": lane, "character": character, "motion": motion, "frame": "sheet.png", **({"lora": lora["char_lora"], "loraStrength": CHAR_LORA_STRENGTH} if lora else {}), "seed": SEED,
                          "strength": 0.75, "size": list(size), **({"ipadapterWeight": IC_IP_WEIGHT} if reference else {}),
                          **({"hires": {"scale": HIRES_SCALE, "denoise": HIRES_DENOISE, "steps": HIRES_STEPS}} if lane == "SH" else {}), "seconds": seconds, "sha256": hashlib.sha256(png).hexdigest()})
             json.dump(runs, open(log_path, "w"), indent=1)
             print(f"{lane} {character} {motion} sheet {size[0]}x{size[1]} {seconds}s", flush=True)
             continue
         keyframe = None
-        if lane in KEYFRAME_LANES or lane in REFERENCE_LANES:
+        if lane in KEYFRAME_LANES or lane in REFERENCE_LANES or lane == "LI":
             keyframe = upload(args.host, os.path.join(args.keyframes, f"{character}.png"))
         poses = sorted(f for f in os.listdir(os.path.join(HERE, "poses", motion)) if f.endswith(".png"))
         for index, pose in enumerate(poses):
@@ -247,7 +264,11 @@ def main():
             os.makedirs(os.path.dirname(target), exist_ok=True)
             seed = SEED + index if lane == "A" else SEED
             pose_name = upload(args.host, os.path.join(HERE, "poses", motion, pose)) if lane != "A" else None
-            if lane in REFERENCE_LANES:
+            if lane in LORA_LANES:
+                png, seconds = render(args.host, graph(CHARACTERS[character], pose_name, 0.75, seed,
+                                                       reference=keyframe, ip_weight=IC_IP_WEIGHT if keyframe else None,
+                                                       char_lora=CHAR_LORA.format(character=character), trigger=f"pxk{character}"))
+            elif lane in REFERENCE_LANES:
                 png, seconds = render(args.host, graph(CHARACTERS[character], pose_name, 0.75, seed,
                                                        reference=keyframe, ip_weight=strength))
             elif keyframe:
@@ -257,8 +278,8 @@ def main():
                 png, seconds = render(args.host, graph(CHARACTERS[character], pose_name, strength, seed))
             open(target, "wb").write(png)
             runs.append({"lane": lane, "character": character, "motion": motion, "frame": pose, "seed": seed,
-                         "strength": 0.75 if lane in REFERENCE_LANES else KEYFRAME_STRENGTH if keyframe else strength,
-                         **({"ipadapterWeight": strength} if lane in REFERENCE_LANES else {"denoise": strength} if keyframe else {}),
+                         "strength": 0.75 if lane in REFERENCE_LANES or lane in LORA_LANES else KEYFRAME_STRENGTH if keyframe else strength,
+                         **({"lora": CHAR_LORA.format(character=character), "loraStrength": CHAR_LORA_STRENGTH, **({"ipadapterWeight": IC_IP_WEIGHT} if keyframe else {})} if lane in LORA_LANES else {"ipadapterWeight": strength} if lane in REFERENCE_LANES else {"denoise": strength} if keyframe else {}),
                          "seconds": seconds, "sha256": hashlib.sha256(png).hexdigest()})
             json.dump(runs, open(log_path, "w"), indent=1)
             print(f"{lane} {character} {motion} {pose} {seconds}s", flush=True)
