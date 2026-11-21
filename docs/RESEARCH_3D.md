@@ -57,6 +57,7 @@ Last updated 17 November 2026.
 | 47 | Finger bones, and a sword in the hand | PixelLab, Hunyuan3D-2mv, Quaternius's library, our scripts | A thumb and one finger chain a hand, found on the mesh; the library's fists and sword grip carry over; a generated sword sits in the closed right hand | Keep for 256 pixel sources. A 64 pixel hand and a hand drawn as a fist get no finger bones. |
 | 48 | A grip for a hand drawn as a fist | Our scripts | The heavier second body holds the same sword: the fist and its wrist are found on the mesh, the grip runs through the fist. No new generations | Keep. A fist holds but cannot open, and which way it faces is assumed, not measured. |
 | 49 | The left hand, and a shield | PixelLab, Hunyuan3D-2mv, our scripts | The sword sits in either body's left hand with no change; a generated shield is strapped to the left forearm of both and stands upright through the library's motions | Keep. The shield is carried, not used: the library has no shield or left-handed motions. |
+| 50 | Two hands on one grip | PixelLab, Hunyuan3D-2mv, our scripts | A generated greatsword in both hands of both bodies through all twelve motions, by pulling the grip in front of the body and solving both arms at every moment | Keep as a baked fallback. Wrists bend past what a wrist can in some motions; real two-handed animations would be better. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1314,6 +1315,44 @@ Not checked: whether the shield passes through the cape or the body in motions t
 
 **Verdict.** Keep. Two kinds of rigid item now cover the common cases: `held` for what a hand closes round, `strapped` for what an arm carries.
 
+## 50. Two hands on one grip
+
+**Question.** Steps 47 to 49 hold things in one hand. A greatsword needs two. The animation library has no two-handed motions, so can its one-handed ones be made to carry a second hand?
+
+**Setup.**
+
+- *The greatsword.* One PixelLab object in eight directions at 128 pixels, for 25 generations, asked for with a grip long enough for two hands. Meshed by Hunyuan3D-2mv in a little over two minutes, coloured from the sprites (89.5% silhouette match) and thinned from 30,000 triangles to 1,499.
+
+![A greatsword in eight directions](../website/public/research/3d/greatsword-sprites.png)
+
+- *Where the hands go.* A new kind of item in `rig.py`, `Greatsword=greatsword.glb:RightHand:two-handed`. The hand named leads and sits just under the guard. The other goes under it, towards the pommel, by the breadth of the two hands: 70% of an open hand's length, or the width of a fist. That place is written into the file as a bone with no skin, `RightGrip2`, on the leading hand. The sword was made 0.8 of the body's height long.
+- *What the file now carries.* Each grip bone's node has the hand's grip line and palm direction in its `extras`, and `RightGrip2` has the handle's line and the name of the hand that belongs there, so a later step or an engine needs nothing else.
+- *Moving the other hand.* A new script, [`scripts/offhand.py`](../research/scripts/offhand.py), run on the animated file. At each of thirty moments a second it turns the other hand so its grip lies along the handle, thumb towards the guard, tries 48 rolls round the handle and keeps the one that bends the wrist least without jumping from the moment before. Each arm is then a triangle of two fixed sides from shoulder to wrist.
+- *The other hand's fingers* copy the leading hand's, mirrored, where both have finger bones.
+
+**Result.**
+
+- **Moving one arm is not enough.** The first version left the leading hand where the library put it. The other hand reached the grip in none of the twelve motions, falling 23 to 38 centimetres short: a one-handed sword is carried at the hip, further from the other shoulder than an arm is long.
+- **Pulling the grip to wherever both arms could reach** put the sword behind the back, arms crossed behind the body, in the sword idle.
+- **What works:** the whole grip is pulled the least distance that lets both arms reach it with both hands at least 22 centimetres in front of the spine, and each elbow is pointed down, outwards and a little back instead of where the one-handed motion had it. Sword idle, walk and sword attack, the first body above and the second below:
+
+![Both armoured bodies holding a greatsword in two hands: on guard from the front and side, walking, and lunging](../website/public/research/3d/two-hands.png)
+
+- **The first body's other hand is on the grip at every moment of all twelve motions.** The grip is pulled 43 to 67 centimetres from where the one-handed motion had it.
+- **The second body's fists overlap a little:** the handle is 28.3 sprite pixels and his two fists need 29. His hand is on the grip throughout ten motions, falls up to 1.2 centimetres short in 4% of the sword attack, and up to 7 centimetres short through most of the dance.
+- **The file is valid:** 17,997 triangles and 2.7 MB for the first body, 48 bones. Godot 4.7.2 imports it with no errors. The viewer has it as "Two hands on a greatsword".
+
+Flaws:
+
+- **Wrists bend too far in some motions.** On the first body the other wrist stays within 15 degrees in the sword idle and 50 in the walk and the attack, but reaches about 100 in the jog and sprint and 129 in the roll. A wrist manages about 80.
+- **The motions are still one-handed ones.** The body's weight, the swing and the footwork are those of a light sword; only the arms were changed.
+- **Nothing keeps the blade out of the body, the cape or the ground.**
+- **The old keys stay in the file** as unused data, which the validator notes and which adds a few tens of kilobytes.
+
+Not checked: the left hand leading, a staff or a spear, the two-handed file in Godot's own renderer, and how the pulled grip looks through the whole of each motion beyond the three shown.
+
+**Verdict.** Keep as a fallback that works in any engine. An engine with an arm solver should use the `RightGrip2` bone live, and real two-handed animations would beat both.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1348,7 +1387,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 49 put a sword in either hand, open or drawn as a fist, and a shield on a forearm. Still to do: two hands on one grip, a handle sized to the hand, and motions that use a shield or a left-handed sword.
+- **Held items.** Steps 47 to 50 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands. Still to do: a handle sized to the hand, wrist limits for the two-handed pass, and motions made for a shield, a left-handed sword or two hands.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
@@ -1445,6 +1484,7 @@ No public tool was found that takes several directional pixel sprites and return
 - The body and its five layers in step 26: 52.8 generations (2 for the body, 10 for each layer, 0.8 for the joints), read from the balance before and after.
 - The sword of step 47: 25 generations for the eight directions, and six and a half minutes of GPU time for its mesh.
 - The shield of step 49: 25 generations for the eight directions, and eight and a half minutes of GPU time for its mesh.
+- The greatsword of step 50: 25 generations for the eight directions, and a little over two minutes of GPU time for its mesh.
 - Nine meshes in step 27: about two minutes of GPU time each. Five paint runs in step 29: five to six minutes each.
 
 ## Running the scripts

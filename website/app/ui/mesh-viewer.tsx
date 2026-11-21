@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 const SUBJECTS = [
   { id: "parts", label: "Painted, from 256 px sprites", pixel: false },
   { id: "heavy", label: "Second body, same items", pixel: false },
+  { id: "great", label: "Two hands on a greatsword", pixel: false },
   { id: "pixel", label: "Pixel, from 64 px sprites", pixel: true },
   { id: "cards", label: "Sprite cards on bones", pixel: true },
   { id: "knight", label: "First knight, one piece", pixel: true },
@@ -500,6 +501,16 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             bones: the sword runs through his right fist, which is found
             on the mesh. The shield is strapped to his left forearm. Pick the sword attack to see it used. Take the
             armour off to see the body under it.
+          </p>
+        ) : subject === "great" ? (
+          <p className="spin-note">
+            Drag to turn it. The first body with a greatsword in both
+            hands. The motions are the same stock one-handed ones: at
+            every moment the grip is pulled in front of the body until
+            both arms can reach it, and both arms are bent to meet it.
+            The left hand&apos;s fingers copy the right&apos;s. Pick the
+            sword idle or the sword attack. Nothing here was animated by
+            hand, so some motions bend a wrist further than a wrist goes.
           </p>
         ) : subject === "pixel" ? (
           <p className="spin-note">

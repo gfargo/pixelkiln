@@ -250,6 +250,23 @@ elbow, so it stands upright when the arm hangs, and it is made
 lays it across the arm. It follows the forearm alone and needs no hand
 bones.
 
+Two hands on one grip takes the `two-handed` kind and one more script:
+
+```bash
+HELD_LENGTH=0.8 ITEMS="Greatsword=<greatsword.glb>:RightHand:two-handed" python3 research/scripts/rig.py <body-light.glb> <body.rig.json> - - <character.glb>
+python3 research/scripts/retarget.py <character.glb> <library.glb> <animated.glb>
+python3 research/scripts/offhand.py <animated.glb> <two-handed.glb>
+```
+
+The hand named leads and sits under the guard. `rig.py` leaves a bone,
+`RightGrip2`, where the other hand belongs. `offhand.py` then goes through
+every animation: it pulls the grip in front of the body until both arms can
+reach it, bends both arms to meet it, and stores the result as keys. It
+prints, for each animation, how far the grip was pulled, whether the hand
+ever fell short and how far a wrist bends. Run it after `retarget.py` and
+before `sway.py`. An engine with its own arm solver can use the `RightGrip2`
+bone and skip the script.
+
 Then animate as in step 8. `retarget.py` carries the library's thumb and
 middle finger over, so the hand is a fist in a walk and closed round the grip
 in a sword attack. A fist has no fingers to move and holds as drawn.
@@ -288,8 +305,9 @@ swing. See step 31 of the research note.
   redraw's lighting is painted in.
 - **Separate fingers, eyes and a jaw** in the skeleton. The four fingers
   move as one, and only on the painted path.
-- **Held items beyond a sword and a shield.** Two hands on one grip and a
-  shield gripped in the fist are untried, the grip is not sized to the hand,
+- **Held items beyond swords and a shield.** A shield gripped in the fist is
+  untried, the grip is not sized to the hand, two-handed motions are stock
+  one-handed ones bent to fit and can bend a wrist too far,
   and the animation library has no left-handed or shield motions, so a shield
   is carried, not used. A fist cannot open, so it cannot let go or change its hold.
 - **Many bodies.** The items have been worn by two: the one they were cut on
