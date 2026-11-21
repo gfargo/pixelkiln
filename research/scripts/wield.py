@@ -7,7 +7,8 @@ bends such a motion until the other hand reaches the grip, and the wrists pay fo
 way round: the path of the item is written down, and both arms are solved to it.
 
 Each new animation takes its legs, hips, spine and head from an animation the file already has (BASE
-below), and replaces both arms. Where the grip is and which way the handle points are given at a few
+below), and replaces both arms. A motion may also carry footwork: the hips are moved and turned, a foot
+steps, and both legs are solved again from hip to ankle. Where the grip is and which way the handle points are given at a few
 moments, in a frame that rides on the chest: across to the leading hand's side, up the spine, and to the
 front, in arm lengths from the middle of the shoulders. Between those moments the grip and the handle
 follow a smooth curve through them.
@@ -22,7 +23,8 @@ The animations, each named after what it is for:
   Great_Idle     a guard, the blade upright before the body, breathing
   Great_Walk     the same guard carried on the walk
   Great_Jog      the same, the hands a little lower and nearer
-  Great_Attack   a cut from over the leading shoulder down to the front, the trunk leaning into it
+  Great_Attack   a cut from over the leading shoulder down to the front, with a step: the hips wind up, the other
+                 foot steps out as the cut lands, and the trunk leans into it
 
 Environment:
   FPS     samples a second (default 30)
@@ -67,7 +69,15 @@ MOTIONS = [
                  (0.47, (0.30, -0.15, 0.58), (0.10, 0.94, -0.30), 8),   # half way down: hands before the chest, the blade still behind them
                  (0.54, (0.12, -0.55, 0.72), (-0.05, 0.75, 1.00), 22),  # the cut lands: arms out and down, the blade ahead and rising
                  (0.66, (0.12, -0.57, 0.70), (-0.05, 0.65, 1.00), 24),
-                 (1.00, *GUARD, 0)]},
+                 (1.00, *GUARD, 0)],
+     # (share, hips forward, hips down, hips turned towards the leading side in degrees, the step forward, its lift), lengths in leg lengths
+     'feet': [(0.00, 0.00, 0.00, 0, 0.00, 0.00),
+              (0.32, -0.04, 0.02, 18, 0.00, 0.00),   # wound up: the hips turned towards the raised sword, weight back
+              (0.42, 0.02, 0.02, 14, 0.12, 0.07),    # the foot leaves the ground
+              (0.54, 0.22, 0.14, -14, 0.45, 0.00),   # it lands with the cut: the hips forward, down and turned through
+              (0.68, 0.22, 0.15, -16, 0.45, 0.00),
+              (0.84, 0.08, 0.04, -4, 0.14, 0.06),    # and comes back
+              (1.00, 0.00, 0.00, 0, 0.00, 0.00)]},
 ]
 
 
@@ -170,6 +180,12 @@ along = float((rest_place[target][0] - rest_place[named[lead + 'Grip']][0]) @ ha
 FINGERS = [(named[other + bone], named[lead + bone]) for bone in ('ThumbMetacarpal', 'ThumbProximal', 'ThumbDistal', 'MiddleProximal', 'MiddleIntermediate', 'MiddleDistal')
            if other + bone in named and lead + bone in named]
 ours = {ARMS[s][part] for s in ARMS for part in ('upper', 'fore', 'hand')} | {mine for mine, _ in FINGERS}
+LEGS = {}
+for side in (lead, other):
+    u, f, h = (named[side + part] for part in ('UpperLeg', 'LowerLeg', 'Foot'))
+    one, two = rest(f, 'translation', [0, 0, 0]), rest(h, 'translation', [0, 0, 0])
+    LEGS[side] = {'upper': u, 'fore': f, 'foot': h, 'one': one, 'two': two, 'a': np.linalg.norm(one), 'b': np.linalg.norm(two)}
+LEG = LEGS[lead]['a'] + LEGS[lead]['b']
 trunk = [named['Hips'], named['Chest'] if 'Chest' in named else named['Spine']]
 angles = np.linspace(0, 2 * np.pi, ROLLS, endpoint=False)
 
@@ -189,22 +205,26 @@ for node in nodes:
 if flat0 is None: flat0 = np.cross(handle0, palm0); item_name = None
 
 
-def bend(shoulder, wrist, was, a, b):
+def bend(shoulder, wrist, was, a, b, reach=None):
     """An arm of two fixed lengths from shoulder to wrist: where its elbow goes, and where its wrist ends if it cannot reach."""
-    far = np.linalg.norm(wrist - shoulder); span = float(np.clip(far, abs(a - b) + 1e-4, REACH * (a + b))); way = (wrist - shoulder) / (far + 1e-12)
+    far = np.linalg.norm(wrist - shoulder); span = float(np.clip(far, abs(a - b) + 1e-4, (reach or REACH) * (a + b))); way = (wrist - shoulder) / (far + 1e-12)
     near = (a * a - b * b + span * span) / (2 * span); rise = np.sqrt(max(a * a - near * near, 0))
     pole = was - way * (was @ way); pole = unit(pole) if np.linalg.norm(pole) > 1e-4 else unit(np.cross(way, [1, 0, 0]))
     return shoulder + way * near + pole * rise, shoulder + way * span, abs(far - span)
 
 
-def at_share(moments, share):
-    """The grip, the handle's way and the lean at a share of the animation's length: a smooth curve through the moments,
-    at rest at both ends, passing each one in between at the pace of its neighbours."""
-    at = np.array([m[0] for m in moments], float); values = np.array([[*m[1], *unit(np.array(m[2], float)), m[3]] for m in moments], float)
-    slope = np.zeros_like(values)
+def curve(at, values, share):
+    """A smooth curve through values given at shares of the length: at rest at both ends, passing each one in between
+    at the pace of its neighbours."""
+    at, values = np.array(at, float), np.array(values, float); slope = np.zeros_like(values)
     for i in range(1, len(at) - 1): slope[i] = (values[i + 1] - values[i - 1]) / (at[i + 1] - at[i - 1])
     i = int(np.clip(np.searchsorted(at, share, side='right') - 1, 0, len(at) - 2)); h = at[i + 1] - at[i]; x = float(np.clip((share - at[i]) / h, 0, 1))
-    v = ((2 * x ** 3 - 3 * x ** 2 + 1) * values[i] + (x ** 3 - 2 * x ** 2 + x) * h * slope[i] + (-2 * x ** 3 + 3 * x ** 2) * values[i + 1] + (x ** 3 - x ** 2) * h * slope[i + 1])
+    return ((2 * x ** 3 - 3 * x ** 2 + 1) * values[i] + (x ** 3 - 2 * x ** 2 + x) * h * slope[i] + (-2 * x ** 3 + 3 * x ** 2) * values[i + 1] + (x ** 3 - x ** 2) * h * slope[i + 1])
+
+
+def at_share(moments, share):
+    """The grip, the handle's way and the lean at a share of the animation's length."""
+    v = curve([m[0] for m in moments], [[*m[1], *unit(np.array(m[2], float)), m[3]] for m in moments], share)
     return v[:3], unit(v[3:6]), v[6]
 
 
@@ -225,8 +245,32 @@ for motion in MOTIONS:
         was = moved.get((spine, 'rotation'), np.repeat(rest(spine, 'rotation', [0, 0, 0, 1])[None], len(moments), 0))
         x, y, z, w = was.T; s, c = np.sin(leans / 2), np.cos(leans / 2)  # was * (s, 0, 0, c)
         moved[(spine, 'rotation')] = np.stack([w * s + x * c, y * c + z * s, z * c - y * s, w * c - x * s], 1)
+    turns = {ARMS[s][part]: [] for s in ARMS for part in ('upper', 'fore', 'hand')}; foot_short = 0.0
+    if motion.get('feet'):
+        # Footwork: the hips move and turn, the foot on the other hand's side steps out and back, and both legs are
+        # solved again from hip to ankle. The feet keep the ground and the facing the base gave them.
+        hips = named['Hips']; turn0, place0 = world(len(moments), moved)
+        ahead = turn0[hips][0] @ np.array([0, 0, 1.0]); ahead[1] = 0; ahead = unit(ahead); sign = 1.0 if lead == 'Left' else -1.0
+        track = np.array([curve([m[0] for m in motion['feet']], [m[1:] for m in motion['feet']], s) for s in shares])  # forward, down, turn, step, lift
+        above = turn0[parent[hips]] if hips in parent else np.repeat(np.eye(3)[None], len(moments), 0)
+        shift = ahead[None] * (track[:, 0:1] * LEG) - np.array([0, 1.0, 0])[None] * (track[:, 1:2] * LEG)
+        moved[(hips, 'translation')] = moved.get((hips, 'translation'), np.repeat(rest(hips, 'translation', [0, 0, 0])[None], len(moments), 0)) + np.einsum('kji,kj->ki', above, shift)
+        half = np.radians(track[:, 2]) * sign / 2; was = moved.get((hips, 'rotation'), np.repeat(rest(hips, 'rotation', [0, 0, 0, 1])[None], len(moments), 0))
+        x, y, z, w = was.T; s_, c_ = np.sin(half), np.cos(half)  # (0, s, 0, c) * was: a turn about the upright, before what the base does
+        moved[(hips, 'rotation')] = np.stack([c_ * x + s_ * z, c_ * y + s_ * w, c_ * z - s_ * x, c_ * w - s_ * y], 1)
+        turn, place = world(len(moments), moved)
+        for side in (lead, other):
+            leg = LEGS[side]; u, f, h = leg['upper'], leg['fore'], leg['foot']; keys = {u: [], f: [], h: []}
+            for k in range(len(moments)):
+                ankle = place0[h][k] + (ahead * track[k, 3] * LEG + np.array([0, track[k, 4] * LEG, 0]) if side == other else 0)
+                root = place[u][k]; knee_was = place0[f][k] - place0[u][k] + ahead * 0.3 * LEG
+                knee, reached, miss = bend(root, ankle, knee_was, leg['a'], leg['b'], 0.999); foot_short = max(foot_short, miss)
+                as_was = turn[u][k]; new_upper = between(as_was @ leg['one'], knee - root) @ as_was
+                new_fore = new_upper @ (as_was.T @ turn[f][k]); new_fore = between(new_fore @ leg['two'], reached - knee) @ new_fore
+                for node, local in ((u, turn[parent[u]][k].T @ new_upper), (f, new_upper.T @ new_fore), (h, new_fore.T @ turn0[h][k])):
+                    q = np.array(quaternion(local)); keys[node].append(-q if keys[node] and q @ keys[node][-1] < 0 else q)
+            for node, values in keys.items(): moved[(node, 'rotation')] = np.array(values)
     turn, place = world(len(moments), moved)
-    turns = {ARMS[s][part]: [] for s in ARMS for part in ('upper', 'fore', 'hand')}
     short = {lead: [], other: []}; bends = {lead: [], other: []}; flats = []; pulls = []; last = {lead: None, other: None}; before = None
     for k in list(range(len(moments))) * 2:  # twice round, keeping the second: a loop then starts with the roll it ends on
         if k == 0: turns = {node: [] for node in turns}; short = {lead: [], other: []}; bends = {lead: [], other: []}; flats = []; pulls = []; before = None
@@ -284,7 +328,7 @@ for motion in MOTIONS:
     seam = max(float(np.degrees(2 * np.arccos(min(1, abs(np.array(v[0]) @ np.array(v[-1])))))) for v in turns.values())
     report.append({'name': motion['name'], 'from': base_name, 'seconds': round(float(length), 2),
                    'furthestShortMetres': round(float(max(max(short[lead]), max(short[other]))), 3),
-                   'gripPulledMetres': round(float(max(pulls)), 3), 'wristBendDegrees': {lead: round(float(np.degrees(max(bends[lead])))), other: round(float(np.degrees(max(bends[other]))))},
+                   'gripPulledMetres': round(float(max(pulls)), 3), 'footShortMetres': round(float(foot_short), 3), 'wristBendDegrees': {lead: round(float(np.degrees(max(bends[lead])))), other: round(float(np.degrees(max(bends[other]))))},
                    'wristWorstAtShare': round(float(shares[int(np.argmax(np.maximum(bends[lead], bends[other])))]), 2), 'bladeOffItsEdgeDegrees': {'typical': round(float(np.median(flats))), 'most': round(float(max(flats)))}, 'firstToLastDegrees': round(seam)})
 
 doc['buffers'][0]['byteLength'] = len(blob)
