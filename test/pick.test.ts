@@ -171,7 +171,7 @@ describe("runPicker", () => {
     const group = session!.groups[0]!
     expect(group.current).toEqual({ url: "/review/abc/current-art/0", width: 1, height: 1 })
     expect(session!.assets.get("/review/abc/current-art/0")).toEqual({ path: oldFile, contentType: "image/png" })
-    expect(session!.html()).toContain("CURRENT ART")
+    expect(session!.html()).toContain('"current":{"url":"/review/abc/current-art/0"')
     // Without the spec there is no manifest root to resolve the old path from.
     expect((await prepareReview(again, lock))!.groups[0]!.current).toBeUndefined()
 

@@ -212,6 +212,30 @@ async function runLifecycle(args: Args, wave: number, spent: Map<string, number>
         onProgress: log,
         onReady: announceReviewReady,
         autoAcceptSingle: args.yes,
+        // A reroll from the page is `gen --force` for that one asset, inside
+        // this run: same plan, same budget ceiling, same submit and poll.
+        reroll: args.command === "gen" ? async (key) => {
+          const spec = providerSpecsForRun.find((s) => lockKey(s.styleId, s.assetId) === key)
+          if (!spec) throw new Error(`${key} is not part of this run`)
+          const plan = await buildPlan([spec], lock, { force: true })
+          if (!plan.actionable.length) throw new Error(`${key} cannot be regenerated: ${plan.items[0]?.reason ?? "not actionable"}`)
+          const budgets = budgetsForPlan(plan, remainingBudgets(args, spent))
+          for (const group of plan.groups) {
+            const ceiling = budgets.get(group.provider)
+            if (ceiling !== undefined && group.cost > ceiling) {
+              throw new BudgetError(`${key} would spend ${formatCost(group.costUnit, group.cost)} but only ${formatCost(group.costUnit, ceiling)} of the budget is left`)
+            }
+            const res = await submit(providerFor(group.provider), loaded, group.actionable, lock, args.lock, {
+              budget: ceiling,
+              onProgress: log,
+            })
+            spent.set(group.provider, (spent.get(group.provider) ?? 0) + res.spent)
+            if (res.failed) throw new Error(`${key}: the provider refused the resubmission`)
+          }
+          await poll(providerFor(providerId), lock, args.lock, { onProgress: log, specs: [spec] })
+          const status = lock.entries[key]?.status
+          if (status !== "review") throw new Error(`${key} finished as ${status ?? "missing"}, not in review`)
+        } : undefined,
         keys: providerSpecsForRun.map((spec) => lockKey(spec.styleId, spec.assetId)),
         specs: providerSpecsForRun,
       })

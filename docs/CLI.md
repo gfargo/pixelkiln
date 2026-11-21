@@ -200,23 +200,40 @@ finish it before polling.
 
 ### `pick`
 
-Open the local candidate-review UI for jobs with alternatives. The page keeps
-native aspect ratios, uses exact integer zoom for small art, fits large work,
-and centers the decision surface on wide displays. A revision row shows its
-parent source beside the new candidates, and a regeneration (`gen --force`)
-shows the art it would replace beside them while that file is still on disk,
-so the question is "is this better?" rather than "is this good?". A frame set
-(a ComfyUI frame set, a PixelLab animation, or a frame-set revision such as
-`animate-skeleton`) appears as an
-animated ordered strip and is accepted or left unresolved as a unit. Its preview
-can be paused, starts paused when reduced motion is enabled, and stops while it
-is offscreen. Frames and candidates the provider decoded to a local cache are
-served by the review server itself, since a localhost page may not load a
-`file://` image. Arrow keys navigate, Enter selects, 1–9 choose directly, and 0
-leaves a row unresolved. Only rows submitted
-with **Apply selections** are written to the lockfile. Closing the window applies
-nothing. See the [Getting started guide](GETTING_STARTED.md#start-a-new-project)
-for a screenshot of the interface.
+Open the local candidate-review UI for jobs with alternatives. It is a review
+queue built for 50+ assets: a list of every asset on the left, each playing its
+candidate as a small thumbnail, and a stage on the right that shows the current
+asset at the largest whole-number zoom that fits (fitted, never stretched, when
+the art is larger than the stage). A frame set (a ComfyUI frame set, a PixelLab
+animation, or a frame-set revision such as `animate-skeleton`) plays as an
+animation and is accepted or left unresolved as a unit; alternatives are
+browsed one at a time. Playback starts paused when reduced motion is enabled
+and stops while the tab is hidden.
+
+`C` flips the stage between the candidate and the art it would replace (a
+`gen --force` regeneration, while that file is still on disk) or a revision's
+parent source, at the same scale, so the question is "is this better?" rather
+than "is this good?". `X` opens a horizontal strip of every frame or candidate,
+with onion skin (`O`) and ping-pong playback (`P`). `F` flags the frame on the
+stage; a set with a flagged frame cannot be accepted, and the list can be
+filtered by status (`1`–`5`: all, undecided, accepted, flagged, later).
+
+Every action has a key: `↑`/`↓` move between assets, `←`/`→` step frames or
+candidates, `Space` plays and pauses the page, `A` accepts, `L` sets an asset
+aside for later, `Shift+A` accepts every unflagged asset, `Shift+S` and
+`Shift+D` select and deselect all, and `Ctrl`/`Cmd+Enter` applies. Under `gen`,
+`R` (pressed twice, since it spends) rerolls one asset: it is resubmitted with
+`--force` inside the same run, under the same budget, and its new candidates
+replace the old ones on the page when they reach review.
+
+Each choice, flag and "later" is saved as it is made to the review state beside
+the candidate cache (`.pixelkiln/review-state.json`), so a refresh or a
+restarted run reopens the page where it was left. Frames and candidates are
+served from that local cache by the review server itself, each frame requested
+once. Only assets accepted when you press **Apply** are written to the
+lockfile; closing the window applies nothing. See the
+[Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
+screenshot of the interface.
 
 The live localhost URL is progress, not piped command output. In a terminal it
 prints normally; when stdout is piped, PixelKiln sends it to stderr immediately
@@ -799,7 +816,7 @@ provider, and what the session budget still allows. It is the page's version of
 terminal `plan` in another window agrees at every step. Progress appears in a
 job strip under the filters; each job keeps the log lines the CLI would have
 printed. Candidate sets stop in `review`: **Review** slides the `pick` sheet
-out over the gallery, **Apply selections** writes the lockfile and downloads
+out over the gallery, **Apply** writes the lockfile and downloads
 the chosen art, and unchosen rows stay in review exactly as with `pick`. A
 regeneration's sheet shows the current art beside the candidates. A job
 runs in waves, as `gen` does: when a wave lands, anything the job was asked
