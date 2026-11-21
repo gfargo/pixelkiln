@@ -1,3 +1,10 @@
+# [0.127.0](https://github.com/gfargo/pixelkiln/compare/v0.126.0...v0.127.0) (2026-11-21)
+
+
+### Features
+
+* **site:** two hands on one grip, research step 50 ([1d9fc25](https://github.com/gfargo/pixelkiln/commit/1d9fc251f58c32b12600d07d0ff0709c4f171197))
+
 # [0.126.0](https://github.com/gfargo/pixelkiln/compare/v0.125.0...v0.126.0) (2026-11-21)
 
 
