@@ -1,3 +1,10 @@
+# [0.129.0](https://github.com/gfargo/pixelkiln/compare/v0.128.0...v0.129.0) (2026-11-21)
+
+
+### Features
+
+* **site:** footwork for the two-handed attack, research step 52 ([ac58f5e](https://github.com/gfargo/pixelkiln/commit/ac58f5e26dcfcec371b5a458c54611f8a4212ee6))
+
 # [0.128.0](https://github.com/gfargo/pixelkiln/compare/v0.127.0...v0.128.0) (2026-11-21)
 
 
