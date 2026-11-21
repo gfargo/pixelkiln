@@ -31,6 +31,7 @@ Environment:
            Its file must have it upright with its face to the front, as its sprites show it. Its back goes to the
            back of the forearm, its top towards the elbow, and it follows the forearm alone.
   HELD_LENGTH  how long a held item is made, as a share of the body's height (default 0.5)
+  FIST_LEAN    the angle between a closed fist's hold and its forearm, in degrees, thumb end away from the elbow (default 80)
   STRAPPED_LENGTH  how tall a strapped item is made, as a share of the body's height (default 0.36)
   STRAPPED_TURN    degrees to turn a strapped item about its face, for one carried across the arm (default 0)
   FINGERS  0 leaves out the finger bones. By default a hand whose thumb can be found on the mesh gets a thumb
@@ -141,8 +142,12 @@ def hand(side, s):
         front = np.array([0, -1.0, 0]) - f * -f[1]; front /= np.linalg.norm(front); across = axis[:, 2] * np.sign(axis[:, 2] @ front)
         if size[2] < 1.5 * size[1] or across @ front < 0.7: across = front  # too round to tell, or not lying the way the animations expect
         reach = flat @ across; centre = centre + across * (reach.max() + reach.min()) / 2
+        # A hand closed on a handle holds it a little short of square to the forearm, the thumb's end further from the
+        # elbow. A fist's own shape says nothing reliable about that lean, so it is set.
+        square = across - a * (across @ a); square /= np.linalg.norm(square); lean = np.radians(float(os.environ.get("FIST_LEAN", "80")))
+        across = square * np.sin(lean) + a * np.cos(lean)
         return {"wrist": wrist, "fingers": [wrist + f * length], "grip": centre, "fist": (reach.max() - reach.min()) / 2,
-                "palm": np.cross(f, across) * (1 if side == "Left" else -1), "across": across, "along": f, "length": length}
+                "palm": (lambda n: n / np.linalg.norm(n))(np.cross(f, across)) * (1 if side == "Left" else -1), "across": across, "along": f, "length": length}
     length = float(np.clip((tip_t - web) / 0.58, tip_t - web + 1, tip_t + 0.35 * forearm)); wrist_t = tip_t - length
     def slab(at, index=arm):  # the middle of the hand, or of one piece of it, at this distance along
         d = np.abs((centres[index] - wr) @ a - at); return centres[index[d <= max(0.6, d.min() + 0.1)]].mean(0)

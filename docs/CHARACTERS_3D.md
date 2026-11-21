@@ -232,7 +232,8 @@ the palm of the hand named, puts its grip at that hand's grip point, and makes
 it `HELD_LENGTH` of the body's height long (default 0.5). The file's own
 frame does not matter. It needs a hand with a grip point: one with finger
 bones, or a closed fist. In a fist the grip runs through the fist from front
-to back, blade to the front, and the guard is kept clear of the fist's side.
+to back, blade to the front, a little short of square to the forearm
+(`FIST_LEAN`, 80 degrees), and the guard is kept clear of the fist's side.
 
 Either hand works: name `LeftHand` for the left.
 
@@ -266,6 +267,19 @@ prints, for each animation, how far the grip was pulled, whether the hand
 ever fell short and how far a wrist bends. Run it after `retarget.py` and
 before `sway.py`. An engine with its own arm solver can use the `RightGrip2`
 bone and skip the script.
+
+Those are one-handed motions bent to fit. For motions made for two hands,
+run one more script after it:
+
+```bash
+python3 research/scripts/wield.py <two-handed.glb> <with-great-motions.glb>
+```
+
+It adds `Great_Idle`, `Great_Walk`, `Great_Jog` and `Great_Attack`: the
+sword's path is written in the script, both arms are solved to it, and the
+legs and trunk come from the stock idle, walk and jog. It prints how far each
+wrist bends, how far the blade is off its edge and whether a hand fell short.
+To add a motion, add an entry to `MOTIONS` at the top of the script.
 
 Then animate as in step 8. `retarget.py` carries the library's thumb and
 middle finger over, so the hand is a fist in a walk and closed round the grip
@@ -306,8 +320,9 @@ swing. See step 31 of the research note.
 - **Separate fingers, eyes and a jaw** in the skeleton. The four fingers
   move as one, and only on the painted path.
 - **Held items beyond swords and a shield.** A shield gripped in the fist is
-  untried, the grip is not sized to the hand, two-handed motions are stock
-  one-handed ones bent to fit and can bend a wrist too far,
+  untried, the grip is not sized to the hand, there are four motions made for two hands
+  and the rest are stock one-handed ones bent to fit, which can bend a wrist
+  too far,
   and the animation library has no left-handed or shield motions, so a shield
   is carried, not used. A fist cannot open, so it cannot let go or change its hold.
 - **Many bodies.** The items have been worn by two: the one they were cut on

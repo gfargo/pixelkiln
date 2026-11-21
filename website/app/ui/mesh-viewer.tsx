@@ -316,7 +316,7 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
         helper.visible = false;
         scene.add(helper);
         mixer = new THREE.AnimationMixer(gltf.scene);
-        const first = gltf.animations.find((entry) => entry.name === "Walk_Loop") ?? gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
+        const first = gltf.animations.find((entry) => entry.name === "Great_Walk") ?? gltf.animations.find((entry) => entry.name === "Walk_Loop") ?? gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
         if (first) {
           action = mixer.clipAction(first);
           action.play();
@@ -505,12 +505,13 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
         ) : subject === "great" ? (
           <p className="spin-note">
             Drag to turn it. The first body with a greatsword in both
-            hands. The motions are the same stock one-handed ones: at
-            every moment the grip is pulled in front of the body until
-            both arms can reach it, and both arms are bent to meet it.
-            The left hand&apos;s fingers copy the right&apos;s. Pick the
-            sword idle or the sword attack. Nothing here was animated by
-            hand, so some motions bend a wrist further than a wrist goes.
+            hands. No free library has two-handed motions, so the four
+            named Great were made here: the path of the sword is written
+            down and both arms are solved to it, over the legs and trunk
+            of a stock idle, walk and jog. Pick the great attack. The
+            other motions are stock one-handed ones bent until the
+            second hand reaches the grip, and some of those bend a wrist
+            further than a wrist goes.
           </p>
         ) : subject === "pixel" ? (
           <p className="spin-note">
