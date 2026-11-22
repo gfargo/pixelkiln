@@ -1,3 +1,10 @@
+# [0.135.0](https://github.com/gfargo/pixelkiln/compare/v0.134.0...v0.135.0) (2026-11-22)
+
+
+### Features
+
+* root motion for walks, runs and the spear advance, research step 57 ([f0c493e](https://github.com/gfargo/pixelkiln/commit/f0c493eba67e159644820b5109f9e2aa7fa0e2d5))
+
 # [0.134.0](https://github.com/gfargo/pixelkiln/compare/v0.133.0...v0.134.0) (2026-11-22)
 
 
