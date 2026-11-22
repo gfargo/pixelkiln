@@ -18,7 +18,8 @@ Steps:
 --data holds lora/pixelkiln-lora-<character>/ from this benchmark (512x1024 crops of frames
 that match the keyframe, each with a caption starting with the trigger word pxk<character>).
 --set w adds lora/pixelkiln-lora-<character>-w/ (run 7's wide-walk frames, 832x1024 crops)
-to the base set and names the LoRA pxk-<character>-w. Kohya buckets by size without
+to the base set and names the LoRA pxk-<character>-w; --set w,s also adds -s/ (run 11's
+frames with the weapon swung) as pxk-<character>-w-s. Kohya buckets by size without
 upscaling, so the 512x1024 and 832x1024 crops both train at their own pixel scale.
 Python standard library only; run it with the kohya venv's interpreter.
 """
@@ -36,6 +37,7 @@ CHECKPOINT = "F:/ComfyUI-Shared/models/checkpoints/sd_xl_base_1.0.safetensors"
 STYLE_LORA = "F:/ComfyUI-Shared/models/loras/pixel-art-xl.safetensors"
 REPEATS = 10
 EPOCHS = 6
+EXTRA_REPEATS = {"s": 30}  # run 11's four swung-sword frames
 
 CONFIG = """pretrained_model_name_or_path = "{checkpoint}"
 base_weights = ["{style}"]
@@ -108,17 +110,18 @@ def main():
     p.add_argument("--loras", required=True)
     p.add_argument("--host", default="http://127.0.0.1:8188")
     p.add_argument("--wait-idle", type=int, default=600)
-    p.add_argument("--set", default="", help="an extra training set to add, e.g. w for pixelkiln-lora-<character>-w")
+    p.add_argument("--set", default="", help="extra training sets to add, comma-separated, e.g. w or w,s")
     p.add_argument("--max-steps", type=int, default=0, help="stop early, for a speed check")
     a = p.parse_args()
-    name = f"pxk-{a.character}" + (f"-{a.set}" if a.set else "") + (f"-smoke{a.max_steps}" if a.max_steps else "")
+    name = f"pxk-{a.character}" + ("".join(f"-{x}" for x in a.set.split(",")) if a.set else "") + (f"-smoke{a.max_steps}" if a.max_steps else "")
     trigger = f"pxk{a.character}"
     img = os.path.join(a.out, name, "img")
     shutil.rmtree(img, ignore_errors=True)
     shutil.copytree(os.path.join(a.data, f"pixelkiln-lora-{a.character}"), os.path.join(img, f"{REPEATS}_{trigger}"))
-    if a.set:
-        shutil.copytree(os.path.join(a.data, f"pixelkiln-lora-{a.character}-{a.set}"), os.path.join(img, f"{REPEATS}_{trigger}"),
-                        dirs_exist_ok=True)
+    for extra in a.set.split(",") if a.set else []:
+        # a small set gets more repeats in its own folder, so a few frames still count
+        shutil.copytree(os.path.join(a.data, f"pixelkiln-lora-{a.character}-{extra}"),
+                        os.path.join(img, f"{EXTRA_REPEATS.get(extra, REPEATS)}_{trigger}"), dirs_exist_ok=True)
     config = os.path.join(a.out, name, "train.toml")
     with open(config, "w") as fh:
         fh.write(CONFIG.format(checkpoint=CHECKPOINT, style=STYLE_LORA, img=img.replace("\\", "/"),

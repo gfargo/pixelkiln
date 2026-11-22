@@ -48,6 +48,9 @@ Lanes, each over every motion in poses/ (idle 4, walk 8, attack 4) for each char
   LW-A-P1.0  overhead, then straight out, a longer lunge), at pose 0.75 and 1.0.
   LW-AP-0.5  run 10: LW-A plus the weapon drawn as white strokes (poses/attack-wide-prop-
   LW-AP-0.8  <character>/) through the union ControlNet's scribble mode at 0.5 or 0.8.
+  CW-s1..3   run 11 candidates: LoRA at 0.5, prop at 0.9, seeds 1-3, to harvest swing frames.
+  LWS-A      run 11: the -w-s LoRA (wide walk plus four swing frames), without and with
+  LWS-AP-0.8 the prop control at 0.8.
   K-0.55   keyframe: every frame starts from the character's keyframe (--keyframes
   K-0.70   <dir>/<character>.png) encoded as the latent, redrawn at denoise 0.55 or 0.70 with
            the pose ControlNet at 0.90, so colours, props and proportions carry over.
@@ -106,7 +109,14 @@ LORA_LANES = {"L": {}, "LI": {"ip": True}, "LSI": {"ip": True, "sheet": True},
               "LW-A-P1.0": {"set": "w", "pose": 1.0, "poses": {"walk": "walk-wide", "attack": "attack-wide"}},
               # run 10: plus the weapon drawn in poses/attack-wide-prop-<character>/, at 0.5 or 0.8
               "LW-AP-0.5": {"set": "w", "prop": 0.5, "poses": {"walk": "walk-wide", "attack": "attack-wide"}},
-              "LW-AP-0.8": {"set": "w", "prop": 0.8, "poses": {"walk": "walk-wide", "attack": "attack-wide"}}}
+              "LW-AP-0.8": {"set": "w", "prop": 0.8, "poses": {"walk": "walk-wide", "attack": "attack-wide"}},
+              # run 11 candidates for training frames with the weapon swung: the LoRA looser (0.5),
+              # the weapon control stronger (0.9), three seeds; frames are picked by eye
+              **{f"CW-s{n}": {"set": "w", "strength": 0.5, "prop": 0.9, "seed": n, "poses": {"attack": "attack-wide"}}
+                 for n in (1, 2, 3)},
+              # run 11: the knight's LoRA retrained with swung-sword frames added (train-lora.py --set w,s)
+              "LWS-AP-0.8": {"set": "w-s", "prop": 0.8, "poses": {"attack": "attack-wide"}},
+              "LWS-A": {"set": "w-s", "poses": {"attack": "attack-wide"}}}
 UNION_CONTROLNET = "controlnet-union-sdxl-promax.safetensors"
 CHAR_LORA = "pixelkiln\\pxk-{character}{suffix}.safetensors"
 CHAR_LORA_STRENGTH = 0.8
@@ -330,7 +340,7 @@ def main():
             if os.path.exists(target):
                 continue
             os.makedirs(os.path.dirname(target), exist_ok=True)
-            seed = SEED + index if lane == "A" else SEED
+            seed = SEED + index if lane == "A" else SEED + LORA_LANES.get(lane, {}).get("seed", 0)
             pose_name = upload(args.host, os.path.join(pose_dir, pose)) if lane != "A" else None
             if lane in LORA_LANES:
                 lora_name, lora_strength = lane_lora(lane, character)

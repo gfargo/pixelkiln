@@ -511,10 +511,46 @@ part of the way. It does not move a prop the LoRA has fixed in place (the
 club); it duplicates it instead. The wind-up, where the prop is furthest from
 every training frame, fails for both.
 
+## Run 11: swing frames in the training set, November 2026
+
+To get the weapon into training, I first rendered candidates with the LoRA
+loosened to 0.5 and the prop control at 0.9 (lanes CW-s1 to CW-s3, three
+seeds). Most broke identity before the weapon moved: front-facing figures,
+upside-down and mirrored ones, extra weapons. Four knight frames were usable
+(run 10's strike and follow-through, and two raised guards from the
+candidates) and one goblin frame, so only the knight was retrained. The four
+frames sit in `lora/pixelkiln-lora-knight-s/` and `train-lora.py --set w,s`
+adds them at 30 repeats beside the wide-walk set, giving `pxk-knight-w-s`
+(61 minutes on the 3060). Lanes LWS-A (no prop) and LWS-AP-0.8 render the
+attack with it, 8 frames in [`results/run11`](results/run11) beside run 9's
+LW-A and run 10's LW-AP-0.8.
+
+- **Without the prop (LWS-A):** close to run 9. The sword stays forward in
+  the first three frames; the last frame now holds it raised in guard, the
+  pose two of the new training frames show.
+- **With the prop (LWS-AP-0.8):** the wind-up raises the sword above and
+  behind the head for the first time in any run. The strike and
+  follow-through match run 10.
+- **Drift:** the guard frame comes out smaller and thinner than the others in
+  both lanes, and the cape grows. Four frames at 30 repeats pull the
+  character toward their crops.
+
+Four swing frames are enough to teach the poses they show, and only those.
+The wind-up worked only with the prop control on top. The goblin needs a
+different source of swing frames (hand edits, or a looser model) before the
+same step can run for it.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, run 11.** Retraining the knight with four swing frames
+  (harvested from runs at LoRA 0.5 and prop 0.9, where most candidates broke
+  identity) plus the prop control at 0.8 gives the first full sword swing:
+  raised behind the head, forward, down and back, guard. Without the prop the
+  LoRA alone only learns the guard. The goblin gave one usable frame and was
+  not retrained.
 
 - **November 2026, run 10.** The weapon drawn as a scribble control (union
   ControlNet at 0.8, after the pose ControlNet) swings the knight's sword
