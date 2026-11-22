@@ -32,8 +32,9 @@ Spear_Walk and Spear_Jog carry the spear level with the hips turned less (28 and
 it back and drives it out with a step of the leading foot, the hips squaring up behind it.
 
 Spear_Advance is that stance moving forward in place: the leading foot steps, the other follows half a beat later, and
-neither passes the other, so the leading foot stays ahead. Played backwards it is a retreat. The report gives how far
-the ground goes by in one loop (groundMetresALoop), for the game to move the character by.
+neither passes the other, so the leading foot stays ahead. Played backwards it is a retreat. It goes the way the
+character faces, not the way the idle's hips happen to point. The report gives how far the ground goes by in one loop
+(groundMetresALoop); rootmotion.py can write that into the file as root motion.
 
 A motion's footwork may also put the other foot back and lift it (a seventh and eighth number in each row of its feet),
 turn that foot out (rear_foot, degrees) and keep the head looking where the base had it while the hips turn (look).
@@ -127,7 +128,7 @@ SPEAR = [
     {'name': 'Spear_Idle', 'base': 0, 'length': None, 'sway': 0.012, 'elbow': REAR, 'look': True, 'step': 'lead', 'rear_foot': 40,
      'moments': [(0, *STANCE, 0), (1, *STANCE, 0)], 'feet': [(0, *STOOD), (1, *STOOD)]},
     {'name': 'Spear_Advance', 'base': 0, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True, 'step': 'lead', 'rear_foot': 40,
-     'moments': [(0, *STANCE, 0), (1, *STANCE, 0)], 'advance': ADVANCE},
+     'moments': [(0, *STANCE, 0), (1, *STANCE, 0)], 'advance': ADVANCE, 'front': True},
     {'name': 'Spear_Walk', 'base': 1, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True,
      'moments': [(0, *STRIDE, 0), (1, *STRIDE, 0)], 'feet': [(0, 0, 0.05, -28, 0, 0), (1, 0, 0.05, -28, 0, 0)]},
     {'name': 'Spear_Jog', 'base': 2, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True,
@@ -325,7 +326,7 @@ for motion in MOTIONS:
         # Footwork: the hips move and turn, the foot on the other hand's side steps out and back, and both legs are
         # solved again from hip to ankle. The feet keep the ground and the facing the base gave them.
         hips = named['Hips']; turn0, place0 = world(len(moments), moved)
-        ahead = turn0[hips][0] @ np.array([0, 0, 1.0]); ahead[1] = 0; ahead = unit(ahead); sign = 1.0 if lead == 'Left' else -1.0
+        ahead = turn0[hips][0] @ np.array([0, 0, 1.0]); ahead[1] = 0; ahead = np.array([0, 0, 1.0]) if motion.get('front') else unit(ahead); sign = 1.0 if lead == 'Left' else -1.0
         rows = [tuple(m) + (0.0,) * (8 - len(m)) for m in motion['feet']]
         track = np.array([curve([m[0] for m in rows], [m[1:] for m in rows], s) for s in shares])  # forward, down, turn, step, lift, the other foot back, its lift
         above = turn0[parent[hips]] if hips in parent else np.repeat(np.eye(3)[None], len(moments), 0)

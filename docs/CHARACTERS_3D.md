@@ -315,6 +315,20 @@ The example file was imported into Godot 4.7.2 with no errors: one skeleton of
 `hiddenBy` list in its node metadata. Godot drops a trailing `_Loop` from
 animation names, so the library's `Walk_Loop` arrives as `Walk`.
 
+The motions are made in place. For an engine that moves a character by its
+animation, run this last:
+
+```
+python3 research/scripts/rootmotion.py <animated.glb> <with-root-motion.glb>
+```
+
+It adds a `Root` bone under the hips and keys it forward in every walk, run and
+advance, at the pace the planted foot goes back. In Godot, set the animation
+player's `root_motion_track` to that bone. The report gives each motion's
+speed and how far a foot still slides at it; the walk and the advance are
+good, the jog and sprint rough. Keep the file without it for anything that
+plays animations plainly, where the character would walk off and jump back.
+
 Not tried: Unity and Unreal, Godot's retargeting onto its own humanoid rest
 pose, and how the model looks drawn in any engine but three.js.
 
