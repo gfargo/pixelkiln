@@ -1,3 +1,10 @@
+# [0.134.0](https://github.com/gfargo/pixelkiln/compare/v0.133.0...v0.134.0) (2026-11-22)
+
+
+### Features
+
+* **site:** a spear advance that keeps the stance, research step 56 ([5a34a49](https://github.com/gfargo/pixelkiln/commit/5a34a49d151605d3cedaca536ef864254d1c9f07))
+
 # [0.133.0](https://github.com/gfargo/pixelkiln/compare/v0.132.0...v0.133.0) (2026-11-21)
 
 
