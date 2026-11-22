@@ -63,6 +63,7 @@ Last updated 17 November 2026.
 | 53 | A spear, hands apart | PixelLab, Hunyuan3D-2mv, our scripts | A generated spear held left hand forward with the right behind it on the shaft, and four motions made for it: a guard, a walk, a jog and a thrust with a step | Keep for the first body. The second body's rear wrist bends 82 to 86 degrees, and stock motions fit a shaft poorly. |
 | 54 | The spear's rear elbow | Our scripts | The rear arm's elbow moved from back and up to out at the side, found by trying 37 places for it on both bodies | Keep. The second body's rear wrist went from 82 to 86 degrees down to 8 to 19, the first body's from 47 to 72 down to 15 to 20. |
 | 55 | A side-on spear stance | Our scripts | The spear motions rewritten with the hips turned (45 degrees standing, 28 walking, 14 jogging), the feet split and the head looking along the shaft | Keep. Both bodies hold it with wrists under 36 degrees and both feet on the ground. The walk's legs still walk straight under turned hips. |
+| 56 | A spear advance | Our scripts | A forward step written as footwork: the leading foot steps, the other follows, neither passes the other, the hips stay turned 45 degrees | Keep. Both bodies advance in the stance with the stance's wrists and both feet reaching. Made in place; not seen in a game. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1551,6 +1552,30 @@ Not checked: the rebuilt model's picture in the site viewer, any moment but the 
 
 **Verdict.** Keep. The stance and the thrust read as a spearman's. The walk and jog are a stopgap until the legs are made for the stance.
 
+## 56. A spear advance
+
+**Question.** Step 55's stance is side-on, but `Spear_Walk` and `Spear_Jog` are stock legs under hips turned less, so the trunk swings round every time he starts or stops. Can he move forward without leaving the stance?
+
+**What was tried.** One new motion, `Spear_Advance`, written as footwork and not taken from a stock walk.
+
+- *The feet.* Each foot on the ground goes back under the body at a steady pace, 0.26 leg lengths in all. For 32% of each cycle it is lifted 0.07 and brought forward again, leaving and landing at the ground's pace. The rear foot does the same half a cycle later. Neither passes the other: the leading foot stays between 0.09 and 0.35 ahead, the other between 0.05 and 0.31 behind.
+- *The hips* stay turned 45 degrees and sink a little as the feet part. The arms hold the stance's grip.
+- *The other foot's lift.* A row of `feet` gains an eighth number for it. The rows are made by a small function, `shuffle`, 24 to a cycle.
+- *The length.* The body comes from the idle, so the motion is as long as the idle (2.5 seconds) and holds three cycles; it loops with nothing to hide at the seam.
+- *The ground.* It is made in place. The report gives how far the ground goes by in a loop (`groundMetresALoop`), for a game to move him by.
+
+**Result.**
+
+![Both bodies at three moments of one advance cycle, from the side and from the front quarter](../website/public/research/3d/spear-advance.png)
+
+- **Both feet reach and both hands are on the shaft at every moment on both bodies,** with no pull-in.
+- **The wrists are the stance's:** 19 and 8 degrees at most on the first body (forward hand, rear hand), 12 and 13 on the second.
+- **The ground covered in one loop** is 1.01 m for the first body and 0.85 m for the second, about 0.4 and 0.34 m a second.
+- **First frame to last: 0 degrees.** Both files validate with no errors or warnings, with 17 animations, and Godot finds all 17 required bones on both.
+- **Not done:** a lifted foot stays flat, with no roll from heel to toe. Nothing was checked in a game with the body really moving, so whether the feet slide at that speed is worked out, not seen. A retreat is this motion played backwards, which was not tried. `Spear_Walk` and `Spear_Jog` are unchanged.
+
+**Verdict.** Keep. A character in the stance can now close distance without turning out of it.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1585,7 +1610,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, step 54 moved its rear elbow so both bodies hold it with easy wrists, and step 55 turned the spear motions side-on. Still to do: a handle sized to the hand, root motion, a spear advance with legs of its own, and motions made for a shield or a left-handed sword.
+- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, step 54 moved its rear elbow so both bodies hold it with easy wrists, step 55 turned the spear motions side-on, and step 56 added an advance that keeps the stance. Still to do: a handle sized to the hand, root motion, and motions made for a shield or a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.

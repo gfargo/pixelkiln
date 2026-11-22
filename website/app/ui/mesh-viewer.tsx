@@ -410,12 +410,13 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
           <p className="spin-note">
             Drag to turn it. The first body with a generated spear, the
             left hand forward and the right a way behind it on the
-            shaft. The four motions named Spear were made here the same
+            shaft. The five motions named Spear were made here the same
             way as the greatsword&apos;s: the shaft&apos;s path is
             written down and both arms are solved to it. He stands
             side-on, the left shoulder and foot forward and the head
             looking along the shaft. Pick the spear thrust, which steps
-            out with the left foot. The other
+            out with the left foot, or the spear advance, which
+            moves forward without leaving the stance. The other
             motions are stock one-handed ones bent towards the shaft,
             and in those the right hand is often a few centimetres off
             it.
