@@ -1,3 +1,10 @@
+# [0.136.0](https://github.com/gfargo/pixelkiln/compare/v0.135.0...v0.136.0) (2026-11-22)
+
+
+### Features
+
+* a cut and a thrust that carry the character forward, research step 58 ([2e9c350](https://github.com/gfargo/pixelkiln/commit/2e9c3506aa0c864086a10625543023cfb7e90794))
+
 # [0.135.0](https://github.com/gfargo/pixelkiln/compare/v0.134.0...v0.135.0) (2026-11-22)
 
 
