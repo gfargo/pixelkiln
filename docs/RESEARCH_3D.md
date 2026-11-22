@@ -64,6 +64,7 @@ Last updated 17 November 2026.
 | 54 | The spear's rear elbow | Our scripts | The rear arm's elbow moved from back and up to out at the side, found by trying 37 places for it on both bodies | Keep. The second body's rear wrist went from 82 to 86 degrees down to 8 to 19, the first body's from 47 to 72 down to 15 to 20. |
 | 55 | A side-on spear stance | Our scripts | The spear motions rewritten with the hips turned (45 degrees standing, 28 walking, 14 jogging), the feet split and the head looking along the shaft | Keep. Both bodies hold it with wrists under 36 degrees and both feet on the ground. The walk's legs still walk straight under turned hips. |
 | 56 | A spear advance | Our scripts | A forward step written as footwork: the leading foot steps, the other follows, neither passes the other, the hips stay turned 45 degrees | Keep. Both bodies advance in the stance with the stance's wrists and both feet reaching. Made in place; not seen in a game. |
+| 57 | Root motion | Our scripts | A `Root` bone under the hips, keyed forward at the pace the planted foot goes back, for every walk, run and the advance | Keep for walks and the advance: Godot moves the character by the measured distance to the millimetre. The jog's and sprint's speeds are rough. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1576,6 +1577,35 @@ Not checked: the rebuilt model's picture in the site viewer, any moment but the 
 
 **Verdict.** Keep. A character in the stance can now close distance without turning out of it.
 
+## 57. Root motion
+
+**Question.** Every walk and run in the file is made in place, and step 56's advance only reports how far the ground goes by. Can the file itself say how far each travelling motion carries the character, so a game does not guess a speed?
+
+**Setup.** A new script, [`scripts/rootmotion.py`](../research/scripts/rootmotion.py), run last.
+
+- *A bone to carry it.* The skeleton's top bone was the hips. The script adds a bone named `Root` on the ground as their parent, joined to the skin last so no mesh's joint numbers change. Godot's humanoid profile expects that bone under that name.
+- *The pace, from the feet.* For each travelling motion the ankles and the balls of both feet are followed. Whichever is lowest, while within 2 cm of as low as it gets, is on the ground, and how fast it goes back under the body is how fast the ground goes by. A foot just landing is slower than the ground, so the pace kept is the middle one of the faster half of those moments.
+- *The track.* `Root` is keyed forward at that pace for the motion's length. The motion's own bones are untouched. `PLANT=1` moves `Root` at the planted foot's own pace moment by moment instead, which takes the slide away and makes the pace uneven.
+- *A fault from step 56, found here.* The advance stepped along the way the idle's hips point, which is 13 degrees off the way the character faces, so it measured 0.98 m forward and 0.23 m sideways a loop. It now steps the way the character faces. The standing stance still sets its feet along the idle's hips, so the feet shift a little between standing and advancing, and on the first body the advance's rear foot is 1 mm short of its mark at its furthest.
+
+**Result.** Steady pace, both bodies:
+
+| Motion | First body, m/s | Foot slide, cm | Second body, m/s | Foot slide, cm |
+|---|---|---|---|---|
+| `Walk_Loop`, `Spear_Walk` | 1.02 | 5.4 | 0.90 | 5.7 |
+| `Jog_Fwd_Loop`, `Spear_Jog` | 5.95 | 8.4 | 5.15 | 7.2 |
+| `Sprint_Loop` | 8.96 | 59 | 8.08 | 54 |
+| `Spear_Advance` | 0.41 | 0.6 | 0.35 | 0.5 |
+
+- **Godot moves the character by what was written.** With `root_motion_track` set to the `Root` bone, two loops of each motion, stepped at 60 a second, moved it twice the measured distance to the millimetre on both bodies (the walk 2.728 m and 2.410 m, the advance 2.034 m and 1.730 m), with no sideways or upward movement, and the `Root` bone itself stayed at the origin. The other motions moved it nowhere.
+- **The advance measures as it was written:** 1.017 m a loop against the 1.006 m its footwork was made for, and no sideways drift.
+- **The jog is fast.** Its planted foot sweeps 0.9 m in a sixth of a second, between long flights, so feet that do not slide mean nearly 6 m/s. A game that wants a slower jog must slow the motion or accept the slide.
+- **The sprint's figure is weak.** Only three moments of each step have a foot truly down, and the foot hangs at ground height for two moments before it. Those count as slide, which is why its slide reads 59 cm. Treat its speed as rough.
+- **Both files validate with no errors or warnings,** Godot finds all 17 required bones and no bone under the wrong parent, and the skeleton has one more bone.
+- **Not done:** the attack and the thrust still return to where they started; carrying them forward needs the rear foot to follow, which is footwork not yet written. Turning motions and the roll are not measured. Nothing was watched in a running game: Godot's numbers were read headless. The site's viewer does not read root motion, so its model is built without it.
+
+**Verdict.** Keep, for walks and the advance. Use the jog's and sprint's figures as a starting speed, not a fact.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1610,7 +1640,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, step 54 moved its rear elbow so both bodies hold it with easy wrists, step 55 turned the spear motions side-on, and step 56 added an advance that keeps the stance. Still to do: a handle sized to the hand, root motion, and motions made for a shield or a left-handed sword.
+- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, step 54 moved its rear elbow so both bodies hold it with easy wrists, step 55 turned the spear motions side-on, step 56 added an advance that keeps the stance, and step 57 wrote root motion for the walks, runs and the advance. Still to do: a handle sized to the hand, an attack and a thrust that carry the character forward, and motions made for a shield or a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
@@ -1778,6 +1808,9 @@ python3 research/scripts/retarget.py <character.glb> <library.glb> <out.glb>
 # Give a hanging item chains of bones, then swing them through every animation (step 45).
 CHAINS="Cape=3x4" ITEMS="Cape=<cape.glb>:Hips,Spine,Chest:loose" python3 research/scripts/rig.py <body.glb> <body.rig.json> - - <character.glb>
 python3 research/scripts/sway.py <animated.glb> <out.glb>
+
+# Write root motion for the walks, runs and the spear advance (step 57). Run it last.
+python3 research/scripts/rootmotion.py <animated.glb> <with-root-motion.glb>
 
 # Reshape an item made on one body for another (step 46). The skin files come from rig.py with SKIN=<file>.
 ONLY=Head python3 research/scripts/refit.py <helm.glb> <first.skin.npz> <second.skin.npz> <helm-for-second.glb>
