@@ -326,7 +326,9 @@ It adds a `Root` bone under the hips and keys it forward in every walk, run and
 advance, at the pace the planted foot goes back. In Godot, set the animation
 player's `root_motion_track` to that bone. The report gives each motion's
 speed and how far a foot still slides at it; the walk and the advance are
-good, the jog and sprint rough. Keep the file without it for anything that
+good, the jog and sprint rough. `Great_Attack_Fwd` and `Spear_Thrust_Fwd` are
+the cut and the thrust ending where the step landed; they only make sense
+with root motion, and `SKIP=_Fwd` on `wield.py` leaves them out. Keep the file without it for anything that
 plays animations plainly, where the character would walk off and jump back.
 
 Not tried: Unity and Unreal, Godot's retargeting onto its own humanoid rest

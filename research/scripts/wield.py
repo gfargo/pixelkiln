@@ -25,6 +25,8 @@ The animations, each named after what it is for (SET=great, the default):
   Great_Jog      the same, the hands a little lower and nearer
   Great_Attack   a cut from over the leading shoulder down to the front, with a step: the hips wind up, the other
                  foot steps out as the cut lands, and the trunk leans into it
+  Great_Attack_Fwd  the same cut, but the stepping foot stays where it lands and the other comes up to it, so the
+                 character ends 0.45 leg lengths further on
 
 With SET=spear, for a shaft held with the hands apart (rig.py's GRIP_AT): Spear_Idle is a side-on stance, the hips
 turned 45 degrees, the leading foot ahead, the other behind and turned out, the head looking along the shaft.
@@ -36,11 +38,17 @@ neither passes the other, so the leading foot stays ahead. Played backwards it i
 character faces, not the way the idle's hips happen to point. The report gives how far the ground goes by in one loop
 (groundMetresALoop); rootmotion.py can write that into the file as root motion.
 
+Spear_Thrust_Fwd is the thrust carried forward: the leading foot stays where it lands and the rear foot follows, 0.38
+leg lengths on. The two _Fwd motions are still written from where the character is, so played plainly the feet slide
+back at the end; the report gives the travel (travelMetres) and rootmotion.py writes it as root motion.
+
 A motion's footwork may also put the other foot back and lift it (a seventh and eighth number in each row of its feet),
-turn that foot out (rear_foot, degrees) and keep the head looking where the base had it while the hips turn (look).
+turn that foot out (rear_foot, degrees) and keep the head looking where the base had it while the hips turn (look). A
+ninth number is how far the character has travelled; with it, the row's hips and feet are places over the ground.
 
 Environment:
   SET     which motions to make: great or spear (default great)
+  SKIP    a pattern of motion names to leave out, such as _Fwd for a player that does not read root motion
   FPS     samples a second (default 30)
   ROLLS   how many rolls round the handle are tried at each moment (default 72)
   SMOOTH  how much a change of roll from the moment before costs (default 1)
@@ -52,7 +60,7 @@ Environment:
 
 Needs numpy.
 """
-import json, os, struct, sys
+import json, os, re, struct, sys
 import numpy as np
 
 source, out = sys.argv[1:3]
@@ -93,6 +101,12 @@ GREAT = [
               (0.84, 0.08, 0.04, -4, 0.14, 0.06),    # and comes back
               (1.00, 0.00, 0.00, 0, 0.00, 0.00)]},
 ]
+# The same cut carrying the character forward: the stepping foot stays where it landed and the other comes up beside it.
+# These rows say where things are over the ground; the last number is how far the character has travelled.
+GREAT.append({**GREAT[-1], 'name': 'Great_Attack_Fwd', 'front': True,
+              'feet': [*GREAT[-1]['feet'][:5],
+                       (0.84, 0.36, 0.06, -4, 0.45, 0.00, -0.22, 0.07, 0.22),  # the other foot in the air, half way
+                       (1.00, 0.45, 0.00, 0, 0.45, 0.00, -0.45, 0.00, 0.45)]})
 # A spear or staff: the leading hand is the one nearer the point, the other a way behind it on the shaft. The stance is
 # side-on: the hips turned 45 degrees so the leading shoulder is forward, the leading foot ahead and the other behind and
 # turned out, the head looking over the leading shoulder along the shaft. The grip is written from the chest, so each
@@ -128,7 +142,7 @@ SPEAR = [
     {'name': 'Spear_Idle', 'base': 0, 'length': None, 'sway': 0.012, 'elbow': REAR, 'look': True, 'step': 'lead', 'rear_foot': 40,
      'moments': [(0, *STANCE, 0), (1, *STANCE, 0)], 'feet': [(0, *STOOD), (1, *STOOD)]},
     {'name': 'Spear_Advance', 'base': 0, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True, 'step': 'lead', 'rear_foot': 40,
-     'moments': [(0, *STANCE, 0), (1, *STANCE, 0)], 'advance': ADVANCE, 'front': True},
+     'moments': [(0, *STANCE, 0), (1, *STANCE, 0)], 'advance': ADVANCE},
     {'name': 'Spear_Walk', 'base': 1, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True,
      'moments': [(0, *STRIDE, 0), (1, *STRIDE, 0)], 'feet': [(0, 0, 0.05, -28, 0, 0), (1, 0, 0.05, -28, 0, 0)]},
     {'name': 'Spear_Jog', 'base': 2, 'length': None, 'sway': 0.0, 'elbow': REAR, 'look': True,
@@ -147,9 +161,16 @@ SPEAR = [
               (0.80, 0.08, 0.09, -38, 0.34, 0.06, 0.18),
               (1.00, *STOOD)]},
 ]
+# The thrust carrying the character forward: the leading foot stays where it landed and the rear foot follows it into
+# the stance again, 0.38 leg lengths on.
+SPEAR.append({**SPEAR[-1], 'name': 'Spear_Thrust_Fwd',
+              'feet': [*SPEAR[-1]['feet'][:5],
+                       (0.80, 0.33, 0.10, -38, 0.60, 0.00, -0.02, 0.06, 0.20),  # the rear foot in the air, half way
+                       (1.00, 0.38, 0.06, -45, 0.60, 0.00, -0.20, 0.00, 0.38)]})
+for motion in SPEAR: motion['front'] = True  # every spear motion sets its feet the way the character faces, so they agree
 SETS = {'great': GREAT, 'spear': SPEAR}
 if env('SET', 'great') not in SETS: sys.exit(f"SET is one of {sorted(SETS)}")
-MOTIONS = SETS[env('SET', 'great')]
+MOTIONS = [m for m in SETS[env('SET', 'great')] if not (env('SKIP') and re.search(env('SKIP'), m['name']))]
 if env('SET') == 'spear' and not env('EDGE'): EDGE = 0.0  # a shaft has no edge to keep
 
 
@@ -285,11 +306,14 @@ def bend(shoulder, wrist, was, a, b, reach=None):
     return shoulder + way * near + pole * rise, shoulder + way * span, abs(far - span)
 
 
-def curve(at, values, share):
+def curve(at, values, share, hold=False):
     """A smooth curve through values given at shares of the length: at rest at both ends, passing each one in between
-    at the pace of its neighbours."""
+    at the pace of its neighbours. With hold, a value that stops or turns back at a moment is at rest there, so one
+    that is given twice running stays put between the two and does not swing past them."""
     at, values = np.array(at, float), np.array(values, float); slope = np.zeros_like(values)
-    for i in range(1, len(at) - 1): slope[i] = (values[i + 1] - values[i - 1]) / (at[i + 1] - at[i - 1])
+    for i in range(1, len(at) - 1):
+        slope[i] = (values[i + 1] - values[i - 1]) / (at[i + 1] - at[i - 1])
+        if hold: slope[i] = np.where((values[i + 1] - values[i]) * (values[i] - values[i - 1]) <= 0, 0.0, slope[i])
     i = int(np.clip(np.searchsorted(at, share, side='right') - 1, 0, len(at) - 2)); h = at[i + 1] - at[i]; x = float(np.clip((share - at[i]) / h, 0, 1))
     return ((2 * x ** 3 - 3 * x ** 2 + 1) * values[i] + (x ** 3 - 2 * x ** 2 + x) * h * slope[i] + (-2 * x ** 3 + 3 * x ** 2) * values[i + 1] + (x ** 3 - x ** 2) * h * slope[i + 1])
 
@@ -327,8 +351,12 @@ for motion in MOTIONS:
         # solved again from hip to ankle. The feet keep the ground and the facing the base gave them.
         hips = named['Hips']; turn0, place0 = world(len(moments), moved)
         ahead = turn0[hips][0] @ np.array([0, 0, 1.0]); ahead[1] = 0; ahead = np.array([0, 0, 1.0]) if motion.get('front') else unit(ahead); sign = 1.0 if lead == 'Left' else -1.0
-        rows = [tuple(m) + (0.0,) * (8 - len(m)) for m in motion['feet']]
-        track = np.array([curve([m[0] for m in rows], [m[1:] for m in rows], s) for s in shares])  # forward, down, turn, step, lift, the other foot back, its lift
+        rows = [tuple(m) + (0.0,) * (9 - len(m)) for m in motion['feet']]
+        track = np.array([curve([m[0] for m in rows], [m[1:] for m in rows], s, True) for s in shares])  # forward, down, turn, step, lift, the other foot back, its lift, travel
+        # Travel is how far the whole character has gone forward. The rows say where the hips and feet are over the ground;
+        # the animation holds them from where the character is, so the travel comes off each.
+        track[:, 0] -= track[:, 7]; track[:, 3] -= track[:, 7]; track[:, 5] += track[:, 7]
+        if np.abs(track[:, 7]).max() > 0: ground = float(track[-1, 7] * LEG)
         above = turn0[parent[hips]] if hips in parent else np.repeat(np.eye(3)[None], len(moments), 0)
         shift = ahead[None] * (track[:, 0:1] * LEG) - np.array([0, 1.0, 0])[None] * (track[:, 1:2] * LEG)
         moved[(hips, 'translation')] = moved.get((hips, 'translation'), np.repeat(rest(hips, 'translation', [0, 0, 0])[None], len(moments), 0)) + np.einsum('kji,kj->ki', above, shift)
@@ -420,7 +448,7 @@ for motion in MOTIONS:
     report.append({'name': motion['name'], 'from': base_name, 'seconds': round(float(length), 2),
                    'furthestShortMetres': round(float(max(max(short[lead]), max(short[other]))), 3),
                    'gripPulledMetres': round(float(max(pulls)), 3), 'footShortMetres': round(float(foot_short), 3), 'wristBendDegrees': {lead: round(float(np.degrees(max(bends[lead])))), other: round(float(np.degrees(max(bends[other]))))},
-                   'wristWorstAtShare': round(float(shares[int(np.argmax(np.maximum(bends[lead], bends[other])))]), 2), 'bladeOffItsEdgeDegrees': {'typical': round(float(np.median(flats))), 'most': round(float(max(flats)))}, 'firstToLastDegrees': round(seam), **({'groundMetresALoop': round(float(ground), 3)} if ground else {})})
+                   'wristWorstAtShare': round(float(shares[int(np.argmax(np.maximum(bends[lead], bends[other])))]), 2), 'bladeOffItsEdgeDegrees': {'typical': round(float(np.median(flats))), 'most': round(float(max(flats)))}, 'firstToLastDegrees': round(seam), **({('groundMetresALoop' if motion.get('advance') else 'travelMetres'): round(float(ground), 3)} if ground else {})})
 
 doc['buffers'][0]['byteLength'] = len(blob)
 text = json.dumps(doc, separators=(',', ':')).encode(); text += b' ' * ((4 - len(text) % 4) % 4)

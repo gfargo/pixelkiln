@@ -65,6 +65,7 @@ Last updated 17 November 2026.
 | 55 | A side-on spear stance | Our scripts | The spear motions rewritten with the hips turned (45 degrees standing, 28 walking, 14 jogging), the feet split and the head looking along the shaft | Keep. Both bodies hold it with wrists under 36 degrees and both feet on the ground. The walk's legs still walk straight under turned hips. |
 | 56 | A spear advance | Our scripts | A forward step written as footwork: the leading foot steps, the other follows, neither passes the other, the hips stay turned 45 degrees | Keep. Both bodies advance in the stance with the stance's wrists and both feet reaching. Made in place; not seen in a game. |
 | 57 | Root motion | Our scripts | A `Root` bone under the hips, keyed forward at the pace the planted foot goes back, for every walk, run and the advance | Keep for walks and the advance: Godot moves the character by the measured distance to the millimetre. The jog's and sprint's speeds are rough. |
+| 58 | An attack and a thrust that carry forward | Our scripts | `Great_Attack_Fwd` and `Spear_Thrust_Fwd`: the stepping foot stays where it lands and the other follows, with the travel written as root motion | Keep. The measured travel is within 5 mm of what was written and a planted foot moves 8 mm at most. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1606,6 +1607,38 @@ Not checked: the rebuilt model's picture in the site viewer, any moment but the 
 
 **Verdict.** Keep, for walks and the advance. Use the jog's and sprint's figures as a starting speed, not a fact.
 
+## 58. An attack and a thrust that carry forward
+
+**Question.** The two-handed cut and the spear thrust step out and come back to where they started. Can each end where its step landed, with the travel written as root motion?
+
+**What was tried.** Two new motions beside the old ones, and one more number in a row of footwork.
+
+- *Travel.* A row of `feet` in `wield.py` gains a ninth number: how far the character has gone forward. With it, the row's hips and feet are places over the ground, and the script takes the travel off each to get the animation, which is still held from where the character is.
+- *`Spear_Thrust_Fwd`.* The thrust as before until it lands. Then the leading foot stays where it is and the rear foot lifts and follows into the stance again, 0.38 leg lengths on.
+- *`Great_Attack_Fwd`.* The cut as before until it lands. Then the other foot comes up beside the one that stepped, 0.45 leg lengths on.
+- *Feet that hold.* The curve through a motion's footwork now rests at a moment where a value stops or turns back, so a foot written at the same place twice running stays there and does not swing past. The older motions' reports are the same to the degree and the millimetre.
+- *One front for the spear.* Step 57 found the advance stepping 13 degrees off the way the character faces. All the spear motions now set their feet the way he faces, so the stance, the advance and both thrusts agree.
+- *Root motion for a motion that plays once.* `rootmotion.py` takes these (names ending `_Fwd`) differently from a loop: `Root` follows the planted foot moment by moment and stays put when no foot is down, and the travel is the sum.
+- *Leaving them out.* Played plainly, a carried motion slides back at its end. `SKIP=_Fwd` makes a file without them; the site's models are built that way.
+
+**Result.**
+
+![The carried thrust on both bodies and the carried cut, at the start, the landing, the other foot following, and the end, with the travel applied](../website/public/research/3d/carried-attacks.png)
+
+| | Written, m | Measured from the feet, m | A planted foot moves at most |
+|---|---|---|---|
+| `Spear_Thrust_Fwd`, first body | 0.333 | 0.328 | 7 mm |
+| `Spear_Thrust_Fwd`, second body | 0.280 | 0.281 | 6 mm |
+| `Great_Attack_Fwd`, first body | 0.388 | 0.386 | 8 mm |
+
+- **Each foot stays where it is while it is down.** With the travel applied, each ankle was followed over the ground through every stretch it spent down: none moved more than 8 mm forward or back, or 6 mm sideways.
+- **The arms are the old motions' arms:** wrist bend at most 26 and 29 degrees for the carried thrust on the first body, 34 and 29 on the second, 42 and 35 for the carried cut. Both feet reach and nothing is pulled in.
+- **All files validate with no errors or warnings,** with and without root motion.
+- **Godot moves the character by the measured travel.** Read headless with `root_motion_track` on the `Root` bone, two plays of the carried thrust moved it 0.655 m on the first body and 0.563 m on the second, and two of the carried cut 0.772 m, each twice the measured figure to within a millimetre and straight ahead. All 17 required bones are found on each file, none under the wrong parent.
+- **Not done:** the greatsword exists on the first body only, so the carried cut was made once. The rear foot comes forward flat, with no roll. The travel is fixed by the motion; a game cannot shorten it. Nothing was watched in a running game.
+
+**Verdict.** Keep. An attack can now move the character, and the file says by how much.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1640,7 +1673,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, step 54 moved its rear elbow so both bodies hold it with easy wrists, step 55 turned the spear motions side-on, step 56 added an advance that keeps the stance, and step 57 wrote root motion for the walks, runs and the advance. Still to do: a handle sized to the hand, an attack and a thrust that carry the character forward, and motions made for a shield or a left-handed sword.
+- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, step 54 moved its rear elbow so both bodies hold it with easy wrists, step 55 turned the spear motions side-on, step 56 added an advance that keeps the stance, step 57 wrote root motion for the walks, runs and the advance, and step 58 added a cut and a thrust that carry the character forward. Still to do: a handle sized to the hand, and motions made for a shield or a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
