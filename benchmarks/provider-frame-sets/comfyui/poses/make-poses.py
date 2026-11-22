@@ -195,6 +195,30 @@ def attack_wide(i):
     return body(**poses[i])
 
 
+# The weapon for attack-wide, as a second control image: white strokes on black for a scribble
+# ControlNet, since the OpenPose map has no joint for a prop (run 9). One angle per frame, in
+# polar() degrees from the near wrist: up and back, forward, down and back, up in guard.
+PROP_ANGLES = [-160, 80, -40, 150]
+PROPS = {"knight": "sword", "goblin": "club"}
+
+
+def prop_image(points, angle, kind):
+    canvas = Image.new("RGB", (SIZE, SIZE), (0, 0, 0))
+    d = ImageDraw.Draw(canvas)
+    wrist = points[7]
+    if kind == "sword":
+        tip, pommel = polar(wrist, 220, angle), polar(wrist, -40, angle)
+        d.line((pommel, tip), fill=(255, 255, 255), width=14)
+        guard = polar(wrist, 18, angle)
+        a, b = polar(guard, 40, angle + 90), polar(guard, 40, angle - 90)
+        d.line((a, b), fill=(255, 255, 255), width=12)
+    else:
+        tip, butt = polar(wrist, 175, angle), polar(wrist, -30, angle)
+        d.line((butt, tip), fill=(255, 255, 255), width=16)
+        d.ellipse((tip[0] - 38, tip[1] - 38, tip[0] + 38, tip[1] + 38), outline=(255, 255, 255), width=12)
+    return canvas
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     motions = {"idle": [idle(i) for i in range(4)], "walk": [walk(i) for i in range(8)], "attack": [attack(i) for i in range(4)],
@@ -216,6 +240,11 @@ def main():
             sheet.paste(image.resize((cell, cell), Image.LANCZOS), (c * cell, r * cell))
         ImageDraw.Draw(sheet).line((0, r * cell + GROUND // 4, cell * 8, r * cell + GROUND // 4), fill=(80, 80, 80))
     sheet.save(os.path.join(here, "sheet.png"), optimize=True)
+    for character, kind in PROPS.items():
+        folder = os.path.join(here, f"attack-wide-prop-{character}")
+        os.makedirs(folder, exist_ok=True)
+        for i, angle in enumerate(PROP_ANGLES):
+            prop_image(attack_wide(i), angle, kind).save(os.path.join(folder, f"frame-{i:02d}.png"), optimize=True)
 
 
 if __name__ == "__main__":

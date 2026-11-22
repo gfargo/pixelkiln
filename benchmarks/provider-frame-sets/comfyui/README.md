@@ -485,10 +485,43 @@ so it draws the prop where its training frames had it. A weapon that swings
 needs to be in the control image (a prop line in the pose map, or a lineart or
 depth control) or in training frames that show it raised and swung.
 
+## Run 10: the weapon in a control image, November 2026
+
+`make-poses.py` now also draws the weapon for each attack-wide frame as white
+strokes on black (`poses/attack-wide-prop-<character>/`): a sword with a
+crossguard for the knight, a club with a round head for the goblin, held at
+the near wrist and pointing up and back, forward, down and back, then up in
+guard. The graph chains a second ControlNet after the pose one: the union
+model (`controlnet-union-sdxl-promax`) in scribble mode, at 0.5 (LW-AP-0.5)
+or 0.8 (LW-AP-0.8), with run 8's LoRA. 16 frames, in
+[`results/run10`](results/run10) beside run 9's LW-A.
+
+- **Knight at 0.8:** the sword follows on the strike (straight out in front)
+  and the follow-through (down and back across the body), which no earlier
+  run managed. The wind-up still does not raise it. At 0.5 only the strike
+  moves a little.
+- **Goblin:** the club does not swing; the model draws a second, loose club
+  head where the stroke is (a white ball by the head in the wind-up, an orange
+  ball by the feet in the follow-through) and keeps the held club upright.
+- **Cost:** about 110 s a frame against about 32 s, since the second ControlNet
+  model has to share 12 GB with the rest.
+
+A drawn prop steers a prop the model already draws as a line (the sword)
+part of the way. It does not move a prop the LoRA has fixed in place (the
+club); it duplicates it instead. The wind-up, where the prop is furthest from
+every training frame, fails for both.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, run 10.** The weapon drawn as a scribble control (union
+  ControlNet at 0.8, after the pose ControlNet) swings the knight's sword
+  through the strike and follow-through, but not the wind-up, and makes a
+  second club for the goblin instead of moving the first. It costs about 3.5x
+  the render time on 12 GB. Training frames with the weapon in these
+  positions are the remaining lever.
 
 - **November 2026, run 9.** Exaggerated attack maps move the legs (a deeper
   lunge) but not the weapon: the LoRA keeps the prop where its training

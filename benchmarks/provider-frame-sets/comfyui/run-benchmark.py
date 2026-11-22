@@ -46,6 +46,8 @@ Lanes, each over every motion in poses/ (idle 4, walk 8, attack 4) for each char
              attack on their usual maps.
   LW-A       run 9: LW-W with the exaggerated attack maps in poses/attack-wide/ (sword arm
   LW-A-P1.0  overhead, then straight out, a longer lunge), at pose 0.75 and 1.0.
+  LW-AP-0.5  run 10: LW-A plus the weapon drawn as white strokes (poses/attack-wide-prop-
+  LW-AP-0.8  <character>/) through the union ControlNet's scribble mode at 0.5 or 0.8.
   K-0.55   keyframe: every frame starts from the character's keyframe (--keyframes
   K-0.70   <dir>/<character>.png) encoded as the latent, redrawn at denoise 0.55 or 0.70 with
            the pose ControlNet at 0.90, so colours, props and proportions carry over.
@@ -101,9 +103,22 @@ LORA_LANES = {"L": {}, "LI": {"ip": True}, "LSI": {"ip": True, "sheet": True},
               "LWE4-W": {"set": "w", "epoch": 4, "poses": {"walk": "walk-wide"}},
               # run 9: the exaggerated attack maps (poses/attack-wide/); render with --motions attack
               "LW-A": {"set": "w", "poses": {"walk": "walk-wide", "attack": "attack-wide"}},
-              "LW-A-P1.0": {"set": "w", "pose": 1.0, "poses": {"walk": "walk-wide", "attack": "attack-wide"}}}
+              "LW-A-P1.0": {"set": "w", "pose": 1.0, "poses": {"walk": "walk-wide", "attack": "attack-wide"}},
+              # run 10: plus the weapon drawn in poses/attack-wide-prop-<character>/, at 0.5 or 0.8
+              "LW-AP-0.5": {"set": "w", "prop": 0.5, "poses": {"walk": "walk-wide", "attack": "attack-wide"}},
+              "LW-AP-0.8": {"set": "w", "prop": 0.8, "poses": {"walk": "walk-wide", "attack": "attack-wide"}}}
+UNION_CONTROLNET = "controlnet-union-sdxl-promax.safetensors"
 CHAR_LORA = "pixelkiln\\pxk-{character}{suffix}.safetensors"
 CHAR_LORA_STRENGTH = 0.8
+
+
+def prop_control(host, lane, character, motion, pose):
+    """The uploaded weapon image and strength for a lane with "prop", else None."""
+    spec = LORA_LANES[lane]
+    if "prop" not in spec:
+        return None
+    folder = spec.get("poses", {}).get(motion, motion) + f"-prop-{character}"
+    return upload(host, os.path.join(HERE, "poses", folder, pose)), spec["prop"]
 
 
 def lane_lora(lane, character):
@@ -142,7 +157,7 @@ def upload(host, path):
     return json.loads(request(host, "/upload/image", body, {"Content-Type": f"multipart/form-data; boundary={boundary}"}))["name"]
 
 
-def graph(prompt, pose_name, strength, seed, size=None, negative=None, keyframe=None, denoise=None, hires=False, reference=None, ip_weight=None, incontext=None, char_lora=None, trigger=None, lora_strength=CHAR_LORA_STRENGTH):
+def graph(prompt, pose_name, strength, seed, size=None, negative=None, keyframe=None, denoise=None, hires=False, reference=None, ip_weight=None, incontext=None, char_lora=None, trigger=None, lora_strength=CHAR_LORA_STRENGTH, prop=None):
     w = copy.deepcopy(json.load(open(os.path.join(HERE, "workflow-pose-api.json"))))
     w["6"]["inputs"]["text"] = prompt.replace("pixel art, ", f"pixel art, {trigger}, ", 1) if trigger else prompt
     if negative:
@@ -199,6 +214,18 @@ def graph(prompt, pose_name, strength, seed, size=None, negative=None, keyframe=
     else:
         w["20"]["inputs"]["image"] = pose_name
         w["22"]["inputs"]["strength"] = strength
+    if prop:
+        # run 10: the weapon as white strokes, through the union ControlNet's scribble mode,
+        # chained after the pose ControlNet
+        prop_name, prop_strength = prop
+        w["23"] = {"class_type": "LoadImage", "inputs": {"image": prop_name}}
+        w["24"] = {"class_type": "ControlNetLoader", "inputs": {"control_net_name": UNION_CONTROLNET}}
+        w["25"] = {"class_type": "SetUnionControlNetType", "inputs": {"control_net": ["24", 0], "type": "hed/pidi/scribble/ted"}}
+        w["26"] = {"class_type": "ControlNetApplyAdvanced", "inputs": {
+            "positive": ["22", 0], "negative": ["22", 1], "control_net": ["25", 0], "image": ["23", 0], "vae": ["4", 2],
+            "strength": prop_strength, "start_percent": 0.0, "end_percent": 1.0}}
+        w["3"]["inputs"]["positive"] = ["26", 0]
+        w["3"]["inputs"]["negative"] = ["26", 1]
     return w
 
 
@@ -309,7 +336,8 @@ def main():
                 lora_name, lora_strength = lane_lora(lane, character)
                 png, seconds = render(args.host, graph(CHARACTERS[character], pose_name, strength, seed,
                                                        reference=keyframe, ip_weight=IC_IP_WEIGHT if keyframe else None,
-                                                       char_lora=lora_name, lora_strength=lora_strength, trigger=f"pxk{character}"))
+                                                       char_lora=lora_name, lora_strength=lora_strength, trigger=f"pxk{character}",
+                                                       prop=prop_control(args.host, lane, character, motion, pose)))
             elif lane in REFERENCE_LANES:
                 png, seconds = render(args.host, graph(CHARACTERS[character], pose_name, 0.75, seed,
                                                        reference=keyframe, ip_weight=strength))
