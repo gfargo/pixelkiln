@@ -18,7 +18,9 @@ at each loop, so keep the file without root motion for those.
 The animation's own bones are not changed, so taking the Root track away gives the in-place animation back.
 
 Environment:
-  CLIPS   which animations travel, as a pattern on their names (default ^(?!First).*(Walk|Jog|Sprint|Run|Advance))
+  CLIPS   which animations travel, as a pattern on their names (default ^(?!First).*(Walk|Jog|Sprint|Run|Advance|_Fwd$))
+  ONCE    which of those play once and carry the character somewhere, such as an attack with a step that is not taken
+          back (default _Fwd$). Root follows the planted foot through these, and stays put while no foot is down
   PLANT   1 to move Root at the planted foot's own pace at each moment, so that foot does not slide; the pace is
           then uneven. The default is a steady pace, which leaves the slide the report gives
   FPS     samples a second (default 30)
@@ -33,7 +35,7 @@ import numpy as np
 
 source, out = sys.argv[1:3]
 env = os.environ.get
-CLIPS = re.compile(env('CLIPS', '^(?!First).*(Walk|Jog|Sprint|Run|Advance)')); PLANT = env('PLANT') == '1'; FPS = float(env('FPS', '30'))
+CLIPS = re.compile(env('CLIPS', '^(?!First).*(Walk|Jog|Sprint|Run|Advance|_Fwd$)')); ONCE = re.compile(env('ONCE', '_Fwd$')); PLANT = env('PLANT') == '1'; FPS = float(env('FPS', '30'))
 ROOT = env('ROOT', 'Root'); LEAST = float(env('LEAST', '0.05')); NEAR = float(env('NEAR', '0.02'))
 COMPONENTS = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4, 'MAT4': 16}
 
@@ -126,11 +128,13 @@ for clip in doc['animations']:
     down = np.argmin(high, 0); planted = high[down, pick] < NEAR
     pace = -(places[down, pick + 1, 2] - places[down, pick, 2]) / gap; side = -(places[down, pick + 1, 0] - places[down, pick, 0]) / gap
     if not planted.any(): report.append({'name': clip['name'], 'rootMotion': False, 'why': 'no foot comes near the ground'}); continue
-    speed = float(np.percentile(pace[planted], 75)); ground = speed * length
+    once = bool(ONCE.search(clip['name']))
+    speed = float(np.percentile(pace[planted], 75)); ground = float(pace[planted].sum() * gap) if once else speed * length
+    if once: speed = ground / length
     entry = {'name': clip['name'], 'seconds': round(float(length), 2), 'groundMetres': round(ground, 3), 'metresASecond': round(speed, 2),
              'sidewaysMetresASecond': round(float(np.median(side[planted & (pace >= np.median(pace[planted]))])), 2), 'shareOnTheGround': round(float(planted.mean()), 2)}
-    if abs(speed) < LEAST: report.append({**entry, 'rootMotion': False}); continue
-    steps = np.where(planted, pace, speed) * gap if PLANT else np.full(count - 1, speed * gap)
+    if abs(speed) < LEAST and not once: report.append({**entry, 'rootMotion': False}); continue
+    steps = np.where(planted, pace, 0.0) * gap if once else np.where(planted, pace, speed) * gap if PLANT else np.full(count - 1, speed * gap)
     travel = np.concatenate([[0], np.cumsum(steps)])
     # How far a foot slides over the ground while it is down: the spread of where its point is, each time it is down.
     slide = 0.0; k = 0
@@ -143,7 +147,7 @@ for clip in doc['animations']:
     clip['channels'] = kept
     clip['samplers'].append({'input': clock, 'output': add(keys, 'VEC3'), 'interpolation': 'LINEAR'})
     clip['channels'].append({'sampler': len(clip['samplers']) - 1, 'target': {'node': root, 'path': 'translation'}})
-    report.append({**entry, 'rootMotion': True, 'footSlideMetres': round(slide, 3), 'paceLeastMost': [round(float(pace[planted].min()), 2), round(float(pace[planted].max()), 2)]})
+    report.append({**entry, 'rootMotion': True, 'pace': 'planted' if once or PLANT else 'steady', 'footSlideMetres': round(slide, 3), 'paceLeastMost': [round(float(pace[planted].min()), 2), round(float(pace[planted].max()), 2)]})
 
 doc['buffers'][0]['byteLength'] = len(blob)
 text = json.dumps(doc, separators=(',', ':')).encode(); text += b' ' * ((4 - len(text) % 4) % 4)
