@@ -540,10 +540,42 @@ The wind-up worked only with the prop control on top. The goblin needs a
 different source of swing frames (hand edits, or a looser model) before the
 same step can run for it.
 
+## PixelLab skeleton animation of the knight keyframe, November 2026
+
+The ComfyUI attacks stayed choppy, short and inconsistent, so I animated the
+knight keyframe in PixelLab with `animate_with_skeleton_v3` instead. Results
+are in [`results/pixellab-knight`](results/pixellab-knight): 15 frames, the
+GIF, the reference sprite, the 28-joint rig and the skeletons sent.
+
+- **Reference.** The keyframe was box-downscaled to 128 px and the background
+  removed. It then sits on a 192 px canvas so the raised sword has room, and its blade
+  was lengthened by hand from about 22 px to about 40 px. PixelLab copies the
+  blade length from the reference, and on a 128 px canvas the overhead frames
+  clipped it.
+- **Rig.** A custom rig from `estimate_custom_skeleton`: body, cape chain,
+  plume, both arms with the wrists on one grip point in every frame, and
+  three sword joints. The standard 18-joint skeleton lost the sword, and with
+  the wrists apart the back hand left the grip.
+- **One pass.** All 15 frames come from one call (4 generations) that ends on
+  the idle pose. Earlier attempts mixed frames from separate passes, as
+  in-betweens and hand-pasted torsos. Those shifted colour, dropped the ground
+  shadow and jumped at the loop point.
+- **Remaining fixes.** One frame's blade came out dotted and was redrawn by
+  hand. The chest still turns slightly toward the camera in two recovery
+  frames.
+
+About 34 generations went into this, most of it on the earlier attempts.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
 findings wait for the rubric scores.
+
+- **November 2026, PixelLab knight.** Skeleton-driven animation with a custom
+  rig gives a full 15-frame sword swing with consistent texture, which no
+  ComfyUI run managed. All frames must come from one pass, because mixing
+  passes shows as colour and shadow flicker. Give the reference sprite the
+  weapon length you want and enough canvas for it.
 
 - **November 2026, run 11.** Retraining the knight with four swing frames
   (harvested from runs at LoRA 0.5 and prop 0.9, where most candidates broke
