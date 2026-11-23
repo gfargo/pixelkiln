@@ -221,7 +221,7 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
         helper.visible = false;
         scene.add(helper);
         mixer = new THREE.AnimationMixer(gltf.scene);
-        const first = gltf.animations.find((entry) => entry.name === "Great_Walk") ?? gltf.animations.find((entry) => entry.name === "Spear_Walk") ?? gltf.animations.find((entry) => entry.name === "Walk_Loop") ?? gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
+        const first = gltf.animations.find((entry) => entry.name === "Great_Walk") ?? gltf.animations.find((entry) => entry.name === "Spear_Walk") ?? gltf.animations.find((entry) => entry.name === "Shield_Walk") ?? gltf.animations.find((entry) => entry.name === "Walk_Loop") ?? gltf.animations.find((entry) => entry.name === "Walk") ?? gltf.animations[0];
         if (first) {
           action = mixer.clipAction(first);
           action.play();
@@ -392,7 +392,7 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             bones and to how much thicker he is, then fitted to his skin.
             His hands were drawn as closed fists, so they have no finger
             bones: the sword runs through his right fist, which is found
-            on the mesh. The shield is strapped to his left forearm. Pick the sword attack to see it used. Take the
+            on the mesh. The shield is strapped across his left forearm. Pick the shield block or the shield bash to see it used. Take the
             armour off to see the body under it.
           </p>
         ) : subject === "great" ? (
@@ -450,8 +450,8 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             bone. The sword is a separate mesh too, made from eight
             sprites of a sword and placed in the right hand, whose thumb
             and fingers have bones and close round the grip. The
-            shield, made the same way, is strapped to the left forearm.
-            Pick the sword attack to see the sword used. Switch the pixel look on to see
+            shield, made the same way, is strapped across the left forearm.
+            Pick the shield block or the shield bash to see it used. Switch the pixel look on to see
             it as pixel art.
           </p>
         ) : (

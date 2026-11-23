@@ -248,8 +248,21 @@ unlike a held thing, its file has to keep that frame, which `texture.py`
 gives it. Its back goes to the back of the forearm, its top towards the
 elbow, so it stands upright when the arm hangs, and it is made
 `STRAPPED_LENGTH` of the body's height tall (default 0.36). `STRAPPED_TURN=90`
-lays it across the arm. It follows the forearm alone and needs no hand
-bones.
+lays it across the arm, which the shield motions need. It follows the forearm
+alone and needs no hand bones.
+
+A shield strapped across the left arm gets motions of its own:
+
+```bash
+python3 research/scripts/shield.py <animated.glb> <with-shield-motions.glb>
+```
+
+That adds `Shield_Idle`, `Shield_Walk`, `Shield_Jog`, `Shield_Attack`,
+`Shield_Block`, `Shield_Hold` (the block held) and `Shield_Bash`. Each takes
+the body from a stock motion and writes the shield arm: where the elbow
+lies, which way the shield faces and which way its top points. Run it before
+`sway.py`. In the stock motions the shield lies on its side on a hanging
+arm, so play these in their place.
 
 Two hands on one grip takes the `two-handed` kind and one more script:
 
@@ -362,8 +375,8 @@ swing. See step 31 of the research note.
   untried, the grip is not sized to the hand, there are four motions made for two hands
   and the rest are stock one-handed ones bent to fit, which can bend a wrist
   too far,
-  and the animation library has no left-handed or shield motions, so a shield
-  is carried, not used. A fist cannot open, so it cannot let go or change its hold.
+  and there are no left-handed sword motions. The shield's straps are paint:
+  the hand does not hold one. A fist cannot open, so it cannot let go or change its hold.
 - **Many bodies.** The items have been worn by two: the one they were cut on
   and one much heavier man, after `refit.py` reshaped them for him. Other
   heights and builds are untried.

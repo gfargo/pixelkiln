@@ -346,6 +346,7 @@ for spec in filter(None, os.environ.get("ITEMS", "").split(";")):
         tall = (pw - centre) @ up; size = float(os.environ.get("STRAPPED_LENGTH", "0.36")) * (world[:, 2].max() - world[:, 2].min()) / (tall.max() - tall.min())
         spin = math.radians(float(os.environ.get("STRAPPED_TURN", "0"))); top = -line * math.cos(spin) + np.cross(out_way, -line) * math.sin(spin)
         turn = np.stack([np.cross(top, out_way), top, out_way], 1) @ np.stack([np.cross(up, face), up, face], 1).T
+        NODE_EXTRAS[allowed] = {"strapped": label, "face": in_file(out_way), "top": in_file(top)}  # what shield.py needs to pose it
         pw = (pw - centre) * size @ turn.T; middle = np.linalg.norm(pw - np.outer(pw @ out_way, out_way), axis=1) < 0.3 * (tall.max() - tall.min()) * size
         at = elbow + (wrist - elbow) * 0.6; along_arm = (world - elbow) @ line
         arm = world[(along_arm > 0) & (along_arm < np.linalg.norm(wrist - elbow)) & (np.linalg.norm(world - elbow - np.outer(along_arm, line), axis=1) < 0.6 * np.linalg.norm(wrist - elbow))]

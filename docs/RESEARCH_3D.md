@@ -66,6 +66,7 @@ Last updated 17 November 2026.
 | 56 | A spear advance | Our scripts | A forward step written as footwork: the leading foot steps, the other follows, neither passes the other, the hips stay turned 45 degrees | Keep. Both bodies advance in the stance with the stance's wrists and both feet reaching. Made in place; not seen in a game. |
 | 57 | Root motion | Our scripts | A `Root` bone under the hips, keyed forward at the pace the planted foot goes back, for every walk, run and the advance | Keep for walks and the advance: Godot moves the character by the measured distance to the millimetre. The jog's and sprint's speeds are rough. |
 | 58 | An attack and a thrust that carry forward | Our scripts | `Great_Attack_Fwd` and `Spear_Thrust_Fwd`: the stepping foot stays where it lands and the other follows, with the travel written as root motion | Keep. The measured travel is within 5 mm of what was written and a planted foot moves 8 mm at most. |
+| 59 | Shield motions | Our scripts | `shield.py`: the shield arm written as three directions (elbow, face, top), for a guard, a walk, a jog, the sword attack, a block, a held block and a bash | Keep. Seven motions on both bodies; nothing gets more than 1.7 cm inside the shield. Not seen in a game. |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1639,6 +1640,50 @@ Not checked: the rebuilt model's picture in the site viewer, any moment but the 
 
 **Verdict.** Keep. An attack can now move the character, and the file says by how much.
 
+## 59. Shield motions
+
+**Question.** Step 49 strapped a shield to the left forearm, and it has been carried, not used: the library has no shield motions, so the arm does what it does empty. Can motions be written for it, as step 51 wrote them for the greatsword?
+
+**Setup.** A new script, [`scripts/shield.py`](../research/scripts/shield.py).
+
+- *What is written down.* A shield strapped to a forearm leaves the arm little to decide: which way the elbow lies from the shoulder, which way the shield's face points, and which way its top points. A motion gives those three directions at a few moments. Being directions and not places, they give the same pose on a body with other proportions and cannot fall short. A first version gave the shield's place instead and solved the arm to it; the same numbers then asked the second body, whose upper arm is two thirds of his arm, for a 60 degree roll and still missed by 13 cm.
+- *The frame they are in.* It leans with the spine. It faces the way the character does while the chest is within 45 degrees of that, and turns with the chest beyond it. The sword idle stands with the chest turned 45 degrees and the jog swings it 55 degrees each way, so a frame fixed to the chest pointed the shield off to one side, and a frame fixed to the ground put the shield through the trunk whenever the trunk leaned or turned. A motion may ask for less slack: the jog and the sword attack let the shield ride the chest (10 and 20 degrees), because the arm cannot keep a shield facing ahead while the chest turns 134 degrees behind it.
+- *Strapped across the arm.* Step 49 put the shield's top towards the elbow, which is upright only while the arm hangs. A guard needs the forearm level behind an upright shield, so both bodies were rigged again with `STRAPPED_TURN=90`, and `rig.py` now leaves the shield's face and top on the forearm bone for `shield.py` to read.
+- *The sword arm.* In the stock walk the right arm swings, and on the first body the sword went 10 cm into the shield. The walk and the jog hold the sword arm as the sword idle has it.
+- *The motions.* `Shield_Idle`, `Shield_Walk` and `Shield_Jog`; `Shield_Attack`, the stock sword attack with the shield held out of the sword's way; `Shield_Block`, one second, the shield up over the face while the knees give; `Shield_Hold`, the block held; and `Shield_Bash`, one second, drawn in and driven out with a step of the left foot and the hips turning behind it. The block and the bash reuse `wield.py`'s footwork.
+- *The measure.* The shield is rigid, so everything else was taken into its own space at every thirtieth of a second and tested against a depth map of its front and back: how deep the deepest point of the body, the armour, the cape or the sword gets inside it. The left forearm and hand are left out, since the shield sits on them.
+
+**Result.**
+
+![Both armoured bodies with sword and shield: on guard, walking, jogging, attacking, blocking and bashing](../website/public/research/3d/shield-motions.png)
+
+On guard, walking, jogging, the sword attack, the block held, and the bash, on the first body (top) and the second.
+
+| Motion | Seconds | Elbow bend | Deepest inside the shield, first body | Second body |
+|---|---|---|---|---|
+| `Shield_Idle` | 1.67 | 90 | 0.6 cm (cuirass) | nothing |
+| `Shield_Walk` | 1.33 | 93 | under 0.1 cm | 1.7 cm (cuirass) |
+| `Shield_Jog` | 0.93 | 88 | 0.2 cm | nothing |
+| `Shield_Attack` | 1.53 | 88 to 92 | 0.6 cm | nothing |
+| `Shield_Block` | 1.00 | 90 to 102 | 0.6 cm | nothing |
+| `Shield_Hold` | 1.67 | 102 | nothing | nothing |
+| `Shield_Bash` | 1.00 | 90 to 107 | 0.6 cm | 1.7 cm (cuirass) |
+
+- **Before the poses were tuned** the same measure found the helm 6.7 cm into the shield in the attack and the lifted thigh right through it in the jog. The jog's and the attack's pose, elbow out from the side and the shield turned out, was the third of ten tried.
+- **The block lifts the middle of the shield** from 23 cm below the shoulder to 4 cm below it on the first body, and puts it 44 cm ahead; the bash carries it from 18 cm ahead of the shoulder to 44 cm.
+- **Both files validate** with no errors or warnings, at 3.1 and 2.9 MB with 19 animations, and Godot 4.7.2 imports them with no errors and lists all seven.
+- **Godot renames animations ending in `_Loop`.** The held block was first `Shield_Block_Loop`; Godot drops that ending on import and the name collided with `Shield_Block`. It is `Shield_Hold`.
+
+**What is not done.**
+
+- **The shield lies across the arm now,** so in every motion that is not one of these seven (the plain idle, the roll, the death) it sits on its side on a hanging arm.
+- **The left hand does not grip anything.** The straps are still paint.
+- **In the attack the shield swings behind** with the chest and shows its back. A fighter would keep it nearer the front.
+- **A shield on the right arm** is untried, and would need `STRAPPED_TURN=-90`.
+- **Not seen moving.** The poses were looked at as stills, and the measure is of the meshes; nothing was watched in a running game or in the site's viewer.
+
+**Verdict.** Keep. A character with a sword and shield has motions of its own.
+
 ## What has not worked, in one place
 
 So nobody repeats them:
@@ -1673,7 +1718,7 @@ Two bugs worth remembering, because both produced plausible wrong pictures: glTF
 - **Sixteen directions and lighting for the sprite cards** (step 31): the in-between views of step 13, and normals from the hidden mesh.
 - **More directions, and animation.** Step 13 gives sixteen directions. Thirty-two would spin smoothly, and the same trick on a walk cycle would give walks in the in-between directions, which the generator does not offer.
 - **Fix the squat proportions.** Carve at a finer grid, or let the redraw see a true neighbour at full height (the guide sheet does this and kept proportions better on the bare character).
-- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, step 54 moved its rear elbow so both bodies hold it with easy wrists, step 55 turned the spear motions side-on, step 56 added an advance that keeps the stance, step 57 wrote root motion for the walks, runs and the advance, and step 58 added a cut and a thrust that carry the character forward. Still to do: a handle sized to the hand, and motions made for a shield or a left-handed sword.
+- **Held items.** Steps 47 to 51 put a sword in either hand, open or drawn as a fist, a shield on a forearm, and a greatsword in both hands with four motions of its own. Step 52 gave the attack a step and step 53 added a spear with the hands apart, step 54 moved its rear elbow so both bodies hold it with easy wrists, step 55 turned the spear motions side-on, step 56 added an advance that keeps the stance, step 57 wrote root motion for the walks, runs and the advance, step 58 added a cut and a thrust that carry the character forward, and step 59 wrote seven motions for a sword and shield. Still to do: a handle sized to the hand, a hand that grips the shield's strap, and motions for a left-handed sword.
 - **A score that sees cleanliness.** Colour error against one drawing cannot tell a clean redraw from a torn render.
 - **Fewer, larger pieces in the unwrap.** The chest unwraps into a few large pieces, but the character comes out in hundreds of small ones, which is fine for a program and poor for a person or an image model to paint on. One piece per view, like a folded paper model, would make the texture a sprite sheet.
 - **Carve at a finer grid** than one voxel per pixel, so thin objects survive.
@@ -1841,6 +1886,9 @@ python3 research/scripts/retarget.py <character.glb> <library.glb> <out.glb>
 # Give a hanging item chains of bones, then swing them through every animation (step 45).
 CHAINS="Cape=3x4" ITEMS="Cape=<cape.glb>:Hips,Spine,Chest:loose" python3 research/scripts/rig.py <body.glb> <body.rig.json> - - <character.glb>
 python3 research/scripts/sway.py <animated.glb> <out.glb>
+
+# Add shield motions for a character with a strapped shield (step 59). Run it before sway.py.
+python3 research/scripts/shield.py <animated.glb> <with-shield-motions.glb>
 
 # Write root motion for the walks, runs and the spear advance (step 57). Run it last.
 python3 research/scripts/rootmotion.py <animated.glb> <with-root-motion.glb>
