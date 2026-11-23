@@ -136,6 +136,13 @@ export const docs: DocEntry[] = [
     group: "Research",
   },
   {
+    slug: "research-parallax",
+    title: "Research: parallax backgrounds",
+    description: "Ways to make a background scroll in depth, and to get the layers out of a generator: looping, depth-model splits, line scroll, haze, rounding and engine settings, with pictures.",
+    file: "docs/RESEARCH_PARALLAX.md",
+    group: "Research",
+  },
+  {
     slug: "recipes",
     title: "Versioned recipes",
     description: "Install pinned workflows and check their model hashes and quality rules.",
