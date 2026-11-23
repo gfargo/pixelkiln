@@ -56,6 +56,73 @@ export type ProviderUpdate = {
 
 export const providerUpdates: ProviderUpdate[] = [
   {
+    id: "retrodiffusion-rd-lite",
+    provider: "Retro Diffusion",
+    release: "RD Lite",
+    date: "November 2026",
+    title: "Half-price stills from Retro Diffusion's newest model",
+    summary:
+      "RD Lite runs the same styles as RD Core on a lighter model, at a flat $0.05 an image against RD Core's $0.10. It works in PixelKiln today: set `promptStyle` to an `rd_lite__*` style. PixelKiln now also sends a reference image to RD Lite and up to nine to RD Core, and refuses more than 4 images a request on either, which is all they return. Every image below is one call through `pixelkiln gen`; the eight cost $0.50.",
+    features: [
+      "15 `rd_lite__*` styles, from `default` and `painterly` to `dungeon_map`, `fps_weapon` and `ui_panel`.",
+      "$0.05 an image at any size, with or without `removeBg`. PixelKiln plans it at that price and checks Retro Diffusion's free quote before paying.",
+      "16 to 512 px a side, in any shape: a 16×16 icon, a 64×128 character, a 480×270 scene. Some styles start higher, such as `dungeon_map` at 128.",
+      "One reference image on RD Lite, up to nine on RD Core. In our one try, Lite kept the reference's shape but not its colours.",
+      "`numImages` up to 4 on RD Lite and RD Core. PixelKiln refuses more when it plans, instead of paying for 4 and expecting 5.",
+      "RD Fast is unchanged in the API, at $0.03 an image.",
+    ],
+    figures: [
+      {
+        src: "/showcase/rd-lite/lite-vs-core.png",
+        alt: "Two pixel art knights in silver armour with red shields, then two busy medieval market squares with striped stalls and a fountain. The second knight has a face and more detail; the second market has more depth",
+        width: 1048,
+        height: 256,
+        title: "RD Lite, then RD Core",
+        caption: "the same knight (64×64) and market (256×256) prompts and seed. $0.05 each on Lite, $0.10 on Core.",
+        wide: true,
+        fill: true,
+      },
+      {
+        src: "/showcase/rd-lite/lite-sizes.png",
+        alt: "A tiny red potion, a tall hooded ranger with a longbow, a green reference chest, the brown chest of gold coins RD Lite drew from it, and a misty pine forest with a waterfall",
+        width: 1024,
+        height: 270,
+        title: "any shape",
+        caption: "a 16×16 potion, a 64×128 ranger, a chest drawn from one reference image, and a 480×270 scene. RD Lite, $0.05 each.",
+        wide: true,
+        fill: true,
+      },
+    ],
+    code: {
+      title: "pixelkiln.manifest.json",
+      language: "json",
+      copyId: "updates_rd_lite_manifest",
+      code: `
+"provider": "retrodiffusion",
+"styles": {
+  "items": {
+    "generator": "map",
+    "outDir": "assets/items",
+    "providerOptions": {
+      "retrodiffusion": {
+        "promptStyle": "rd_lite__default",
+        "numImages": 4,
+        "removeBg": true
+      }
+    }
+  }
+},
+"assets": {
+  "potion": { "prompt": "a small red health potion", "width": 16, "height": 16 }
+}
+`,
+    },
+    links: [
+      { id: "updates_rd_lite_guide", label: "Read the Retro Diffusion guide", href: "/docs/retro-diffusion" },
+      { id: "updates_rd_lite_measured", label: "See what was measured", href: "/docs/retro-diffusion#rd-lite-measured" },
+    ],
+  },
+  {
     id: "pixellab-pixflux-controls",
     provider: "PixelLab",
     date: "November 2026",

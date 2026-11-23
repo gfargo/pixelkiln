@@ -1,0 +1,146 @@
+{
+  "$schema": "../../schema/manifest.schema.json",
+  "name": "pixelkiln-rd-lite",
+  "provider": "retrodiffusion",
+  "styles": {
+    "lite-sprite": {
+      "generator": "map",
+      "outDir": "../../website/public/showcase/rd-lite",
+      "seed": 4242,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_lite__default",
+          "numImages": 1,
+          "removeBg": true
+        }
+      }
+    },
+    "core-sprite": {
+      "generator": "map",
+      "outDir": "../../website/public/showcase/rd-lite",
+      "seed": 4242,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_core__default",
+          "numImages": 1,
+          "removeBg": true
+        }
+      }
+    },
+    "lite-scene": {
+      "generator": "map",
+      "outDir": "../../website/public/showcase/rd-lite",
+      "seed": 4242,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_lite__default",
+          "numImages": 1,
+          "removeBg": false
+        }
+      }
+    },
+    "core-scene": {
+      "generator": "map",
+      "outDir": "../../website/public/showcase/rd-lite",
+      "seed": 4242,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_core__default",
+          "numImages": 1,
+          "removeBg": false
+        }
+      }
+    },
+    "lite-ref": {
+      "generator": "map",
+      "outDir": "../../website/public/showcase/rd-lite",
+      "seed": 4242,
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_lite__default",
+          "numImages": 1,
+          "removeBg": true
+        }
+      },
+      "styleImages": [
+        {
+          "path": "../../website/public/showcase/palette/chest.png"
+        }
+      ]
+    }
+  },
+  "assets": {
+    "knight-lite": {
+      "prompt": "a knight in silver armour holding a sword and a round shield, full body",
+      "width": 64,
+      "height": 64,
+      "styles": [
+        "lite-sprite"
+      ],
+      "file": "knight-lite.png"
+    },
+    "knight-core": {
+      "prompt": "a knight in silver armour holding a sword and a round shield, full body",
+      "width": 64,
+      "height": 64,
+      "styles": [
+        "core-sprite"
+      ],
+      "file": "knight-core.png"
+    },
+    "market-lite": {
+      "prompt": "a busy medieval market square with striped stalls, crowds of people and a stone fountain",
+      "width": 256,
+      "height": 256,
+      "styles": [
+        "lite-scene"
+      ],
+      "file": "market-lite.png"
+    },
+    "market-core": {
+      "prompt": "a busy medieval market square with striped stalls, crowds of people and a stone fountain",
+      "width": 256,
+      "height": 256,
+      "styles": [
+        "core-scene"
+      ],
+      "file": "market-core.png"
+    },
+    "potion-lite": {
+      "prompt": "a small red health potion in a round glass bottle",
+      "width": 16,
+      "height": 16,
+      "styles": [
+        "lite-sprite"
+      ],
+      "file": "potion-lite.png"
+    },
+    "ranger-lite": {
+      "prompt": "a hooded ranger with a longbow, full body, standing",
+      "width": 64,
+      "height": 128,
+      "styles": [
+        "lite-sprite"
+      ],
+      "file": "ranger-lite.png"
+    },
+    "forest-lite": {
+      "prompt": "a misty pine forest with a waterfall at dawn",
+      "width": 480,
+      "height": 270,
+      "styles": [
+        "lite-scene"
+      ],
+      "file": "forest-lite.png"
+    },
+    "chest-lite-ref": {
+      "prompt": "a treasure chest overflowing with gold coins",
+      "width": 64,
+      "height": 64,
+      "styles": [
+        "lite-ref"
+      ],
+      "file": "chest-lite-ref.png"
+    }
+  }
+}

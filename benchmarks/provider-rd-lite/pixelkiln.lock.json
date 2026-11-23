@@ -1,0 +1,429 @@
+{
+  "version": 2,
+  "entries": {
+    "core-scene/market-core": {
+      "styleId": "core-scene",
+      "assetId": "market-core",
+      "specHash": "1a38492992da87591d8e63876c950fc4a7e58e4918329f35ce9ae8b2e9cf9e74",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a busy medieval market square with striped stalls, crowds of people and a stone fountain",
+      "width": 256,
+      "height": 256,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "47342a32-c7f7-46bd-921d-b1dad04b67f1",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "47342a32-c7f7-46bd-921d-b1dad04b67f1#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=47342a32-c7f7-46bd-921d-b1dad04b67f1&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=47342a32-c7f7-46bd-921d-b1dad04b67f1&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/showcase/rd-lite/market-core.png",
+          "sha256": "019f82408df3bb8af1b730decef3300c1e54d4ee20a151dfac21d81be784516e",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.1,
+          "remainingBalance": 9.044,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_core__default",
+          "width": 256,
+          "height": 256
+        }
+      },
+      "submittedAt": "2026-11-23T19:36:36.330Z",
+      "downloadedAt": "2026-11-23T19:36:52.489Z",
+      "cost": 0.1,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "core-sprite/knight-core": {
+      "styleId": "core-sprite",
+      "assetId": "knight-core",
+      "specHash": "42a93bfd0f44b2e72bc28b57c0af2183dd0bca1e637eab6c18484f4a4d8ea8ea",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a knight in silver armour holding a sword and a round shield, full body",
+      "width": 64,
+      "height": 64,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "dc228163-00a6-4b3a-8300-025023aaa82a",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "dc228163-00a6-4b3a-8300-025023aaa82a#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=dc228163-00a6-4b3a-8300-025023aaa82a&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=dc228163-00a6-4b3a-8300-025023aaa82a&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/showcase/rd-lite/knight-core.png",
+          "sha256": "ba51c5d80c56a48d19e84617a707ac0cdbc0de8d730a2967322b8d8ef2b10574",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.1,
+          "remainingBalance": 9.244,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_core__default",
+          "width": 64,
+          "height": 64
+        }
+      },
+      "submittedAt": "2026-11-23T19:36:28.824Z",
+      "downloadedAt": "2026-11-23T19:36:52.417Z",
+      "cost": 0.1,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "lite-ref/chest-lite-ref": {
+      "styleId": "lite-ref",
+      "assetId": "chest-lite-ref",
+      "specHash": "504cf5bed80efbc3dc6124235b08258dac5fa9dfd5ef4eb66d290b69e5a452e3",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a treasure chest overflowing with gold coins",
+      "width": 64,
+      "height": 64,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "0165cfd1-3123-446b-ad23-d7fc822fbef5",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "0165cfd1-3123-446b-ad23-d7fc822fbef5#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=0165cfd1-3123-446b-ad23-d7fc822fbef5&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=0165cfd1-3123-446b-ad23-d7fc822fbef5&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/showcase/rd-lite/chest-lite-ref.png",
+          "sha256": "e972a0c644383cbbf1153287926af7c742f77f6284d8cf04321e2379168717e9",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.05,
+          "remainingBalance": 8.994,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_lite__default",
+          "width": 64,
+          "height": 64
+        }
+      },
+      "submittedAt": "2026-11-23T19:36:38.834Z",
+      "downloadedAt": "2026-11-23T19:36:52.208Z",
+      "cost": 0.05,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "lite-scene/forest-lite": {
+      "styleId": "lite-scene",
+      "assetId": "forest-lite",
+      "specHash": "5cd2d6f64697752f510eabd0cb6ce4d260c7d07771d0be2184029cd1ab42c2a0",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a misty pine forest with a waterfall at dawn",
+      "width": 480,
+      "height": 270,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "2be7e4ca-97b8-4b46-9198-5c4825017321",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "2be7e4ca-97b8-4b46-9198-5c4825017321#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=2be7e4ca-97b8-4b46-9198-5c4825017321&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=2be7e4ca-97b8-4b46-9198-5c4825017321&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/showcase/rd-lite/forest-lite.png",
+          "sha256": "160422c4b4087a8381f829ce749e3a40808690fb96c13f6c1ab53723a829d749",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.05,
+          "remainingBalance": 9.144,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_lite__default",
+          "width": 480,
+          "height": 270
+        }
+      },
+      "submittedAt": "2026-11-23T19:36:33.829Z",
+      "downloadedAt": "2026-11-23T19:36:52.343Z",
+      "cost": 0.05,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "lite-scene/market-lite": {
+      "styleId": "lite-scene",
+      "assetId": "market-lite",
+      "specHash": "3ce3886941ad84e2c8ba9a3432e7906cd6fcfa55084a756a354d9eb22f769d5f",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a busy medieval market square with striped stalls, crowds of people and a stone fountain",
+      "width": 256,
+      "height": 256,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "a6d07519-e7e4-4223-a783-61f5be6bdfd2",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "a6d07519-e7e4-4223-a783-61f5be6bdfd2#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=a6d07519-e7e4-4223-a783-61f5be6bdfd2&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=a6d07519-e7e4-4223-a783-61f5be6bdfd2&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/showcase/rd-lite/market-lite.png",
+          "sha256": "18c45474979ef070219be8d801ec103e5fd41bd3ad2213675161ec2238f6b9ea",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.05,
+          "remainingBalance": 9.194,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_lite__default",
+          "width": 256,
+          "height": 256
+        }
+      },
+      "submittedAt": "2026-11-23T19:36:31.326Z",
+      "downloadedAt": "2026-11-23T19:36:52.461Z",
+      "cost": 0.05,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "lite-sprite/knight-lite": {
+      "styleId": "lite-sprite",
+      "assetId": "knight-lite",
+      "specHash": "15a51042994c61f45a0a456504b63c894acc0a326c9b9001ec0493b3a831b6d8",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a knight in silver armour holding a sword and a round shield, full body",
+      "width": 64,
+      "height": 64,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "b949838d-9f39-4a58-b82f-0e4c098992b2",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "b949838d-9f39-4a58-b82f-0e4c098992b2#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=b949838d-9f39-4a58-b82f-0e4c098992b2&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=b949838d-9f39-4a58-b82f-0e4c098992b2&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/showcase/rd-lite/knight-lite.png",
+          "sha256": "518b0b5a8eb925273b8a7bbc7a9bed4c42fd0af4fba961ca4fffd2041a1ac7a9",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.05,
+          "remainingBalance": 9.444,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_lite__default",
+          "width": 64,
+          "height": 64
+        }
+      },
+      "submittedAt": "2026-11-23T19:36:21.315Z",
+      "downloadedAt": "2026-11-23T19:36:52.229Z",
+      "cost": 0.05,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "lite-sprite/potion-lite": {
+      "styleId": "lite-sprite",
+      "assetId": "potion-lite",
+      "specHash": "deccdcd0bdb8efddde09e9f11316215a49d53e56547f94cdfc1d5df4c4f58806",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a small red health potion in a round glass bottle",
+      "width": 16,
+      "height": 16,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "853d7453-4c66-4497-bff2-bd3e6c671bcc",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "853d7453-4c66-4497-bff2-bd3e6c671bcc#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=853d7453-4c66-4497-bff2-bd3e6c671bcc&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=853d7453-4c66-4497-bff2-bd3e6c671bcc&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/showcase/rd-lite/potion-lite.png",
+          "sha256": "118132c0d557e93b30ebfeeda6f6908197722b0016abb7ff20e73327921e971e",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.05,
+          "remainingBalance": 9.394,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_lite__default",
+          "width": 16,
+          "height": 16
+        }
+      },
+      "submittedAt": "2026-11-23T19:36:23.820Z",
+      "downloadedAt": "2026-11-23T19:36:52.232Z",
+      "cost": 0.05,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "lite-sprite/ranger-lite": {
+      "styleId": "lite-sprite",
+      "assetId": "ranger-lite",
+      "specHash": "f875b2a3ed4f161a31621ca546a04b7235da5ce9ed3c6d8fc6e50d13f1578f8d",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a hooded ranger with a longbow, full body, standing",
+      "width": 64,
+      "height": 128,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "95107b91-6795-4c6c-a866-c9ee7412f20e",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "95107b91-6795-4c6c-a866-c9ee7412f20e#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=95107b91-6795-4c6c-a866-c9ee7412f20e&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=95107b91-6795-4c6c-a866-c9ee7412f20e&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/showcase/rd-lite/ranger-lite.png",
+          "sha256": "a521f7d9b07e07f8485fee30faf6604b2721cb5afd49e9f1b461fb0c3163366e",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.05,
+          "remainingBalance": 9.344,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_lite__default",
+          "width": 64,
+          "height": 128
+        }
+      },
+      "submittedAt": "2026-11-23T19:36:26.322Z",
+      "downloadedAt": "2026-11-23T19:36:52.231Z",
+      "cost": 0.05,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    }
+  }
+}

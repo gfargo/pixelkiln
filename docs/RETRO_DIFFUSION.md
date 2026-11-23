@@ -75,7 +75,7 @@ refinement can preserve their roles and frames. See
 
 | PixelKiln generator | Retro Diffusion selector | Output |
 |---|---|---|
-| `map` or `pixflux` | A normal RD still style such as `rd_fast__default`, `rd_plus__default`, or an environment style | 1 to 16 PNG candidates |
+| `map` or `pixflux` | A normal RD still style such as `rd_lite__default`, `rd_fast__default`, `rd_plus__default`, or an environment style | 1 to 16 PNG candidates; 1 to 4 on RD Lite and RD Core |
 | `tiles` | `rd_tile__*` | One PNG tileset or tile asset |
 | `animation` | `rd_animation__*` or `rd_advanced_animation__*` | Animated GIF or PNG spritesheet |
 
@@ -84,14 +84,15 @@ selector instead of assuming an example name will remain available.
 
 Useful options under `providerOptions.retrodiffusion` include:
 
-- `numImages`: 1 to 16 still candidates
+- `numImages`: 1 to 16 still candidates, or 1 to 4 on RD Lite and RD Core
 - `removeBg`: background removal for stills
 - `framesDuration`: 4, 6, 8, 10, 12, or 16 for animation
 - `returnSpritesheet`: PNG spritesheet instead of the default GIF
 - `tileX` and `tileY`: seamless axes for supported still styles
 - `extraPrompt`: outside texture for `rd_tile__tileset_advanced`
 
-RD Pro and user still styles accept up to nine reference images. Advanced
+RD Pro, RD Core and user still styles accept up to nine reference images, and
+RD Lite accepts one. Advanced
 animation and tile modes have narrower input rules. PixelKiln validates those
 rules during planning. See [Manifest fields](#manifest-fields) below for complete
 examples.
@@ -127,14 +128,14 @@ the correct extension and validates the correct structure.
 ```
 
 `promptStyle` accepts a live Retro Diffusion still-style selector,
-`numImages` accepts 1–16 candidates, and `removeBg` overrides
+`numImages` accepts 1–16 candidates (1–4 on RD Lite and RD Core), and `removeBg` overrides
 `noBackground`. The Retro Diffusion API accepts 16–512px output. Selected
-styles can impose smaller limits. RD Pro and user styles accept up to nine
-reference images. Costs are
+styles can impose smaller limits. RD Pro, RD Core and user styles accept up to
+nine reference images, and RD Lite accepts one. Costs are
 planned in USD and checked again with Retro Diffusion's free authoritative
 quote endpoint before the paid request is sent. Authenticated single-candidate
-RD Fast and RD Plus paths have passed from quote through validated output and
-recovery.
+RD Fast, RD Plus, RD Lite and RD Core paths have passed from quote through
+validated output and recovery, including RD Lite with a reference image.
 Multi-candidate, tileset, GIF, and spritesheet paths remain mock-tested, so the
 adapter is still experimental.
 
@@ -189,6 +190,59 @@ For a Wang-style tileset sheet:
 `rd_tile__tileset_advanced` accepts `extraPrompt` and up to two style images;
 `rd_tile__tile_variation` requires one style image. Provider-specific size and
 input constraints are checked during the free planning phase.
+
+## RD Lite, measured
+
+RD Lite is Retro Diffusion's newest still model, launched in November 2026. It
+runs the same style names as RD Core on a lighter model, at a flat $0.05 an
+image against RD Core's $0.10. It replaced RD Fast on Retro Diffusion's website;
+RD Fast stays available through the API at its old price. PixelKiln needs no
+new setting for it: set `promptStyle` to an `rd_lite__*` style.
+
+The live style catalog (`GET /v2/styles/selector`, 23 November 2026) lists 15
+RD Lite styles: `default`, `painterly`, `simple`, `fantasy`, `horror`, `scifi`,
+`isometric`, `topdown`, `platformer`, `dungeon_map`, `spritesheet`,
+`hexagonal_tiles`, `fps_weapon`, `typography` and `ui_panel`. RD Core has the
+same styles plus `inventory_items`; RD Lite has no `inventory_items`, and a
+quote for it fails.
+
+| Style | Width and height |
+|---|---|
+| `default` to `platformer` | 16–512 px, any aspect ratio |
+| `fps_weapon`, `typography` | 64–512 px |
+| `dungeon_map`, `spritesheet`, `hexagonal_tiles` | 128–512 px |
+| `ui_panel` | 256–512 px (RD Core: 256 px only) |
+
+Retro Diffusion's announcement and API README give RD Lite's floor as 12 px;
+the live catalog says 16 px, which is PixelKiln's floor for every Retro
+Diffusion style. The free quote endpoint priced every RD Lite request at $0.05
+an image whatever the size, with or without `remove_bg`, `tile_x`, a palette or
+reference images. It does not check sizes or reference counts, so a quote
+alone does not prove a request is valid. Asked for 5 images, it priced 4: RD
+Lite and RD Core return at most 4 a request, and PixelKiln now refuses a larger
+`numImages` on them during planning instead of planning a set it will not get.
+The README says RD Lite takes one reference image and RD Core up to nine;
+PixelKiln enforces both. RD Lite does not tile, according to the README.
+
+One run through `pixelkiln gen` on 23 November 2026, `seed` 4242, one image
+each, billed $0.50 in all: six RD Lite images at $0.05 and two RD Core images at
+$0.10. The manifest and lockfile are in
+[`benchmarks/provider-rd-lite`](../benchmarks/provider-rd-lite).
+
+| Request | Result |
+|---|---|
+| A knight, 64×64, `rd_lite__default` and `rd_core__default`, `removeBg` | Both clean, transparent sprites. RD Core drew a face and more armour detail. |
+| A busy market square, 256×256, RD Lite and RD Core | Both full scenes with stalls, a fountain and a crowd. RD Core's has more depth and smaller figures. |
+| A potion, 16×16, RD Lite | A readable bottle at the smallest size the catalog allows, with 51 colours in 256 pixels. |
+| A ranger, 64×128, RD Lite | A clean, tall, full-body figure. |
+| A forest with a waterfall, 480×270, RD Lite | A finished widescreen scene. |
+| A chest, 64×64, RD Lite with one reference image of a green chest | A chest of the same shape, but brown and gold: the reference's colours did not carry over. |
+
+![RD Lite and RD Core: the same knight and market prompts](../website/public/showcase/rd-lite/lite-vs-core.png)
+
+One sample per row, so these are observations, not rates. All eight finished
+in 31 seconds of wall time, submitted together; single-image timings were not
+measured.
 
 ## Current operational limits
 
