@@ -143,7 +143,8 @@ For a production environment, build a kit: seamless terrain, separate
 landmarks and buildings, foreground occluders, and a distant backdrop. You can
 rerun one weak piece, set collision per object, and move layers independently
 for parallax. Generate each piece at its native pixel resolution, then use
-integer nearest-neighbor scaling.
+integer nearest-neighbor scaling. The [parallax research note](./docs/RESEARCH_PARALLAX.md) covers
+looping, splitting a flat picture by depth, and engine settings.
 
 A visual benchmark should use the same briefs for an isolated building, a
 top-down landmark, and a full scenic background. Use the same intended native
