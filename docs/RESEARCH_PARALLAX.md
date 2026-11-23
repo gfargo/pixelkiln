@@ -1,6 +1,6 @@
 # Parallax backgrounds
 
-This is a research note, not a feature: nothing here is a PixelKiln command, and the scripts are rough. PixelKiln can generate a scenic background as one flat picture. A parallax background is several layers that scroll at different speeds as the camera moves. This note covers the ways to build one and the ways to get the layers out of AI generators. It tests what can be tested on art we already have, without new generations, and records how a game that already uses PixelKiln builds its skyline (step 12).
+This is a research note, not a feature: nothing here is a PixelKiln command, and the scripts are rough. PixelKiln can generate a scenic background as one flat picture. A parallax background is several layers that scroll at different speeds as the camera moves. This note covers the ways to build one and the ways to get the layers out of AI generators. Steps 1 to 11 use art we already had. Step 12 records how a game that already uses PixelKiln builds its skyline. Steps 13 to 16 spent 17 PixelLab generations and $0.24 of Retro Diffusion. Step 17 ran a layer-splitting model on our own 12 GB GPU.
 
 Last updated 23 November 2026.
 
@@ -20,6 +20,11 @@ Last updated 23 November 2026.
 | 10 | Round layer offsets so they never move when the camera does not | Simulation | Rounding each layer's own position moves layers 3 to 25 times while the camera stands still; rounding the camera first moves them 0 times | Keep: round the camera first. |
 | 11 | Read what LDtk does with a parallax factor | LDtk source | A layer moves on screen at 1 − factor of the camera, and is shrunk to that scale unless `parallaxScaling` is off | Export pixel art with `parallaxScaling: false`. |
 | 12 | Build layers from separate silhouettes instead of cutting one picture | A game using PixelKiln, Godot 4; our script to replay it | Three generated silhouettes a biome, laid in overlapping runs in two hazed tiers over a shader sky; the layers only ever rise from where they were placed | Keep. The best route found: nothing is cut, nothing hidden has to be invented. |
+| 13 | Cut by depth per pixel instead of per column | Depth Anything V2 Small, our script | The plume moves on its own and the sky stays whole; the cheap fill smears sideways where a framing tree moves away | Keep the per-pixel cut. The fill needs step 14. |
+| 14 | Inpaint what a near layer hid | PixelLab `inpaint_image`, 10 generations | Forest and slope in place of smears; nothing outside the mask changed; 2 new colours | Keep for a scene that has to be split. |
+| 15 | Generate each layer on its own, wide | PixelLab pixflux with one forced palette, 4 generations; Retro Diffusion environment with `tile_x`, $0.24 | PixelLab's four layers agree and scroll as one scene; Retro Diffusion's each draw a whole scene, and background removal breaks the seam `tile_x` made | Keep PixelLab with a shared palette. Retro Diffusion's environment style is not a layer generator. |
+| 16 | Generate silhouettes and compose a skyline from them | PixelLab pixflux, 3 generations; our script | Usable landforms, but none fades at the foot as asked, so each run ends on a hard dark base | Keep the route; the faded foot needs a different generator or a cleanup pass. |
+| 17 | Ask a layer-splitting model for the layers | Qwen-Image-Layered fp8 in ComfyUI, RTX 3060 12 GB, 35 to 42 minutes a picture | The sky and sun come apart from the land with the hidden sun filled in; far range, volcano, near ridges and lava stay in one layer; a blank fill layer and a pink blob take the other slots | Drop for parallax: it splits sky from scene, not near from far, and it is too slow on this card. |
 
 ## Ways to make the effect
 
@@ -42,9 +47,9 @@ There are six ways to make a background move with depth. Most games combine two 
 | Route | What it needs | Status here |
 |---|---|---|
 | Generate silhouettes and compose each layer from them in the engine | A few transparent landforms a biome, each fading out at its foot; placement rules in the game | Step 12: in use in a game. |
-| Generate each layer on its own, with a transparent background | A prompt per layer; the layers must agree in palette, light and horizon | Not tested: needs paid generations. PixelLab's pixflux and Retro Diffusion both offer transparent output (survey below). |
-| Generate one picture and split it with a depth model | A depth model and a fill for what the near layers hid | Steps 4 to 6. |
-| A model that outputs layers directly | LayerDiffuse on SDXL, or Qwen-Image-Layered | Not tested. Neither is trained on pixel art. |
+| Generate each layer on its own, with a transparent background | A prompt per layer; the layers must agree in palette, light and horizon | Step 15. A forced palette shared by every layer is what makes them agree. |
+| Generate one picture and split it with a depth model | A depth model and a fill for what the near layers hid | Steps 4 to 6, 13 and 14. |
+| A model that outputs layers directly | LayerDiffuse on SDXL, or Qwen-Image-Layered | Step 17: Qwen-Image-Layered splits sky from scene, not by distance, and takes over half an hour a picture on a 12 GB card. LayerDiffuse is untried. Neither is trained on pixel art. |
 | A wide picture that wraps, then cut into layers | A provider's seamless option, or step 2 on the result | Retro Diffusion's `tile_x` is the only hosted seamless flag found. |
 
 ## 1. Do our backgrounds wrap?
@@ -262,9 +267,124 @@ The same layer, at a quarter of the camera's speed, in each tool:
 
 **Verdict.** Keep. This is the most practical route in this note. Generators are good at one isolated shape on a transparent background and poor at agreeing across several pictures. Composing layers from silhouettes asks them only for the first. Splitting a picture (steps 3 to 6) is still the route when there is one finished scene to animate.
 
+## 13. Cut by depth per pixel
+
+**Question.** Steps 4 to 6 cut along one skyline per column, which fails on a scene framed by tall trees and drags sky along with anything floating. Does assigning each pixel to its own depth band fix both?
+
+**Setup.** `parallax.py cut <png> <out> 4 <depth.png> <reach>`, with `GROW=2`. Each pixel goes to its band from the Depth Anything map, then a 3×3 median removes specks, and each near band takes 2 px from the bands behind it (step 6). A layer is filled only where it could be uncovered: hidden pixels within `reach` px of something at its depth or farther. Reach is the pan, 96 px on the volcano and 64 on the framed valley. The fill copies the nearest pixel of the layer's own in the same row, then the nearest in any direction. The script writes each layer's invented pixels as a mask for step 14.
+
+**Result.** Both pictures recombine exactly at rest. On the volcano the plume now moves with its own band and the sky behind it stays sky (right; the skyline cut of step 6 on the left). The framed valley no longer loses whole columns to the trees.
+
+![The volcano at the far end of the pan: skyline cut (left) and per-pixel cut (right)](../website/public/research/parallax/volcano-cut.png)
+
+![Volcano layers cut per pixel, panning](../website/public/research/parallax/volcano-cut.gif)
+
+![The framed valley cut per pixel](../website/public/research/parallax/rd-alpine-cut-bands.png)
+
+The price is invention. The fill has to make up 115 to 189% of a layer's own pixel count on the volcano and 175 to 333% on the framed valley, because the bands are thin and the pan is long. Where a framing tree slides away, the cheap fill shows as sideways smears (step 14, left).
+
+**Verdict.** Keep the per-pixel cut. The fill is the weak part.
+
+## 14. Inpaint what a near layer hid
+
+**Question.** Can a hosted inpainting model replace the smeared fill with something that belongs in the scene, without changing the pixels around it?
+
+**Setup.** The framed valley's third layer (the trees and cabins in the middle ground), whose fill covers 22,794 pixels. The input was layers 0 to 2 composited, so the model sees an opaque picture, and the mask was the invented pixels from step 13. PixelLab `inpaint_image` at 256×256, seed 4242, `crop_to_mask` on, described as "the valley floor continuing behind: pine trees, grassy riverbank and distant mountain slopes in the same pixel-art style and colours, no large tree trunks in the foreground". 10 generations.
+
+**Result.** No pixel outside the mask changed. The fill used 31 colours, 2 of them not elsewhere in the picture. At the far end of the pan, the smears to the left of the cabin and along the mountain's edge became forest and slope (right). The two farther layers still carry the cheap fill.
+
+![The framed valley at the far end of the pan: cheap fill (left) and inpainted fill (right)](../website/public/research/parallax/rd-alpine-fill.png)
+
+**Verdict.** Keep, for a scene that has to be split. A full set costs one inpaint per layer that can be uncovered: 30 generations for a four-layer 256 px scene, 75 at 384 px. Generating the layers separately (step 15) costs far less.
+
+## 15. Generate each layer on its own
+
+**Question.** Instead of cutting a scene, can each layer be generated as its own wide picture that agrees with the others and wraps?
+
+**Setup.** One volcanic dusk set from each hosted provider: a sky, a far range, a volcano and near ridges. The manifests are in [`benchmarks/parallax-layers`](../benchmarks/parallax-layers).
+
+- **PixelLab** through PixelKiln: pixflux, `view: side`, seed 4242, and one forced palette for every layer, the 44 colours of the step 4 volcano. The sky is 400×160 and opaque; the three layers are 400×100 with background removal (under pixflux's 40,000 px transparency limit). 4 generations.
+- **Retro Diffusion**: `rd_plus__environment` with `tile_x`, seed 4242. The sky is 384×160; the layers are 384×96 with `remove_bg`. $0.06 an image, $0.24 in all. PixelKiln refused to send these: Retro Diffusion quoted $0.06 for every size tried, above PixelKiln's offline estimate of $0.044 for 384×96, so the four were sent straight to the API with the same quote check.
+
+The PixelLab layers were looped with step 2's crossfade, because pixflux has no seamless option. Both sets were stacked with their bottoms on rows 150, 175 and 200 of a 200 px canvas, and scrolled one way at 0.05, 0.25, 0.5 and 1.0 so every seam passes.
+
+**Result.**
+
+![PixelLab layers, one palette, scrolling](../website/public/research/parallax/pixellab-layers.gif)
+
+![Retro Diffusion layers with tile_x, scrolling](../website/public/research/parallax/retrodiffusion-layers.gif)
+
+- **PixelLab** reads as one scene: same palette, same light, a clean cutout on all three layers (60 to 71% transparent). The far range came back as a flat two-colour silhouette, so it reads as a band of fog. The sky drew a mountain and hills along its bottom despite "no mountains".
+- **Retro Diffusion** does not. The environment style draws a whole scene whatever the prompt says: the sky has its own volcano and river, the far layer is a range with sky still on it, and the near layer is a wall. `tile_x` works on the drawing: the sky wraps with a seam no rougher than its inside (ratio 1.0). Background removal then breaks it: the near layer keeps ground on one side of the join and removes it on the other (seam ratio 3.9).
+
+**Verdict.** Keep PixelLab pixflux with one forced palette for every layer: it is the cheapest route in this note and the layers agree. Retro Diffusion's environment style is a scene generator, not a layer generator; its `tile_x` is still the only hosted seamless option found, and would suit a sky or a layer that needs no background removal.
+
+## 16. A skyline from generated silhouettes
+
+**Question.** Step 12's route asks a generator for isolated landforms that fade out at the foot. Does a cheap generator deliver them?
+
+**Setup.** Three PixelLab pixflux silhouettes at 200×100, background removed, on the step 15 palette, with prompts in step 12's pattern: "a distant <landform>, fading to nothing at its foot, hazy dusk light as if seen from far away, no ground plane, no sky, isolated landform only". 3 generations. `parallax.py compose` laid them in runs at three times their size, with step 12's rates (0.6, 0.85, 0.92) and the camera panning north.
+
+**Result.** The landforms are usable and cut out cleanly, 44 to 73% transparent. None fades at the foot: pixel-art background removal gives a pixel either fully on or off, so each comes back with a hard dark base, a disc under the cone and a plateau under the mesa. In a run those bases read as a black band where step 12's game shows haze.
+
+![A skyline composed from three generated silhouettes, as the camera rises](../website/public/research/parallax/silhouette-skyline.png)
+
+**Verdict.** Keep the route. The faded foot has to come from somewhere else: a generator that returns soft alpha (the game's redraws came from Scenario), a dithered fade drawn afterwards, or a skirt and treeline in front, as step 12's game uses.
+
+## 17. A model that splits a picture into layers
+
+**Question.** [Qwen-Image-Layered](https://github.com/QwenLM/Qwen-Image-Layered) is trained to break a picture into RGBA layers and fill in what each layer hides. Does it give depth bands, and does it run on a 12 GB card?
+
+**Setup.** ComfyUI 0.34 on an RTX 3060 (12 GB) with 32 GB of RAM, using the fp8 model (20.5 GB), the fp8 Qwen 2.5 VL 7B text encoder and the layered VAE: about 30 GB of downloads. The step 4 volcano, enlarged from 384 to 640 px by nearest neighbour, went through the official "Image to Layers" graph as an API workflow: euler, 50 steps, CFG 4.0, seed 42, a short description of the scene as the prompt. One run asked for 4 layers, one for 3.
+
+**Result.**
+
+![Qwen-Image-Layered on the volcano: four layers, back to front, then the four stacked](../website/public/research/parallax/qwen-layered.png)
+
+- **It runs, slowly.** The model does not fit beside the desktop's own use of the card, so ComfyUI streams the weights from system RAM every step: about 40 s a step, 35 minutes for 4 layers and 42 for 3.
+- **The split is sky against everything else.** In both runs the back layer is a flat near-white fill and one layer holds the sky and sun. A single layer holds the far range, the volcano and its plume, the near ridges and the lava. The 4-layer run spent its extra slot on a pink blob over the lower half that matches nothing in the scene. Nothing in front can move at a different speed from anything behind it.
+- **What it does well.** The sun behind the volcano is filled in on the sky layer, which is the work step 14 paid PixelLab to do. Stacked back to front, the layers rebuild the input to within 3.5 of 255 per channel on average.
+- **It is not pixel art afterwards.** The input has 44 colours; each layer has 22,000 to 50,000, and the scene layer's alpha is mostly 192 to 254 rather than fully opaque. Every layer would need snapping back to the palette and a hard alpha.
+
+Other prompts, seeds and the full-precision model were not tried. The model's documentation says the prompt does not choose what goes in each layer.
+
+**Verdict.** Drop for parallax. It separates the objects a person would select, not the distances a camera would see, and a picture takes over half an hour on this card. Splitting by a depth map (steps 4 and 13) with inpainting (step 14) stays the route for a picture that has to be split.
+
+## A proposal for PixelKiln
+
+Research only; nothing here is built.
+
+**A parallax set in the manifest.** A set names its layers in order, far to near, and what they share:
+
+```jsonc
+"parallax": {
+  "volcanic-dusk": {
+    "palette": ["#050a14", "..."],           // one forced palette for every layer (step 15)
+    "width": 400,                              // every layer, so they wrap together
+    "loop": "crossfade",                       // or "provider" where the provider is seamless, or "none" for a bounded level
+    "layers": [
+      { "asset": "volcanic-sky",  "speed": 0.05, "bottom": 160 },
+      { "asset": "volcanic-far",  "speed": 0.25, "bottom": 150, "haze": 0.5 },
+      { "asset": "volcanic-mid",  "speed": 0.5,  "bottom": 175 },
+      { "asset": "volcanic-near", "speed": 1.0,  "bottom": 200 }
+    ]
+  }
+}
+```
+
+`speed` is the fraction of the camera's movement, the convention of Tiled, Godot and Phaser, so it is what a person would type. `bottom` places a layer on a shared canvas. `haze` is step 9's push toward the sky colour, done after generation with the palette held. The assets are ordinary manifest assets, so planning, budgets, the lockfile and review work as they do today. A silhouette set (step 12) would be the same shape with runs instead of single layers.
+
+**Export.**
+
+- **Tiled** fits best: an image layer per parallax layer, with `parallaxx` set to the speed and `repeatx` for a looping layer.
+- **Godot**: a `Parallax2D` per layer, `scroll_scale` set to the speed and `repeat_size` to the width.
+- **LDtk** has no image layer. Each layer would be a Tiles layer over a tileset cut from the layer's picture, with `parallaxFactorX` written as 1 − speed and `parallaxScaling: false` (step 11).
+
+**A preview.** `parallax.py scroll` and `compose` already show a set moving. A `pixelkiln parallax preview` that writes the same GIF would let a person judge a set before export.
+
 ## What other people are doing
 
-- **Layered generation models.** [LayerDiffuse](https://arxiv.org/abs/2402.17113) (Apache-2.0) adds transparency to latent diffusion models and can generate several layers of one scene together. [Qwen-Image-Layered](https://github.com/QwenLM/Qwen-Image-Layered) (Apache-2.0, December 2025) decomposes a picture into a chosen number of RGBA layers, at 640 or 1024 px buckets; ComfyUI ships it with an fp8 variant because the default needs a lot of VRAM ([ComfyUI docs](https://docs.comfy.org/tutorials/image/qwen/qwen-image-layered)). Neither was trained on pixel art, and whether either fits a 12 GB card is unverified.
+- **Layered generation models.** [LayerDiffuse](https://arxiv.org/abs/2402.17113) (Apache-2.0) adds transparency to latent diffusion models and can generate several layers of one scene together. [Qwen-Image-Layered](https://github.com/QwenLM/Qwen-Image-Layered) (Apache-2.0, December 2025) decomposes a picture into a chosen number of RGBA layers, at 640 or 1024 px buckets; ComfyUI ships it with an fp8 variant because the default needs a lot of VRAM ([ComfyUI docs](https://docs.comfy.org/tutorials/image/qwen/qwen-image-layered)). Neither was trained on pixel art. Step 17 ran Qwen-Image-Layered on a 12 GB card: it works, slowly, and splits sky from scene rather than by distance. LayerDiffuse is untried.
 - **Seamless generation.** Circular padding in the convolutional layers makes a diffusion model's output wrap; ComfyUI has nodes for it, including X-only tiling ([ComfyUI-seamless-tiling](https://github.com/spinagon/ComfyUI-seamless-tiling)). It works on U-Net models such as SDXL and reportedly not on transformer models (unverified). The other route is to shift the picture by half its width and inpaint the seam.
 - **Providers.** Retro Diffusion's API takes `tile_x` and `tile_y` booleans for seamless output and `remove_bg` for transparency ([api-examples](https://github.com/Retro-Diffusion/api-examples)); PixelKiln already exposes them as `tileX` and `tileY` ([Retro Diffusion](./RETRO_DIFFUSION.md)). Which styles honour them is unverified. PixelLab's v2 API has no parallax or seamless option that was found; pixflux offers a transparent background, a forced palette and an init image, up to 400×400 ([API](https://api.pixellab.ai/v2/llms.txt)). Scenario's tiling options are texture tools rather than scene tools ([help](https://help.scenario.com/articles/3312894507-scenario-texture-the-essentials)).
 - **Classic hardware.** The Mega Drive has two scrolling planes with per-line scroll tables ([RasterScroll](https://rasterscroll.com/mdgraphics/graphical-effects/row-column-scrolling/)). Games such as *Thunder Force IV* fake many layers from them by scrolling groups of lines at different speeds.
@@ -274,15 +394,18 @@ The same layer, at a quarter of the camera's speed, in each tool:
 - Splitting by colour (step 3). A scene's own lighting moves colours around more than distance does.
 - Skyline layers for a scene framed by tall near objects (step 4), and for anything floating (step 5).
 - Line scroll on tall shapes (step 7).
+- A cheap fill for what near layers hid, wherever a framing object moves far (step 13).
+- Retro Diffusion's environment style as a layer generator (step 15), and its background removal on a seamless picture.
+- Asking pixflux for a foot that fades out (step 16).
+- Qwen-Image-Layered as a depth splitter (step 17).
 
 ## What is next
 
-- **A recipe for silhouette sets** (step 12): a prompt pattern for distant landforms with faded feet, three a biome, sharing a palette and a haze colour, plus a preview that lays them in runs.
-- **Generate the layers on their own.** Sky, far range, middle ground and near ground as separate transparent pictures, each wide and seamless, from PixelLab pixflux and Retro Diffusion with `tile_x`. Compare against the depth-split route on palette agreement, horizon agreement and cost. This needs paid generations.
-- **Per-pixel layers and a real fill.** For framed scenes and floating things: cut by depth per pixel, not per column, and fill what the near layers hid with an inpainting model held to the palette.
-- **Try Qwen-Image-Layered** on the PixelLab volcano, on the 12 GB card, and snap its layers back to the source palette.
-- **An LDtk export with parallax.** Write each layer's factor as 1 − speed, with `parallaxScaling: false`, and open the result in the LDtk editor to check the direction.
-- **A manifest shape for a parallax set.** One asset per layer, sharing a palette, a width and a horizon row, with its speed recorded for export.
+- **Build the proposal** above: the manifest shape, a preview, and Tiled, Godot and LDtk export. Open the LDtk result in the editor to check the factor's direction.
+- **A faded foot for silhouettes** (step 16): soft alpha from Scenario, or a dithered fade drawn after generation and held to the palette.
+- **A second PixelLab layer set** at another time of day on the same palette, to see whether a forced palette keeps sets consistent across a biome.
+- **Retro Diffusion `tile_x` without background removal** on each layer, with the background keyed out afterwards so the seam survives.
+- **Fix PixelKiln's Retro Diffusion estimate** for `rd_plus__environment`, which now quotes a flat $0.06 (step 15).
 
 ## Running the scripts
 
@@ -313,6 +436,12 @@ python3 research/scripts/parallax.py haze <layer.png> <out.png> 0.35
 
 # Rounding schemes.
 python3 research/scripts/parallax.py jitter
+
+# Per-pixel layers with a fill within <reach> px, and each layer's invented pixels as a mask.
+GROW=2 python3 research/scripts/parallax.py cut <png> <out-dir> 4 <depth.png> 96
+
+# Stack layers that wrap, each with its bottom on a row of a 200 px canvas, and scroll one way.
+python3 research/scripts/parallax.py scroll <out.gif> 0.05,0.25,0.5,1.0 200 sky.png@160 far.png@150 mid.png@175 near.png@200
 
 # Layers composed from separate silhouettes; the camera pans north to the skyline. Rates are sky,far,near.
 python3 research/scripts/parallax.py compose <out.gif> 0.6,0.85,0.92 7 <silhouette.png>...

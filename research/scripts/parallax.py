@@ -6,9 +6,13 @@ Research script for docs/RESEARCH_PARALLAX.md. Rough, takes paths as arguments.
     python3 parallax.py loop <png> <out.png> <method>       make it wrap: cut, crossfade or mirror
     python3 parallax.py split <png> <out-dir> <bands> [depth.png]
                                                             cut into depth layers along skylines
+    python3 parallax.py cut <png> <out-dir> <bands> <depth.png> [reach]
+                                                            cut into depth layers pixel by pixel, fill within reach
     python3 parallax.py preview <out.gif> <f0,f1,...> <layer.png>...
                                                             pan a camera over layers
     python3 parallax.py line <png> <out.gif> <horizon-row>  per-row (raster) scroll of one image
+    python3 parallax.py scroll <out.gif> <f0,f1,...> <height> <png>@<bottom-row>...
+                                                            stack wrapping layers and scroll one way
     python3 parallax.py jitter                              rounding schemes, numbers only
     python3 parallax.py haze <png> <out.png> <t>            push an image toward its sky colour, palette held
     python3 parallax.py bands <png> <bands> [depth.png]     contrast and sky distance per depth band
@@ -58,8 +62,12 @@ def palette_snap(rgb, palette):
 
 
 def column_diff(a, b):
-    """Mean absolute RGB difference between two columns, 0-255."""
-    return float(np.abs(a[:, :3].astype(int) - b[:, :3].astype(int)).mean())
+    """Mean absolute difference between two columns, 0-255, over RGB weighted by alpha and
+    alpha itself, so a transparent pixel matches only another transparent pixel."""
+    def pre(c):
+        c = c.astype(int)
+        return np.concatenate([c[:, :3] * c[:, 3:4] // 255, c[:, 3:4]], axis=1)
+    return float(np.abs(pre(a) - pre(b)).mean())
 
 
 def seam_ratio(rgba):
@@ -88,7 +96,7 @@ def best_cut(rgba, min_frac=0.6):
     best = None
     for i in range(0, w):
         for j in range(i + int(w * min_frac), w + 1):
-            d = float(np.abs(cols[:, j - 1] - cols[:, i]).mean())
+            d = column_diff(rgba[:, j - 1], rgba[:, i])
             if best is None or d < best[0]:
                 best = (d, i, j)
     return best
@@ -272,6 +280,83 @@ def cmd_split(src, out_dir, bands, depth_path=None):
         print(f"  layer{k}: {area[k] / (h * w):5.1%} of the picture, made-up pixels at a {max(8, w // 12)} px relative shift: {rev[k]} ({invented:.1%} of the layer)")
 
 
+def cmd_cut(src, out_dir, bands, depth_path, reach="32"):
+    """Per-pixel layers: each pixel goes to its depth band, not to a column's skyline.
+
+    Floating things (a plume, a cloud) keep their own band and the sky behind them stays sky.
+    Each layer is filled only where it could be uncovered: hidden pixels within `reach` px of
+    something at its depth or farther. The fill copies the nearest pixel of the layer's own in
+    the same row, then the nearest in any direction. GROW px of each near band are taken from
+    the bands behind it so outlines travel with their shapes. Writes layer0..N-1.png,
+    layerK.fill.png (the invented pixels as a white-on-black mask) and bands.png.
+    """
+    from scipy.ndimage import binary_dilation, distance_transform_edt
+
+    os.makedirs(out_dir, exist_ok=True)
+    rgba = load(src)
+    h, w = rgba.shape[:2]
+    near = nearness(rgba, depth_path)
+    cuts = thresholds(near, bands)
+    label = np.digitize(near, cuts)
+    label = median_filter(label, size=3)
+    grow = int(os.environ.get("GROW", "0"))
+    if grow:
+        ball = np.ones((2 * grow + 1, 2 * grow + 1), bool)
+        for k in range(1, bands):
+            spread = binary_dilation(label == k, ball) & (label < k)
+            label[spread] = k
+    reach = int(reach)
+    box = np.ones((2 * reach + 1, 2 * reach + 1), bool)
+    rgb = rgba[:, :, :3]
+    invented_total = 0
+    for k in range(bands):
+        own = label == k
+        hidden = label > k
+        if k == 0:
+            need = hidden  # the sky must be complete
+        else:
+            need = hidden & binary_dilation(label <= k, box)
+        layer = np.zeros((h, w, 4), np.int16)
+        layer[own, :3] = rgb[own]
+        layer[own, 3] = 255
+        if own.any() and need.any():
+            # Same row first: copy from the nearest pixel of this layer to the left or right.
+            filled = np.zeros((h, w), bool)
+            for y in np.nonzero(need.any(1))[0]:
+                xs = np.nonzero(own[y])[0]
+                if len(xs) == 0:
+                    continue
+                for x in np.nonzero(need[y])[0]:
+                    j = xs[np.abs(xs - x).argmin()]
+                    layer[y, x, :3] = rgb[y, j]
+                    filled[y, x] = True
+            rest = need & ~filled
+            if rest.any():
+                _, (iy, ix) = distance_transform_edt(~own, return_indices=True)
+                layer[rest, :3] = rgb[iy[rest], ix[rest]]
+            layer[need, 3] = 255
+        invented = int(need.sum())
+        invented_total += invented
+        save(layer, os.path.join(out_dir, f"layer{k}.png"))
+        # The invented pixels as a mask, white = made up: what an inpainting model should redo.
+        mask = np.zeros((h, w, 4), np.int16)
+        mask[:, :, 3] = 255
+        mask[need, :3] = 255
+        save(mask, os.path.join(out_dir, f"layer{k}.fill.png"))
+        print(f"  layer{k}: {own.mean():5.1%} of the picture, invented {invented} px ({invented / max(own.sum(), 1):.0%} of its own)")
+    comp = np.zeros_like(rgba)
+    for k in range(bands):
+        arr = load(os.path.join(out_dir, f"layer{k}.png"))
+        m = arr[:, :, 3] > 0
+        comp[m] = arr[m]
+    exact = bool((comp[:, :, :3] == rgb).all())
+    tint = np.array([[70, 110, 220], [80, 200, 120], [240, 200, 60], [230, 90, 70], [190, 80, 200]])
+    band_img = rgba.copy()
+    band_img[:, :, :3] = (rgb * 0.45 + tint[label] * 0.55).astype(int)
+    save(band_img, os.path.join(out_dir, "bands.png"), 2)
+    print(f"{src}: {bands} bands per pixel, grow {grow}, reach {reach}; recomposite exact: {exact}; invented {invented_total} px in all")
+
+
 # --- animation ------------------------------------------------------------
 
 
@@ -287,7 +372,9 @@ def composite(layers, offsets, view_w, x0):
     return frame
 
 
-def write_gif(frames, out, scale=1, ms=33):
+def write_gif(frames, out, scale=None, ms=33):
+    # SCALE enlarges small previews with nearest neighbour, so they read on a page.
+    scale = scale or int(os.environ.get("SCALE", "1"))
     imgs = []
     for f in frames:
         im = Image.fromarray(f.astype(np.uint8), "RGB")
@@ -338,6 +425,35 @@ def cmd_line(src, out, horizon):
     write_gif(frames, out)
     save(np.dstack([frames[len(frames) // 4], np.full(frames[0].shape[:2], 255)]), out.replace(".gif", ".quarter.png"), 2)
     print(f"{out}: line scroll, rows above {horizon} at {far}, the bottom row at 1.0")
+
+
+def cmd_scroll(out, factors, height, specs):
+    """Stack layers that are meant to wrap and scroll the camera one way, so every seam passes.
+
+    Each spec is <png>@<bottom-row>: the layer is drawn with its bottom edge on that row of a
+    canvas `height` tall. The first layer is the sky and is extended down by repeating its last
+    row. The camera moves 4 px a frame for 100 frames; each layer moves floor(cam x factor).
+    """
+    factors = [float(f) for f in factors.split(",")]
+    height = int(height)
+    layers = []
+    for spec in specs:
+        path, bottom = spec.rsplit("@", 1)
+        arr = load(path)
+        h, w = arr.shape[:2]
+        canvas = np.zeros((height, w, 4), np.int16)
+        top = int(bottom) - h
+        canvas[max(top, 0) : int(bottom)] = arr[max(-top, 0) :]
+        if not layers:
+            canvas[int(bottom) :] = arr[-1]
+        layers.append(canvas)
+    view_w = min(a.shape[1] for a in layers)
+    frames = []
+    for i in range(100):
+        cam = i * 4
+        frames.append(composite(layers, [int(np.floor(cam * f)) for f in factors], view_w, 0))
+    write_gif(frames, out)
+    print(f"{out}: {len(frames)} frames, factors {factors}, {view_w}x{height}")
 
 
 # --- rounding -------------------------------------------------------------
@@ -569,9 +685,11 @@ def main():
         "seam": lambda: cmd_seam(args),
         "loop": lambda: cmd_loop(*args),
         "split": lambda: cmd_split(args[0], args[1], int(args[2]), *(args[3:4])),
+        "cut": lambda: cmd_cut(args[0], args[1], int(args[2]), *args[3:]),
         "preview": lambda: cmd_preview(args[0], args[1], args[2:]),
         "line": lambda: cmd_line(*args),
         "jitter": cmd_jitter,
+        "scroll": lambda: cmd_scroll(args[0], args[1], args[2], args[3:]),
         "haze": lambda: cmd_haze(*args),
         "bands": lambda: cmd_bands(*args),
         "compose": lambda: cmd_compose(args[0], args[1], args[2], args[3:]),

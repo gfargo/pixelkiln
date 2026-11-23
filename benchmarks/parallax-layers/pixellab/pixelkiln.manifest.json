@@ -1,0 +1,224 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-parallax-layers-pixellab",
+  "provider": "pixellab",
+  "styles": {
+    "sky": {
+      "generator": "pixflux",
+      "noBackground": false,
+      "palette": [
+        "#050a14",
+        "#2e3253",
+        "#7b5f94",
+        "#131b36",
+        "#715e91",
+        "#34345a",
+        "#403a61",
+        "#896091",
+        "#9e6292",
+        "#39395c",
+        "#ad628e",
+        "#120a27",
+        "#503e68",
+        "#f6740e",
+        "#09091a",
+        "#d66283",
+        "#0e172f",
+        "#464068",
+        "#be638b",
+        "#936090",
+        "#623e6a",
+        "#c5638a",
+        "#0e0c20",
+        "#252446",
+        "#b5618b",
+        "#181331",
+        "#f96076",
+        "#e9627d",
+        "#fbdd3b",
+        "#cc6386",
+        "#221c43",
+        "#1e0d29",
+        "#311840",
+        "#431030",
+        "#2c0d29",
+        "#140a18",
+        "#76325c",
+        "#631337",
+        "#921d3e",
+        "#f12c2d",
+        "#c21d35",
+        "#7f4776",
+        "#faae35",
+        "#9e95a4"
+      ],
+      "seed": 4242,
+      "view": "side",
+      "outDir": "../../../website/public/research/parallax/generated/pixellab"
+    },
+    "layer": {
+      "generator": "pixflux",
+      "noBackground": true,
+      "palette": [
+        "#050a14",
+        "#2e3253",
+        "#7b5f94",
+        "#131b36",
+        "#715e91",
+        "#34345a",
+        "#403a61",
+        "#896091",
+        "#9e6292",
+        "#39395c",
+        "#ad628e",
+        "#120a27",
+        "#503e68",
+        "#f6740e",
+        "#09091a",
+        "#d66283",
+        "#0e172f",
+        "#464068",
+        "#be638b",
+        "#936090",
+        "#623e6a",
+        "#c5638a",
+        "#0e0c20",
+        "#252446",
+        "#b5618b",
+        "#181331",
+        "#f96076",
+        "#e9627d",
+        "#fbdd3b",
+        "#cc6386",
+        "#221c43",
+        "#1e0d29",
+        "#311840",
+        "#431030",
+        "#2c0d29",
+        "#140a18",
+        "#76325c",
+        "#631337",
+        "#921d3e",
+        "#f12c2d",
+        "#c21d35",
+        "#7f4776",
+        "#faae35",
+        "#9e95a4"
+      ],
+      "seed": 4242,
+      "view": "side",
+      "outDir": "../../../website/public/research/parallax/generated/pixellab"
+    },
+    "silhouette": {
+      "generator": "pixflux",
+      "noBackground": true,
+      "palette": [
+        "#050a14",
+        "#2e3253",
+        "#7b5f94",
+        "#131b36",
+        "#715e91",
+        "#34345a",
+        "#403a61",
+        "#896091",
+        "#9e6292",
+        "#39395c",
+        "#ad628e",
+        "#120a27",
+        "#503e68",
+        "#f6740e",
+        "#09091a",
+        "#d66283",
+        "#0e172f",
+        "#464068",
+        "#be638b",
+        "#936090",
+        "#623e6a",
+        "#c5638a",
+        "#0e0c20",
+        "#252446",
+        "#b5618b",
+        "#181331",
+        "#f96076",
+        "#e9627d",
+        "#fbdd3b",
+        "#cc6386",
+        "#221c43",
+        "#1e0d29",
+        "#311840",
+        "#431030",
+        "#2c0d29",
+        "#140a18",
+        "#76325c",
+        "#631337",
+        "#921d3e",
+        "#f12c2d",
+        "#c21d35",
+        "#7f4776",
+        "#faae35",
+        "#9e95a4"
+      ],
+      "seed": 4242,
+      "view": "side",
+      "outDir": "../../../website/public/research/parallax/generated/pixellab"
+    }
+  },
+  "assets": {
+    "volcanic-sky": {
+      "prompt": "a dusk sky over a volcanic land, smooth horizontal bands of violet, pink and orange, a low setting sun near the bottom edge, a few thin clouds, no ground, no mountains, side view background",
+      "width": 400,
+      "height": 160,
+      "styles": [
+        "sky"
+      ]
+    },
+    "volcanic-far": {
+      "prompt": "a distant range of pale violet mountain silhouettes seen from very far away, low contrast, the range spans the full width, flat bottom edge, no sky, no ground, side view",
+      "width": 400,
+      "height": 100,
+      "styles": [
+        "layer"
+      ]
+    },
+    "volcanic-mid": {
+      "prompt": "a wide dark basalt volcano with a glowing crater, thin lava streaks down its flanks and smoke drifting from the top, flat bottom edge, no sky, side view",
+      "width": 400,
+      "height": 100,
+      "styles": [
+        "layer"
+      ]
+    },
+    "volcanic-near": {
+      "prompt": "a row of dark jagged ridges close to the viewer with glowing lava cracks, almost black, high contrast, spans the full width, flat bottom edge, no sky, side view",
+      "width": 400,
+      "height": 100,
+      "styles": [
+        "layer"
+      ]
+    },
+    "silhouette-cone": {
+      "prompt": "a distant volcanic cinder cone with a faint orange glow in its crater, spreading out and fading to nothing at its foot, hazy dusk light as if seen from far away, no ground plane, no sky, isolated landform only",
+      "width": 200,
+      "height": 100,
+      "styles": [
+        "silhouette"
+      ]
+    },
+    "silhouette-rim": {
+      "prompt": "a distant broken caldera rim of dark basalt cliffs, spreading out and fading to nothing at its foot, hazy dusk light as if seen from far away, no ground plane, no sky, isolated landform only",
+      "width": 200,
+      "height": 100,
+      "styles": [
+        "silhouette"
+      ]
+    },
+    "silhouette-mesa": {
+      "prompt": "a distant low flat-topped basalt plateau with a few dull red fissures, fading to nothing at its foot, hazy dusk light as if seen from far away, no ground plane, no sky, isolated landform only",
+      "width": 200,
+      "height": 100,
+      "styles": [
+        "silhouette"
+      ]
+    }
+  }
+}

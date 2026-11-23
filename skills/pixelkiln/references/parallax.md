@@ -24,6 +24,20 @@ this; its numbers are in step 12 of the research note.
 - A bounded level needs no loop: extend each run past both ends by the most
   that layer can drift.
 
+## Generating whole layers
+
+- PixelLab pixflux with ONE forced palette (`palette`) on every layer is the
+  cheapest route that gives layers which agree: four layers for four
+  generations. Opaque sky; the other layers with background removal, at most
+  40,000 px each (400×100) to stay transparent. pixflux has no seamless
+  option, so loop each layer afterwards.
+- Retro Diffusion's `rd_plus__environment` draws a whole scene whatever the
+  prompt says, so it is not a layer generator. Its `tileX` does wrap the
+  drawing, but `removeBg` breaks the seam it made.
+- Pixel-art background removal is all or nothing per pixel: a silhouette asked
+  to fade at its foot comes back with a hard base. Plan a dithered fade, a
+  ground strip or a treeline in front.
+
 ## Before generating
 
 - A parallax background is several layers, not one scene. A single scenic
@@ -43,8 +57,14 @@ this; its numbers are in step 12 of the research note.
   on a CPU) gives usable bands for an open landscape. Colour alone does not.
 - It fails on a scene framed by tall near objects, and anything floating
   (smoke, clouds, a moon) must be cut out as its own sprite.
+- Cut per pixel, not per column, so floating things keep their own layer.
 - Whatever a near layer hid has to be invented when it moves. Say so before
-  promising a clean result from a flat picture.
+  promising a clean result from a flat picture. PixelLab `inpaint_image` on
+  the invented pixels gives a believable fill and leaves the rest untouched,
+  at 10 to 25 generations a layer by canvas size.
+- Do not reach for a layer-splitting model (Qwen-Image-Layered) for depth
+  bands: it separated sky from everything else, kept near and far land in
+  one layer, and took over half an hour a picture on a 12 GB card.
 - For ground that recedes to a horizon, per-row (line) scrolling of the one
   picture needs no cutting at all, but it shears tall shapes.
 
