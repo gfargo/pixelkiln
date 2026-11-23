@@ -1,3 +1,10 @@
+# [0.139.0](https://github.com/gfargo/pixelkiln/compare/v0.138.2...v0.139.0) (2026-11-23)
+
+
+### Features
+
+* RD Lite provider update, reference images and a 4-image cap ([c947451](https://github.com/gfargo/pixelkiln/commit/c947451d331dd547d31f7a5e46d8aa448b920da0))
+
 ## [0.138.2](https://github.com/gfargo/pixelkiln/compare/v0.138.1...v0.138.2) (2026-11-23)
 
 ## [0.138.1](https://github.com/gfargo/pixelkiln/compare/v0.138.0...v0.138.1) (2026-11-23)
