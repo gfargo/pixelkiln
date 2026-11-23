@@ -566,6 +566,14 @@ GIF, the reference sprite, the 28-joint rig and the skeletons sent.
 
 About 34 generations went into this, most of it on the earlier attempts.
 
+The goblin followed the same recipe and worked on the first pass
+([`results/pixellab-goblin`](results/pixellab-goblin)). The steps were a
+128 px downscale on a 192 px canvas, a 23-joint rig with the club
+(1 generation), then one 15-frame pass (4 generations). The goblin raises the
+club, cocks it back, smashes into a crouch, follows through and settles to
+idle. No hand fixes were needed. PixelLab drew the club as a motion smear on
+the two fastest frames.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
