@@ -65,24 +65,57 @@ describe("Retro Diffusion provider", () => {
       provider: "retrodiffusion",
       costUnit: "usd",
       candidates: 3,
-      cost: 0.082,
+      cost: 0.18,
     })
   })
 
-  it("rounds variable USD estimates up to the live quote precision", async () => {
+  it("matches the flat per-image live quotes for still and tile styles", async () => {
+    const { spec } = await project({ numImages: 1 })
+    const provider = createProvider("retrodiffusion", "offline")
+    const usd = (promptStyle: string, width = 64, height = width) =>
+      provider.estimate({
+        ...spec,
+        width,
+        height,
+        providerOptions: { ...spec.providerOptions, promptStyle },
+      }).amount
+    for (const [width, height] of [[64, 64], [384, 96], [384, 160], [512, 512]] as const) {
+      expect(usd("rd_plus__environment", width, height)).toBe(0.06)
+    }
+    expect(usd("rd_plus__low_res", 16)).toBe(0.06)
+    expect(usd("rd_mini__classic", 32)).toBe(0.06)
+    expect(usd("rd_fast__default", 384)).toBe(0.03)
+    expect(usd("default:rd_flux", 64)).toBe(0.03)
+    expect(usd("rd_lite__default", 512)).toBe(0.05)
+    expect(usd("rd_core__default", 64)).toBe(0.1)
+    expect(usd("rd_tile__scene_object", 256)).toBe(0.06)
+    expect(usd("rd_tile__tileset", 32)).toBe(0.1)
+    expect(usd("rd_pro__default", 256)).toBe(0.18)
+    expect(usd("user__custom", 64)).toBe(0.06)
+  })
+
+  it("sends a wide environment layer when the live quote is the flat RD Plus price", async () => {
     process.env.RD_API_KEY = "rdpk-test"
+    const bodies: Array<Record<string, unknown>> = []
     vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
       const body = JSON.parse(String(init?.body))
+      bodies.push(body)
       return body.check_cost
-        ? json({ balance_cost: 0.058 })
-        : json({ status: "accepted", task_id: "rounded-quote" })
+        ? json({ balance_cost: 0.06 })
+        : json({ status: "accepted", task_id: "environment-layer" })
     }))
 
-    const { spec } = await project({ numImages: 1 })
-    const large = { ...spec, width: 256, height: 256 }
+    const { spec } = await project({
+      promptStyle: "rd_plus__environment",
+      numImages: 1,
+      removeBg: true,
+      tileX: true,
+    })
+    const layer = { ...spec, width: 384, height: 96 }
     const provider = createProvider("retrodiffusion", "online")
-    expect(provider.estimate(large)).toMatchObject({ unit: "usd", amount: 0.058 })
-    await expect(provider.submit(large, [])).resolves.toEqual({ jobId: "rounded-quote" })
+    expect(provider.estimate(layer)).toMatchObject({ unit: "usd", amount: 0.06 })
+    await expect(provider.submit(layer, [])).resolves.toEqual({ jobId: "environment-layer" })
+    expect(bodies.at(-1)).toMatchObject({ prompt_style: "rd_plus__environment", tile_x: true, remove_bg: true })
   })
 
   it("accepts the maximum still batch and rejects the first value above it", async () => {

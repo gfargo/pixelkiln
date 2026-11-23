@@ -159,24 +159,7 @@ export class RetroDiffusionProvider implements Provider {
     const options = retroOptions(spec)
     const style = resolvedPromptStyle(spec, options)
     const count = options.numImages ?? 1
-    const pixels = spec.width * spec.height
-    let each: number
-    if (style.startsWith("rd_advanced_animation__")) {
-      each = /__(?:custom_action|subtle_motion)$/.test(style) ? 0.25 : 0.14
-    } else if (style.startsWith("rd_animation__")) {
-      each = /__(?:any_animation|8_dir_rotation)$/.test(style) ? 0.25 : 0.07
-    } else if (/^rd_tile__tileset(?:_advanced)?$/.test(style)) {
-      each = 0.1
-    } else if (style.startsWith("rd_pro__")) {
-      each = 0.18
-    } else if (style.startsWith("rd_fast__")) {
-      each = Math.max(0.015, (pixels + 100_000) / 6_000_000)
-    } else if (isLowResolutionStyle(style)) {
-      each = Math.max(0.02, (pixels + 13_700) / 600_000)
-    } else {
-      each = Math.max(0.025, (pixels + 50_000) / 2_000_000)
-    }
-    return { unit: "usd", amount: roundUsdEstimate(each * count), candidates: count }
+    return { unit: "usd", amount: roundUsdEstimate(retroUsdPerImage(style, spec) * count), candidates: count }
   }
 
   validate(spec: ResolvedSpec, styleImages: ResolvedStyleImage[]): void {
@@ -462,6 +445,37 @@ function validateTile(
       throw new Error("Retro Diffusion advanced tilesets require extraPrompt or a second input image")
     }
   }
+}
+
+/**
+ * USD per image. Retro Diffusion's free quote endpoint returned these flat
+ * prices on 2026-11-23 for every size tried within each style's limits, with
+ * and without remove_bg and tile_x; the cost scales only with num_images.
+ * The older pixel-count formulas undercut the flat prices on most sizes, so
+ * submit() refused the jobs.
+ */
+function retroUsdPerImage(style: string, spec: ResolvedSpec): number {
+  if (style.startsWith("rd_advanced_animation__")) {
+    return /__(?:custom_action|subtle_motion)$/.test(style) ? 0.25 : 0.14
+  }
+  if (style.startsWith("rd_animation__")) {
+    return /__(?:any_animation|8_dir_rotation)$/.test(style) ? 0.25 : 0.07
+  }
+  if (/^rd_tile__tileset(?:_advanced)?$/.test(style)) return 0.1
+  if (style.startsWith("rd_tile__")) return 0.06
+  if (style.startsWith("rd_pro__")) return 0.18
+  if (style.startsWith("rd_core__")) return 0.1
+  if (style.startsWith("rd_plus__") || style.startsWith("rd_mini__")) return 0.06
+  if (style.startsWith("rd_lite__")) return 0.05
+  // RD Fast, including the older "<name>:rd_flux" and "item_sheet" ids.
+  if (style.startsWith("rd_fast__") || style.endsWith(":rd_flux") || style === "item_sheet") return 0.03
+  // User styles and anything new: the old pixel-count formulas, but never
+  // below the common flat still price.
+  const pixels = spec.width * spec.height
+  const formula = isLowResolutionStyle(style)
+    ? (pixels + 13_700) / 600_000
+    : (pixels + 50_000) / 2_000_000
+  return Math.max(0.06, formula)
 }
 
 function isLowResolutionStyle(style: string): boolean {
