@@ -1,3 +1,10 @@
+# [0.137.0](https://github.com/gfargo/pixelkiln/compare/v0.136.0...v0.137.0) (2026-11-23)
+
+
+### Features
+
+* shield motions for a sword and shield, research step 59 ([e3fc202](https://github.com/gfargo/pixelkiln/commit/e3fc20207d3e4d38182013beb34fa1b94076d8bd))
+
 # [0.136.0](https://github.com/gfargo/pixelkiln/compare/v0.135.0...v0.136.0) (2026-11-22)
 
 
