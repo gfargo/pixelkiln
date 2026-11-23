@@ -304,7 +304,7 @@ The price is invention. The fill has to make up 115 to 189% of a layer's own pix
 **Setup.** One volcanic dusk set from each hosted provider: a sky, a far range, a volcano and near ridges. The manifests are in [`benchmarks/parallax-layers`](../benchmarks/parallax-layers).
 
 - **PixelLab** through PixelKiln: pixflux, `view: side`, seed 4242, and one forced palette for every layer, the 44 colours of the step 4 volcano. The sky is 400×160 and opaque; the three layers are 400×100 with background removal (under pixflux's 40,000 px transparency limit). 4 generations.
-- **Retro Diffusion**: `rd_plus__environment` with `tile_x`, seed 4242. The sky is 384×160; the layers are 384×96 with `remove_bg`. $0.06 an image, $0.24 in all. PixelKiln refused to send these: Retro Diffusion quoted $0.06 for every size tried, above PixelKiln's offline estimate of $0.044 for 384×96, so the four were sent straight to the API with the same quote check.
+- **Retro Diffusion**: `rd_plus__environment` with `tile_x`, seed 4242. The sky is 384×160; the layers are 384×96 with `remove_bg`. $0.06 an image, $0.24 in all. PixelKiln refused to send these: Retro Diffusion quoted $0.06 for every size tried, above PixelKiln's offline estimate of $0.044 for 384×96, so the four were sent straight to the API with the same quote check. PixelKiln 0.138.1 plans every `rd_plus__` style at the flat $0.06, so it would send them now.
 
 The PixelLab layers were looped with step 2's crossfade, because pixflux has no seamless option. Both sets were stacked with their bottoms on rows 150, 175 and 200 of a 200 px canvas, and scrolled one way at 0.05, 0.25, 0.5 and 1.0 so every seam passes.
 
@@ -405,7 +405,6 @@ Research only; nothing here is built.
 - **A faded foot for silhouettes** (step 16): soft alpha from Scenario, or a dithered fade drawn after generation and held to the palette.
 - **A second PixelLab layer set** at another time of day on the same palette, to see whether a forced palette keeps sets consistent across a biome.
 - **Retro Diffusion `tile_x` without background removal** on each layer, with the background keyed out afterwards so the seam survives.
-- **Fix PixelKiln's Retro Diffusion estimate** for `rd_plus__environment`, which now quotes a flat $0.06 (step 15).
 
 ## Running the scripts
 
