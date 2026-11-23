@@ -1,3 +1,11 @@
+# [0.138.0](https://github.com/gfargo/pixelkiln/compare/v0.137.0...v0.138.0) (2026-11-23)
+
+
+### Features
+
+* parallax backgrounds research note and skill reference ([2d8b8c3](https://github.com/gfargo/pixelkiln/commit/2d8b8c32519212c10301e53471ea15ec42f8061a))
+* parallax research steps 13 to 17 with pictures ([e5cf24b](https://github.com/gfargo/pixelkiln/commit/e5cf24bc7f281a45e24710a19260bce9d236490e))
+
 # [0.137.0](https://github.com/gfargo/pixelkiln/compare/v0.136.0...v0.137.0) (2026-11-23)
 
 
