@@ -216,3 +216,22 @@ before committing to a large batch.
 
 Retro Diffusion publishes its API examples and pricing formulas in the
 [official API repository](https://github.com/Retro-Diffusion/api-examples).
+
+On 2026-11-23 the live quote endpoint returned a flat price per image for each
+style family, the same at every size tried and with or without `removeBg` and
+`tileX`. The published pixel-count formulas no longer match those quotes. The
+quote multiplies by `numImages`. PixelKiln plans with these prices:
+
+| Style family | USD per image |
+|---|---|
+| RD Fast (`rd_fast__*` and older `*:rd_flux` ids) | 0.03 |
+| RD Lite (`rd_lite__*`) | 0.05 |
+| RD Plus (`rd_plus__*`, including `rd_plus__environment`), RD Mini (`rd_mini__*`) | 0.06 |
+| Single tiles, tile objects, and scene objects (`rd_tile__*`) | 0.06 |
+| Tilesets (`rd_tile__tileset`, `rd_tile__tileset_advanced`) | 0.10 |
+| RD Core (`rd_core__*`) | 0.10 |
+| RD Pro (`rd_pro__*`) | 0.18 |
+| Animation (`rd_animation__*`) | 0.07, or 0.25 for `any_animation` and `8_dir_rotation` |
+
+If a later quote comes back above the planned price, PixelKiln refuses the job
+before the paid request and reports both amounts.
