@@ -1,3 +1,10 @@
+## [0.138.1](https://github.com/gfargo/pixelkiln/compare/v0.138.0...v0.138.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* plan Retro Diffusion stills at the flat live quote prices ([dea071c](https://github.com/gfargo/pixelkiln/commit/dea071cd64fc5ed3ec6872dc785075a1f914dcc8))
+
 # [0.138.0](https://github.com/gfargo/pixelkiln/compare/v0.137.0...v0.138.0) (2026-11-23)
 
 
