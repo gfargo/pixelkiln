@@ -262,6 +262,35 @@ describe("Retro Diffusion provider", () => {
     expect(paidBody.reference_images).toEqual(["aW1hZ2U="])
   })
 
+  it("takes one reference on RD Lite, up to nine on RD Core, and caps both at 4 images", async () => {
+    process.env.RD_API_KEY = "rdpk-test"
+    const requests: RequestInit[] = []
+    vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
+      requests.push(init ?? {})
+      const body = JSON.parse(String(init?.body))
+      return body.check_cost
+        ? json({ balance_cost: 0.05 })
+        : json({ status: "accepted", task_id: "task-lite" })
+    }))
+    const reference = { base64: "aW1hZ2U=", width: 32, height: 32, format: "png" as const }
+    const provider = createProvider("retrodiffusion", "online")
+
+    const { spec: liteSpec } = await project({ promptStyle: "rd_lite__default", numImages: 1 })
+    await expect(provider.submit(liteSpec, [reference])).resolves.toEqual({ jobId: "task-lite" })
+    expect(JSON.parse(String(requests.at(-1)?.body)).reference_images).toEqual(["aW1hZ2U="])
+    expect(() => provider.validate(liteSpec, [reference, reference])).toThrow(/RD Lite styles accept 1 reference image/)
+
+    const { spec: coreSpec } = await project({ promptStyle: "rd_core__default", numImages: 1 })
+    expect(() => provider.validate(coreSpec, Array(9).fill(reference))).not.toThrow()
+
+    const { spec: liteFour } = await project({ promptStyle: "rd_lite__default", numImages: 4 })
+    expect(() => provider.validate(liteFour, [])).not.toThrow()
+    await expect(project({ promptStyle: "rd_lite__default", numImages: 5 }))
+      .rejects.toThrow(/RD Lite styles return at most 4 images/)
+    await expect(project({ promptStyle: "rd_core__default", numImages: 5 }))
+      .rejects.toThrow(/RD Core styles return at most 4 images/)
+  })
+
   it("reports the provider's prepaid USD balance", async () => {
     process.env.RD_API_KEY = "rdpk-test"
     vi.stubGlobal("fetch", vi.fn(async () => json({ credits: 0, balance: 12.34 })))

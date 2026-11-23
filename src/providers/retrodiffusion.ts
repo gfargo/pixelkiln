@@ -181,6 +181,12 @@ export class RetroDiffusionProvider implements Provider {
     if (!Number.isInteger(count) || count < 1 || count > 16) {
       throw new Error("Retro Diffusion numImages must be a whole number from 1 to 16")
     }
+    // RD Lite and RD Core return at most 4 images a request; the API clamps a
+    // larger count to 4 and bills 4, so refuse it rather than plan the wrong set.
+    const family = /^rd_(lite|core)__/.exec(promptStyle)?.[1]
+    if (family && count > 4) {
+      throw new Error(`Retro Diffusion RD ${family === "lite" ? "Lite" : "Core"} styles return at most 4 images; set numImages to 1–4`)
+    }
     if (spec.width < 16 || spec.height < 16 || spec.width > 512 || spec.height > 512) {
       throw new Error("Retro Diffusion output dimensions must be between 16 and 512 pixels")
     }
@@ -192,10 +198,12 @@ export class RetroDiffusionProvider implements Provider {
       validateAnimation(promptStyle, spec, styleImages, options)
     } else if (spec.generator === "tiles") {
       validateTile(promptStyle, spec, styleImages, count, options)
-    } else if (styleImages.length && !/^(?:rd_pro__|user__)/.test(promptStyle)) {
+    } else if (family === "lite" && styleImages.length > 1) {
+      throw new Error("Retro Diffusion RD Lite styles accept 1 reference image; use RD Core or RD Pro for more")
+    } else if (styleImages.length && !/^(?:rd_pro__|rd_core__|rd_lite__|user__)/.test(promptStyle)) {
       throw new Error(
         `Retro Diffusion style "${promptStyle}" does not accept reference_images; ` +
-          "use an RD Pro or user style",
+          "use an RD Pro, RD Core, RD Lite or user style",
       )
     }
   }
