@@ -1,0 +1,61 @@
+{
+  "view": [
+    384,
+    216
+  ],
+  "sky": [
+    "#2e3253",
+    "#503e68",
+    "#7b5f94",
+    "#ad628e",
+    "#d66283",
+    "#f96076"
+  ],
+  "seed": 7,
+  "frames": 120,
+  "travel": 480,
+  "layers": [
+    {
+      "image": "../../../website/public/research/parallax/refined/volcanic/picked/far.png",
+      "bottom": 150,
+      "speed": 0.125,
+      "extend": true
+    },
+    {
+      "run": [
+        "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-cone.far.png",
+        "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-rim.far.png",
+        "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-mesa.far.png",
+        "../../../website/public/research/parallax/refined/volcanic/picked/c-landform-cone.far.png"
+      ],
+      "foot": 158,
+      "speed": 0.25,
+      "step": 0.72,
+      "gap": 16,
+      "jitter": 4
+    },
+    {
+      "run": [
+        "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-cone.near.png",
+        "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-rim.near.png",
+        "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-mesa.near.png",
+        "../../../website/public/research/parallax/refined/volcanic/picked/c-landform-cone.near.png"
+      ],
+      "foot": 176,
+      "speed": 0.5,
+      "step": 0.72,
+      "gap": 16,
+      "jitter": 4
+    },
+    {
+      "fill": "#0e0c20",
+      "top": 206,
+      "speed": 1.0
+    },
+    {
+      "image": "../../../website/public/research/parallax/refined/volcanic/picked/near.png",
+      "bottom": 246,
+      "speed": 1.0
+    }
+  ]
+}

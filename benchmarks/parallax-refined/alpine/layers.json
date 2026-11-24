@@ -1,0 +1,40 @@
+{
+  "view": [
+    384,
+    216
+  ],
+  "sky": [
+    "#405e9c",
+    "#60649f",
+    "#a596b9",
+    "#c38eb3",
+    "#de889c",
+    "#f9b59c"
+  ],
+  "seed": 7,
+  "frames": 120,
+  "travel": 480,
+  "layers": [
+    {
+      "image": "../../../website/public/research/parallax/refined/alpine/picked/far.png",
+      "bottom": 150,
+      "speed": 0.125,
+      "extend": true
+    },
+    {
+      "image": "../../../website/public/research/parallax/refined/alpine/picked/mid.png",
+      "bottom": 204,
+      "speed": 0.25
+    },
+    {
+      "fill": "#040920",
+      "top": 206,
+      "speed": 1.0
+    },
+    {
+      "image": "../../../website/public/research/parallax/refined/alpine/picked/near.png",
+      "bottom": 256,
+      "speed": 1.0
+    }
+  ]
+}

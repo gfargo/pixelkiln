@@ -1,0 +1,42 @@
+{
+  "view": [
+    384,
+    216
+  ],
+  "sky": [
+    "#2e3253",
+    "#503e68",
+    "#7b5f94",
+    "#ad628e",
+    "#d66283",
+    "#f96076"
+  ],
+  "seed": 7,
+  "frames": 120,
+  "travel": 480,
+  "layers": [
+    {
+      "image": "../../../website/public/research/parallax/refined/volcanic/picked/far.png",
+      "bottom": 150,
+      "speed": 0.125,
+      "extend": true
+    },
+    {
+      "image": "../../../website/public/research/parallax/refined/volcanic/picked/mid.png",
+      "bottom": 203,
+      "speed": 0.25,
+      "repeat": false,
+      "x": 0
+    },
+    {
+      "fill": "#0e0c20",
+      "top": 206,
+      "speed": 1.0
+    },
+    {
+      "image": "../../../website/public/research/parallax/refined/volcanic/picked/near.png",
+      "bottom": 246,
+      "speed": 1.0
+    }
+  ]
+}
