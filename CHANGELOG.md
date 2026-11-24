@@ -1,3 +1,15 @@
+# [0.140.0](https://github.com/gfargo/pixelkiln/compare/v0.139.3...v0.140.0) (2026-11-24)
+
+
+### Bug Fixes
+
+* parallax exports checked in Tiled and Phaser, LDtk placement at any speed ([41a577b](https://github.com/gfargo/pixelkiln/commit/41a577b1490f11dc21194f744842b4cc2c5d2f67))
+
+
+### Features
+
+* pixelkiln parallax preview and export ([4567dea](https://github.com/gfargo/pixelkiln/commit/4567deaa8efc7154942183d99de503c3113fb518))
+
 ## [0.139.3](https://github.com/gfargo/pixelkiln/compare/v0.139.2...v0.139.3) (2026-11-24)
 
 ## [0.139.2](https://github.com/gfargo/pixelkiln/compare/v0.139.1...v0.139.2) (2026-11-24)
