@@ -2,7 +2,7 @@
 
 This is a research note, not a feature. Nothing here is a PixelKiln command, and the scripts are rough.
 
-PixelKiln can generate a scenic background as one flat picture. A parallax background is several layers that scroll at different speeds as the camera moves. This note tries the ways to build one and the ways to get the layers out of AI generators. Steps 1 to 11 use art we already had. Step 12 records how a game that already uses PixelKiln builds its skyline. Steps 13 to 16 spent 17 PixelLab generations and $0.24 of Retro Diffusion. Step 17 ran a layer-splitting model on our own 12 GB GPU. Step 18 spent 51 PixelLab generations turning the two routes that worked into the sets below. Step 19 turns the camera upward, with 14 PixelLab generations and $0.12 of Retro Diffusion.
+PixelKiln can generate a scenic background as one flat picture. A parallax background is several layers that scroll at different speeds as the camera moves. This note tries the ways to build one and the ways to get the layers out of AI generators. Steps 1 to 11 use art we already had. Step 12 records how a game that already uses PixelKiln builds its skyline. Steps 13 to 16 spent 17 PixelLab generations and $0.24 of Retro Diffusion. Step 17 ran a layer-splitting model on our own 12 GB GPU. Step 18 spent 51 PixelLab generations turning the two routes that worked into the sets below. Step 19 turns the camera upward, with 14 PixelLab generations and $0.12 of Retro Diffusion. Step 20 takes the alpine set to night with 10 PixelLab generations, and step 21 spent $0.30 of Retro Diffusion on seamless layers keyed by script.
 
 The short version is that generators are good at one isolated shape and bad at agreeing across several pictures, so ask them for shapes and do the agreeing yourself. Steps 12 and 18 show how. To build a background, follow the [parallax guide](./PARALLAX.md). This note is the evidence behind it. A picture stays in this note only if it shows a result worth using or the one fault a step found. The rest is in the text and the scripts.
 
@@ -35,6 +35,8 @@ Last updated 24 November 2026.
 | 17 | Ask a layer-splitting model for the layers | Qwen-Image-Layered fp8 in ComfyUI, RTX 3060 12 GB, 35 to 42 minutes a picture | The sky and sun come apart from the land, with the hidden sun filled in. Far range, volcano, near ridges and lava stay in one layer. A blank fill layer and a pink blob take the other slots. | Drop for parallax. It splits sky from scene, not near from far, and it is too slow on this card. |
 | 18 | Refine steps 12, 15 and 16 with better prompts, three candidates each, and finishing by script | PixelLab pixflux, 51 generations over two biomes; our script | A sprite-style prompt gives isolated landforms where a scene-style one did not. A dithered foot, a tint per tier and a scripted sky turn them into stacks that read as one scene. | Keep. This is the route the [parallax guide](./PARALLAX.md) teaches. |
 | 19 | Scroll vertically: a climb, and a loop that scrolls up forever | PixelLab pixflux, 14 generations; Retro Diffusion `rd_plus__default` with `tile_y`, $0.12; our script | Sideways strips run out within a quarter of a climb. Tall layers, clouds placed up the climb, a sky that moves and a wall stacked from a generated cliff read as one climb. `tile_y` wraps vertically. | Keep. Every layer needs headroom of climb × its vertical speed. |
+| 20 | A second time of day: generate the alpine set again on a night palette, or recolour the dusk set | PixelLab pixflux, 10 generations; our script | Regenerated layers stay on the palette and agree, but 7 of 9 drew a moon or stars and every peak moved. A palette swap by luminance rank gives the same place at night, free. | Recolour for a second time of day. Generate only what the new time adds. |
+| 21 | Retro Diffusion `tile_x` without background removal, keyed by script | Retro Diffusion `rd_plus__default` and `rd_plus__environment`, $0.30; our script | Keyed layers join with seam ratios of 0.3 to 1.4, against 3.9 with `remove_bg`. The default style drew a flat background on 2 of 3 layers; the environment style drew a sky behind both of its layers. | Keep, with `rd_plus__default`. A transparent layer that loops as generated. |
 
 ## Ways to make the effect
 
@@ -60,7 +62,7 @@ There are six ways to make a background move with depth. Most games combine two 
 | Generate each layer on its own, with a transparent background | A prompt per layer. The layers must agree in palette, light and horizon. | Steps 15 and 18. A forced palette shared by every layer is what makes them agree. |
 | Generate one picture and split it with a depth model | A depth model, and a fill for what the near layers hid | Steps 4 to 6, 13 and 14. |
 | A model that outputs layers directly | LayerDiffuse on SDXL, or Qwen-Image-Layered | Step 17. Qwen-Image-Layered splits sky from scene, not by distance, and takes over half an hour a picture on a 12 GB card. LayerDiffuse is untried. Neither is trained on pixel art. |
-| A wide picture that wraps, then cut into layers | A provider's seamless option, or step 2 on the result | Retro Diffusion's `tile_x` and `tile_y` are the only hosted seamless flags we found. Step 19 loops a sky vertically with `tile_y`. |
+| A wide picture that wraps, then cut into layers | A provider's seamless option, or step 2 on the result | Retro Diffusion's `tile_x` and `tile_y` are the only hosted seamless flags we found. Step 19 loops a sky vertically with `tile_y`. Step 21 keeps the `tile_x` seam on a transparent layer by keying the background out by script. |
 
 ## 1. Do our backgrounds wrap?
 
@@ -402,6 +404,70 @@ The engine settings carry over from step 11 on the other axis. Tiled has `parall
 
 **Verdict.** Keep. A vertical level needs tall layers or things placed at height, a sky that moves, and headroom of climb × vertical speed on every layer, placed for the lowest view. Generate clouds as puffy sprites and a cliff as a pillar, then stack the pillar's body into the wall. For a background that scrolls up forever, Retro Diffusion's `tile_y` is the one generator option that wraps vertically; keep the rest of the set on its colours.
 
+## 20. A second time of day
+
+**Question.** Step 18's alpine set is dusk, on a forced palette of 38 colours. A game with a day cycle wants the same place at another time. Does forcing one palette on every layer keep a set consistent at a different time of day? And is generating the set again any better than recolouring the dusk set by script, which is free?
+
+**Setup.** We chose night over midday. It moves the colours furthest from dusk, from warm sunlit snow to cold moonlit snow, so it is the harder test for both a forced palette and a recolour. The manifests, lockfiles, preview specs and build script are in [`benchmarks/parallax-night`](../benchmarks/parallax-night).
+
+- **The palette.** The dusk palette is the 38 colours of PixelLab's alpine valley A from the provider benchmark. For night we sent the same prompt and seed (31415) with "at dusk" changed to "at night", and took all 42 colours of the result. That is 1 generation. The night palette has the same origin as the dusk one, and it holds what PixelLab paints at night: a navy sky, pale blue snow, lit windows and a moon.
+- **Regenerated.** Step 18's three whole layers at seeds 101 and 202, and its three landforms at seed 202, with the night palette forced on every one. The prompts are step 18's with "at night" added and the light changed: "lit pink by the setting sun" became "lit pale blue by the moon", and the landforms' "pink-lit snow" became "moonlit pale blue snow", with "no stars" added to their list. 9 generations, 10 with the palette, none failed.
+- **Recoloured.** `parallax.py recolour` swaps one palette for another by luminance rank. Both palettes are sorted dark to light, and a colour a given share of the way up the dusk palette becomes the colour the same share of the way up the night palette. Every finished dusk piece from step 18 goes through the same table: the far range, the middle layer, the treeline, the landforms and their tier copies. No generation.
+
+Both night sets use the same scripted sky of six night palette bands and step 18's preview spec.
+
+![The nine regenerated candidates: layers at seed 101 (top row) and 202 (middle row), landforms at 202 (bottom row)](../website/public/research/parallax/night/candidates.png)
+
+**Result.**
+
+- **The forced palette holds.** All nine regenerated pictures use only night palette colours, and each seed's three layers agree in colour and light, as step 15 and 18 found at dusk.
+- **"At night" brings a moon.** Five of the six layers drew a moon, stars or both; their prompts said only "no sky". Two of the three landforms drew a moon and stars although the prompt said "no moon, no stars", and the same two stand on a pale ground line two rows deep. `parallax.py isolate` keeps the largest shape and whatever touches the bottom row. It cleared the moon and stars from six of the seven pictures. On the seventh, seed 101's treeline, the moon sits behind a treetop.
+- **The far range changes character.** At dusk every far range came back as a flat band of one colour. At night seed 202 gave a two-tone range, 12 colours once the moon was gone, and seed 101 a whole scene with its own treeline and moon.
+- **The regenerated set is a different place.** The picks, all seed 202, read as one scene. No peak stands where it stood at dusk, so a game that fades from dusk to night would show the mountains move.
+- **The recoloured set is the same place at night.** Every shape stays, so dusk and night line up exactly. The set is consistent by construction, because every piece goes through one table. Colour counts barely change. The middle layer goes from 26 colours to 24 and the treeline from 19 to 18, where two dusk colours land on one night colour.
+- **Leave the lights out of the swap.** Onto all 42 night colours, the pink-lit snow took the colours of the lit windows and turned orange (middle row below). The night palette has 8 colours whose red is above their blue: the windows, the lamplight on the ground and the moon. Swapped onto the other 34, the snow is cold and moonlit (bottom row).
+
+![Step 18's dusk middle layer (top), swapped onto all 42 night colours (middle) and onto the 34 cool ones (bottom)](../website/public/research/parallax/night/swap.png)
+
+- **The recolour keeps dusk's light.** The lit faces stay where the low sun put them, and read as moonlight from the same side. A palette swap cannot move the light, so a time of day lit from another direction would need new pictures. We did not try one.
+
+![Alpine at night, step 18's dusk set recoloured through one palette swap](../website/public/research/parallax/night/recoloured.webp)
+
+![Alpine at night, regenerated on the night palette, seed 202, moon and stars removed](../website/public/research/parallax/night/regenerated.webp)
+
+The silhouette route behaves the same way. Step 18's runs recoloured keep their shapes, and the three regenerated landforms, cleaned and with the ground line cut off, make two tiers in the night colours. The stills are `recoloured-silhouettes.png` and `regenerated-silhouettes.png` in the same folder.
+
+**Verdict.** A forced palette keeps a regenerated set consistent with itself at another time of day. It does not keep it consistent with the first time. The shapes change, and the night prompt adds a moon and stars to clean off. For a second time of day of the same place, recolour the finished set by luminance rank onto the new palette, leaving out the colours of lights. It is free, and the two times line up. Generate only what the new time adds, such as a moon, as its own sprite.
+
+## 21. Key Retro Diffusion layers by script
+
+**Question.** Step 15 found that Retro Diffusion's `tile_x` makes a seamless picture and its `remove_bg` breaks the seam (ratio 3.9 on the near layer). If a layer is generated with `tile_x` and no background removal, on a flat background, and keyed by script, does the seam survive? And is the result usable as a layer?
+
+**Setup.** Step 15's volcanic far range and near ridges, at seed 4242 and 384×96, with `tileX: true` and `removeBg: false`. Each prompt is step 15's with "isolated on a plain flat chroma-key green background" added. Two styles: `rd_plus__environment`, as in step 15, and `rd_plus__default`, which step 19 found honours `tile_y`. The default style also got a row of volcanoes as a middle layer. 5 images through PixelKiln at $0.06 each, $0.30 in all. The manifest, lockfile, preview spec and build script are in [`benchmarks/parallax-rd-key`](../benchmarks/parallax-rd-key).
+
+`parallax.py key` takes the most common colour on the top row as the background. It removes every pixel within 24 of it on each channel that connects to the top row through other such pixels. It works out the connection on three copies side by side, so both edges of a picture that wraps key alike. The seam ratio is step 1's, measured before and after keying.
+
+**Result.**
+
+| Style | Layer | Background drawn | Seam ratio as generated | Keyed | Share removed |
+|---|---|---|---|---|---|
+| Environment | Far range | A pale lilac sky | 0.4 | 0.3 | 28% |
+| Environment | Near ridges | A near-black sky | 0.7 | 0.6 | 27% |
+| Default | Far range | Flat pale mint | 1.1 | 1.4 | 45% |
+| Default | Volcanoes | A teal to violet gradient | 0.5 | 0.4 | 46% |
+| Default | Near ridges | Flat dark green | 1.4 | 1.3 | 51% |
+
+- **The seam survives keying.** Every keyed layer joins with a ratio of 0.3 to 1.4, against 3.9 for step 15's near layer with Retro Diffusion's own background removal. A colour key decides pixel by pixel, so where the two edges of a seamless picture match, their alpha matches too. The left and right edges disagree on at most 1% of rows.
+- **`rd_plus__default` honours `tile_x` too.** Its three pictures wrap with ratios of 0.5 to 1.4 as generated. With step 19, it honours both axes.
+- **The environment style still draws whole scenes.** Neither of its pictures has the green background. The far range sits under a pale sky and the near ridges under a near-black one, much as in step 15 at the same seed. The pale sky keys out cleanly and leaves a usable stack of far ranges. The near ridges are as dark as their sky, so no threshold separates them. The key takes 16% of the picture at 8, 27% at 24 and 61% at 48, and at 24 it already cuts into the ridges.
+- **The default style drew a flat background on two of three.** The near ridges came on one flat dark green and keyed out with no green pixel left on the layer. The far range came on a flat pale mint rather than green, which keys as well, and leaves a flat one-colour band like PixelLab's far ranges in step 18. The volcanoes came under a dusk gradient. The key takes the top band only and leaves violet bands behind the cones.
+
+![Each near layer twice side by side with the seam in the middle. Step 15 with Retro Diffusion's background removal (top), then this step's environment (middle) and default (bottom) layers keyed by script](../website/public/research/parallax/rd-key/seams.png)
+
+![Keyed layers over a scripted sky: the default far range, the environment far range as a middle layer, and the default near ridges, each wrapping at its own width as generated](../website/public/research/parallax/rd-key/set.png)
+
+**Verdict.** Keep, with `rd_plus__default`. Generate with `tileX` and no background removal, ask for a plain flat background, and key it out by script, and the seam survives. Check each candidate for a flat background first, since one in three came with a gradient. The environment style is still a scene generator; its pale-sky far ranges key well and its dark layers do not. This is the one way in this note to get a transparent layer that loops sideways as generated, with no cut or crossfade, at $0.06 a layer. Its colours are Retro Diffusion's own, so keep the rest of the set on them, as step 19 found.
+
 ## A proposal for PixelKiln
 
 Research only. Nothing here is built.
@@ -438,7 +504,7 @@ Research only. Nothing here is built.
 
 - **Layered generation models.** [LayerDiffuse](https://arxiv.org/abs/2402.17113) (Apache-2.0) adds transparency to latent diffusion models and can generate several layers of one scene together. [Qwen-Image-Layered](https://github.com/QwenLM/Qwen-Image-Layered) (Apache-2.0, December 2025) breaks a picture into a chosen number of RGBA layers, at 640 or 1024 px buckets. ComfyUI ships it with an fp8 variant because the default needs a lot of VRAM ([ComfyUI docs](https://docs.comfy.org/tutorials/image/qwen/qwen-image-layered)). Neither was trained on pixel art. Step 17 ran Qwen-Image-Layered on a 12 GB card. It works, slowly, and splits sky from scene rather than by distance. LayerDiffuse is untried.
 - **Seamless generation.** Circular padding in the convolutional layers makes a diffusion model's output wrap, and ComfyUI has nodes for it, including X-only tiling ([ComfyUI-seamless-tiling](https://github.com/spinagon/ComfyUI-seamless-tiling)). It works on U-Net models such as SDXL. Reports say it does not work on transformer models; we have not checked. The other route is to shift the picture by half its width and inpaint the seam.
-- **Providers.** Retro Diffusion's API takes `tile_x` and `tile_y` booleans for seamless output and `remove_bg` for transparency ([api-examples](https://github.com/Retro-Diffusion/api-examples)). PixelKiln already exposes them as `tileX` and `tileY` ([Retro Diffusion](./RETRO_DIFFUSION.md)). `rd_plus__environment` honours `tile_x` (step 15) and `rd_plus__default` honours `tile_y` (step 19). We have not checked the other styles. We found no parallax or seamless option in PixelLab's v2 API. Pixflux offers a transparent background, a forced palette and an init image, up to 400×400 ([API](https://api.pixellab.ai/v2/llms.txt)). Scenario's tiling options are texture tools rather than scene tools ([help](https://help.scenario.com/articles/3312894507-scenario-texture-the-essentials)).
+- **Providers.** Retro Diffusion's API takes `tile_x` and `tile_y` booleans for seamless output and `remove_bg` for transparency ([api-examples](https://github.com/Retro-Diffusion/api-examples)). PixelKiln already exposes them as `tileX` and `tileY` ([Retro Diffusion](./RETRO_DIFFUSION.md)). `rd_plus__environment` honours `tile_x` (step 15) and `rd_plus__default` honours both `tile_y` and `tile_x` (steps 19 and 21). We have not checked the other styles. We found no parallax or seamless option in PixelLab's v2 API. Pixflux offers a transparent background, a forced palette and an init image, up to 400×400 ([API](https://api.pixellab.ai/v2/llms.txt)). Scenario's tiling options are texture tools rather than scene tools ([help](https://help.scenario.com/articles/3312894507-scenario-texture-the-essentials)).
 - **Classic hardware.** The Mega Drive has two scrolling planes with per-line scroll tables ([RasterScroll](https://rasterscroll.com/mdgraphics/graphical-effects/row-column-scrolling/)). Games such as *Thunder Force IV* fake many layers from them by scrolling groups of lines at different speeds.
 
 ## What has not worked
@@ -455,13 +521,17 @@ Research only. Nothing here is built.
 - Sideways strips for a climb (step 19). The far range's extension ends up filling half the view.
 - Thin or flat clouds from pixflux (step 19). Four of four came back as a mound, a line, or a bank with a sun in it.
 - Snapping a generated sky to a palette with few of its colours (step 19). It kept 5 of 47 and turned blotchy.
+- Generating a set again for a second time of day (step 20). It stays on the palette, but every peak moves, and "at night" drew a moon or stars into 7 of 9 pictures.
+- A palette swap onto a night palette's light colours (step 20). Pink-lit snow took the colours of the lit windows and turned orange.
+- Keying a dark layer off a dark sky (step 21). Retro Diffusion's environment ridges are as dark as the sky it drew behind them.
 
 ## What is next
 
 - **Build the proposal** above: the manifest shape, a preview, and Tiled, Godot and LDtk export. Open the LDtk result in the editor to check the factor's direction.
 - **Check the finished sets in an engine.** The previews in steps 18 and 19 come from the script. No set has been placed in Tiled, Godot or Phaser.
-- **A second time of day** on one biome's palette, to see whether a forced palette keeps sets consistent across a day.
-- **Retro Diffusion `tile_x` without background removal** on each layer, keying the background out afterwards so the seam survives.
+- **A palette swap in the engine.** Step 20's table could run as a lookup in a shader, so one set covers a day cycle with no extra pictures.
+- **A time of day lit from another side**, such as midday. A palette swap cannot move the light, so this is where generating again might earn its cost.
+- **A full sideways Retro Diffusion set** from `rd_plus__default`, keyed by script and scrolled, with retries for candidates that come on a gradient.
 
 ## Running the scripts
 
@@ -505,7 +575,7 @@ python3 research/scripts/parallax.py compose <out.gif> 0.6,0.85,0.92 7 <silhouet
 # Step 18. Numbers for choosing between candidates: how much touches each side, colours, the opaque box.
 python3 research/scripts/parallax.py screen <png>...
 
-# Trim a silhouette and dither its bottom 30% out.
+# Trim a silhouette and dither its bottom 30% out. A fourth argument cuts that many rows off the bottom first.
 python3 research/scripts/parallax.py foot <png> <out.png> 0.3
 
 # Mix toward a colour and snap to the biome palette (a manifest's or a picture's).
@@ -528,4 +598,22 @@ STILL=<strip.png> SCALE=2 python3 research/scripts/parallax.py climb <out.webp> 
 
 # Everything for step 19 at once.
 sh benchmarks/parallax-vertical/build.sh
+
+# Step 20. Swap palettes by luminance rank; cool leaves out target colours whose red is above their blue.
+python3 research/scripts/parallax.py recolour <png> <out.png> <dusk.json> <night.json> cool
+
+# Keep the largest shape and whatever touches the bottom row, then trim empty rows. Drops a moon and stars.
+python3 research/scripts/parallax.py isolate <png> <out.png>
+
+# Everything for step 20 at once, after step 18's build.
+sh benchmarks/parallax-night/build.sh
+
+# Step 21. Key out the top row's colour within 24, flooding from the top with the picture wrapped sideways.
+python3 research/scripts/parallax.py key <png> <out.png> 24
+
+# The picture twice side by side, so its seam is in the middle.
+python3 research/scripts/parallax.py twice <png> <out.png>
+
+# Everything for step 21 at once.
+sh benchmarks/parallax-rd-key/build.sh
 ```

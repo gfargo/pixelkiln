@@ -1,0 +1,61 @@
+{
+  "$schema": "../../schema/manifest.schema.json",
+  "name": "pixelkiln-parallax-rd-key",
+  "provider": "retrodiffusion",
+  "styles": {
+    "environment": {
+      "generator": "map",
+      "seed": 4242,
+      "outDir": "../../website/public/research/parallax/rd-key/environment",
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__environment",
+          "numImages": 1,
+          "removeBg": false,
+          "tileX": true
+        }
+      }
+    },
+    "default": {
+      "generator": "map",
+      "seed": 4242,
+      "outDir": "../../website/public/research/parallax/rd-key/default",
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__default",
+          "numImages": 1,
+          "removeBg": false,
+          "tileX": true
+        }
+      }
+    }
+  },
+  "assets": {
+    "volcanic-far": {
+      "prompt": "a distant range of pale violet mountain silhouettes seen from very far away, low contrast, flat bottom edge, isolated on a plain flat chroma-key green background, no sky, no ground, side view",
+      "width": 384,
+      "height": 96,
+      "styles": [
+        "environment",
+        "default"
+      ]
+    },
+    "volcanic-mid": {
+      "prompt": "a row of wide dark basalt volcanoes with glowing craters and thin lava streaks, dusk violet light on their slopes, flat bottom edge, isolated on a plain flat chroma-key green background, no sky, side view",
+      "width": 384,
+      "height": 96,
+      "styles": [
+        "default"
+      ]
+    },
+    "volcanic-near": {
+      "prompt": "a row of dark jagged ridges close to the viewer with glowing lava cracks, almost black, high contrast, flat bottom edge, isolated on a plain flat chroma-key green background, no sky, side view",
+      "width": 384,
+      "height": 96,
+      "styles": [
+        "environment",
+        "default"
+      ]
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "entries": {
+    "background-a/alpine-valley-night": {
+      "styleId": "background-a",
+      "assetId": "alpine-valley-night",
+      "specHash": "fa0a77fa1c4970c294ea92642e19107d8aab88dee6cafa15098290bca4785f0d",
+      "generator": "pixflux",
+      "tileFeature": null,
+      "prompt": "a wide alpine valley at night, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 256,
+      "height": 256,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "0e8ced24-135b-4465-9113-96333f58f398",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "0e8ced24-135b-4465-9113-96333f58f398",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": null,
+      "sourceUrls": [],
+      "outputs": [
+        {
+          "path": "../../../website/public/research/parallax/night/reference/alpine-valley-night.png",
+          "sha256": "68c70d0fbc59d6477406af8eeea2b55af89e13384f6322fa45d07028a39c0cf3",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {},
+      "submittedAt": "2026-11-24T15:34:20.767Z",
+      "downloadedAt": "2026-11-24T15:34:35.844Z",
+      "cost": 1,
+      "costUnit": "generations",
+      "billed": null,
+      "provider": "pixellab"
+    }
+  }
+}

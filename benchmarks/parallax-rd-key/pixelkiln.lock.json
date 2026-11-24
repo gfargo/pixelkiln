@@ -1,0 +1,270 @@
+{
+  "version": 2,
+  "entries": {
+    "default/volcanic-far": {
+      "styleId": "default",
+      "assetId": "volcanic-far",
+      "specHash": "305e1a2a01ba8ef87545c7493d98aad962ef984822048bfaa05aa37e43e5225c",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a distant range of pale violet mountain silhouettes seen from very far away, low contrast, flat bottom edge, isolated on a plain flat chroma-key green background, no sky, no ground, side view",
+      "width": 384,
+      "height": 96,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "c9726329-ed6f-4d0f-94e1-f85d23b7ed99",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "c9726329-ed6f-4d0f-94e1-f85d23b7ed99#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=c9726329-ed6f-4d0f-94e1-f85d23b7ed99&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=c9726329-ed6f-4d0f-94e1-f85d23b7ed99&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/research/parallax/rd-key/default/volcanic-far.png",
+          "sha256": "e25d8f0ab9fb3b340e08452b9cb9430ed8ae2f32eb370f771167e28172b636d2",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.06,
+          "remainingBalance": 8.694,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__default",
+          "width": 384,
+          "height": 96
+        }
+      },
+      "submittedAt": "2026-11-24T15:35:43.947Z",
+      "downloadedAt": "2026-11-24T15:35:53.535Z",
+      "cost": 0.06,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "default/volcanic-mid": {
+      "styleId": "default",
+      "assetId": "volcanic-mid",
+      "specHash": "a623473edd1593b3391fe1cef19aae5b42060f5ee752bc7b28ca02f991a31edf",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a row of wide dark basalt volcanoes with glowing craters and thin lava streaks, dusk violet light on their slopes, flat bottom edge, isolated on a plain flat chroma-key green background, no sky, side view",
+      "width": 384,
+      "height": 96,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "a4cc7aa0-da1a-47e3-96ae-3127effe0aa1",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "a4cc7aa0-da1a-47e3-96ae-3127effe0aa1#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=a4cc7aa0-da1a-47e3-96ae-3127effe0aa1&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=a4cc7aa0-da1a-47e3-96ae-3127effe0aa1&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/research/parallax/rd-key/default/volcanic-mid.png",
+          "sha256": "59007566e2d85412712a9a77cc5bdc8883f14fd52a370bf78686c952da246c60",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.06,
+          "remainingBalance": 8.574,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__default",
+          "width": 384,
+          "height": 96
+        }
+      },
+      "submittedAt": "2026-11-24T15:37:23.214Z",
+      "downloadedAt": "2026-11-24T15:37:29.608Z",
+      "cost": 0.06,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "default/volcanic-near": {
+      "styleId": "default",
+      "assetId": "volcanic-near",
+      "specHash": "b60e92099105f43235f0ca6acfee0e74183133bba66f333618bd41f889c31b18",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a row of dark jagged ridges close to the viewer with glowing lava cracks, almost black, high contrast, flat bottom edge, isolated on a plain flat chroma-key green background, no sky, side view",
+      "width": 384,
+      "height": 96,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "b26d09c1-dd18-431e-8884-9e1a8d519791",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "b26d09c1-dd18-431e-8884-9e1a8d519791#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=b26d09c1-dd18-431e-8884-9e1a8d519791&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=b26d09c1-dd18-431e-8884-9e1a8d519791&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/research/parallax/rd-key/default/volcanic-near.png",
+          "sha256": "dc956a1519a61c2fc454900d8d730edd0a19bf095ae1b2d6743e566785c172a4",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.06,
+          "remainingBalance": 8.634,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__default",
+          "width": 384,
+          "height": 96
+        }
+      },
+      "submittedAt": "2026-11-24T15:35:46.451Z",
+      "downloadedAt": "2026-11-24T15:35:53.535Z",
+      "cost": 0.06,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "environment/volcanic-far": {
+      "styleId": "environment",
+      "assetId": "volcanic-far",
+      "specHash": "964f378b5a9284ebb811341acf99410df13a9dc87630b992ed7f22ea4d76e2a3",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a distant range of pale violet mountain silhouettes seen from very far away, low contrast, flat bottom edge, isolated on a plain flat chroma-key green background, no sky, no ground, side view",
+      "width": 384,
+      "height": 96,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "c2d92af2-2fc6-4651-b886-7247daa98a11",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "c2d92af2-2fc6-4651-b886-7247daa98a11#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=c2d92af2-2fc6-4651-b886-7247daa98a11&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=c2d92af2-2fc6-4651-b886-7247daa98a11&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/research/parallax/rd-key/environment/volcanic-far.png",
+          "sha256": "5d21bf611564b3905944e230bb34321132c4170ec1ed8290f68c22e1344c2d2a",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.06,
+          "remainingBalance": 8.814,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__environment",
+          "width": 384,
+          "height": 96
+        }
+      },
+      "submittedAt": "2026-11-24T15:35:38.940Z",
+      "downloadedAt": "2026-11-24T15:35:54.663Z",
+      "cost": 0.06,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "environment/volcanic-near": {
+      "styleId": "environment",
+      "assetId": "volcanic-near",
+      "specHash": "01a6c34055c58a806560c8c4fba717a94bc14a87716e28f5db21ebbcec487213",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a row of dark jagged ridges close to the viewer with glowing lava cracks, almost black, high contrast, flat bottom edge, isolated on a plain flat chroma-key green background, no sky, side view",
+      "width": 384,
+      "height": 96,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "58fdbb5a-3727-4da6-9ea3-61e1b948cd5a",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "58fdbb5a-3727-4da6-9ea3-61e1b948cd5a#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=58fdbb5a-3727-4da6-9ea3-61e1b948cd5a&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=58fdbb5a-3727-4da6-9ea3-61e1b948cd5a&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../website/public/research/parallax/rd-key/environment/volcanic-near.png",
+          "sha256": "1f13d6880766dc69c8b4e37a7e08ee964880024b20f452c5689a313700b51770",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.06,
+          "remainingBalance": 8.754,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__environment",
+          "width": 384,
+          "height": 96
+        }
+      },
+      "submittedAt": "2026-11-24T15:35:41.445Z",
+      "downloadedAt": "2026-11-24T15:35:53.380Z",
+      "cost": 0.06,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    }
+  }
+}

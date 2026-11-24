@@ -1,0 +1,63 @@
+{
+  "view": [
+    384,
+    216
+  ],
+  "sky": [
+    "#050722",
+    "#0b173a",
+    "#111b55",
+    "#132b6c",
+    "#213c7e",
+    "#2d4888"
+  ],
+  "seed": 7,
+  "frames": 120,
+  "travel": 480,
+  "layers": [
+    {
+      "image": "../../website/public/research/parallax/night/picked/recoloured/far.png",
+      "bottom": 150,
+      "speed": 0.125,
+      "extend": true
+    },
+    {
+      "run": [
+        "../../website/public/research/parallax/night/picked/recoloured/b-landform-peak.far.png",
+        "../../website/public/research/parallax/night/picked/recoloured/b-landform-twin.far.png",
+        "../../website/public/research/parallax/night/picked/recoloured/b-landform-ridge.far.png",
+        "../../website/public/research/parallax/night/picked/recoloured/a-landform-peak.far.png",
+        "../../website/public/research/parallax/night/picked/recoloured/a-landform-ridge.far.png"
+      ],
+      "foot": 158,
+      "speed": 0.25,
+      "step": 0.72,
+      "gap": 16,
+      "jitter": 4
+    },
+    {
+      "run": [
+        "../../website/public/research/parallax/night/picked/recoloured/b-landform-peak.near.png",
+        "../../website/public/research/parallax/night/picked/recoloured/b-landform-twin.near.png",
+        "../../website/public/research/parallax/night/picked/recoloured/b-landform-ridge.near.png",
+        "../../website/public/research/parallax/night/picked/recoloured/a-landform-peak.near.png",
+        "../../website/public/research/parallax/night/picked/recoloured/a-landform-ridge.near.png"
+      ],
+      "foot": 176,
+      "speed": 0.5,
+      "step": 0.72,
+      "gap": 16,
+      "jitter": 4
+    },
+    {
+      "fill": "#050722",
+      "top": 206,
+      "speed": 1.0
+    },
+    {
+      "image": "../../website/public/research/parallax/night/picked/recoloured/near.png",
+      "bottom": 256,
+      "speed": 1.0
+    }
+  ]
+}
