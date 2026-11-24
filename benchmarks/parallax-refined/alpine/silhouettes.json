@@ -1,0 +1,63 @@
+{
+  "view": [
+    384,
+    216
+  ],
+  "sky": [
+    "#405e9c",
+    "#60649f",
+    "#a596b9",
+    "#c38eb3",
+    "#de889c",
+    "#f9b59c"
+  ],
+  "seed": 7,
+  "frames": 120,
+  "travel": 480,
+  "layers": [
+    {
+      "image": "../../../website/public/research/parallax/refined/alpine/picked/far.png",
+      "bottom": 150,
+      "speed": 0.125,
+      "extend": true
+    },
+    {
+      "run": [
+        "../../../website/public/research/parallax/refined/alpine/picked/b-landform-peak.far.png",
+        "../../../website/public/research/parallax/refined/alpine/picked/b-landform-twin.far.png",
+        "../../../website/public/research/parallax/refined/alpine/picked/b-landform-ridge.far.png",
+        "../../../website/public/research/parallax/refined/alpine/picked/a-landform-peak.far.png",
+        "../../../website/public/research/parallax/refined/alpine/picked/a-landform-ridge.far.png"
+      ],
+      "foot": 158,
+      "speed": 0.25,
+      "step": 0.72,
+      "gap": 16,
+      "jitter": 4
+    },
+    {
+      "run": [
+        "../../../website/public/research/parallax/refined/alpine/picked/b-landform-peak.near.png",
+        "../../../website/public/research/parallax/refined/alpine/picked/b-landform-twin.near.png",
+        "../../../website/public/research/parallax/refined/alpine/picked/b-landform-ridge.near.png",
+        "../../../website/public/research/parallax/refined/alpine/picked/a-landform-peak.near.png",
+        "../../../website/public/research/parallax/refined/alpine/picked/a-landform-ridge.near.png"
+      ],
+      "foot": 176,
+      "speed": 0.5,
+      "step": 0.72,
+      "gap": 16,
+      "jitter": 4
+    },
+    {
+      "fill": "#040920",
+      "top": 206,
+      "speed": 1.0
+    },
+    {
+      "image": "../../../website/public/research/parallax/refined/alpine/picked/near.png",
+      "bottom": 256,
+      "speed": 1.0
+    }
+  ]
+}

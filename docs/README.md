@@ -29,7 +29,8 @@ provider you are using. These Markdown files also render at
 | [Environment provider benchmark](./PROVIDER_BENCHMARK.md) | Compare PixelLab, Retro Diffusion, and ComfyUI on buildings, backgrounds, cleanup, and native-grid recovery. |
 | [3D characters from sprites](./CHARACTERS_3D.md) | An experimental pipeline from directional sprites to a rigged, animated 3D character with separate items: a pixel path and a painted path, the steps, and what each costs. Scripts, not a command. |
 | [Research: 3D models from sprites](./RESEARCH_3D.md) | Every attempt to turn eight directional sprites into a 3D model, with pictures. Research, not a feature. |
-| [Research: parallax backgrounds](./RESEARCH_PARALLAX.md) | Ways to build a scrolling background in depth and to get its layers out of a generator, tested on the benchmark backgrounds. Research, not a feature. |
+| [Parallax backgrounds](./PARALLAX.md) | Build a scrolling background in layers from one palette: silhouettes or whole layers from PixelLab, the prompts that work, finishing by script, a preview, and engine settings. |
+| [Research: parallax backgrounds](./RESEARCH_PARALLAX.md) | The evidence behind the parallax guide: every way tried to build a background in depth and to get its layers out of a generator. Research, not a feature. |
 | [Controlled asset revisions](./REVISIONS.md) | Image-to-image and inpaint edits, PixelLab palette cleanup, animation, skeleton posing, and interpolation from a parent asset; masks, approval gates, side-by-side review, and ComfyUI bindings. |
 | [Derived artifacts](./ARTIFACTS.md) | Refine, pack, mount, and export; provenance, approval gates, ownership, and crash recovery. |
 | [Recovery and account safety](./RECOVERY.md) | Restore, caches, adopt, salvage, cross-project claims, tagging, and confirmed purge. |

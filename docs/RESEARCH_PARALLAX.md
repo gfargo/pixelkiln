@@ -1,6 +1,12 @@
 # Parallax backgrounds
 
-This is a research note, not a feature: nothing here is a PixelKiln command, and the scripts are rough. PixelKiln can generate a scenic background as one flat picture. A parallax background is several layers that scroll at different speeds as the camera moves. This note covers the ways to build one and the ways to get the layers out of AI generators. Steps 1 to 11 use art we already had. Step 12 records how a game that already uses PixelKiln builds its skyline. Steps 13 to 16 spent 17 PixelLab generations and $0.24 of Retro Diffusion. Step 17 ran a layer-splitting model on our own 12 GB GPU.
+This is a research note, not a feature: nothing here is a PixelKiln command, and the scripts are rough. PixelKiln can generate a scenic background as one flat picture. A parallax background is several layers that scroll at different speeds as the camera moves. This note covers the ways to build one and the ways to get the layers out of AI generators. Steps 1 to 11 use art we already had. Step 12 records how a game that already uses PixelKiln builds its skyline. Steps 13 to 16 spent 17 PixelLab generations and $0.24 of Retro Diffusion. Step 17 ran a layer-splitting model on our own 12 GB GPU. Step 18 spent 51 PixelLab generations refining the two routes that worked into the sets below.
+
+To build one, follow the [parallax guide](./PARALLAX.md). This note is the evidence behind it. Pictures are kept only where they show a result worth using or the one fault a step found; the rest is in the text and the scripts.
+
+![Volcanic dusk from separate silhouettes (step 18)](../website/public/research/parallax/refined/volcanic/silhouettes.webp)
+
+![Alpine dusk from whole layers (step 18)](../website/public/research/parallax/refined/alpine/layers.webp)
 
 Last updated 23 November 2026.
 
@@ -23,8 +29,9 @@ Last updated 23 November 2026.
 | 13 | Cut by depth per pixel instead of per column | Depth Anything V2 Small, our script | The plume moves on its own and the sky stays whole; the cheap fill smears sideways where a framing tree moves away | Keep the per-pixel cut. The fill needs step 14. |
 | 14 | Inpaint what a near layer hid | PixelLab `inpaint_image`, 10 generations | Forest and slope in place of smears; nothing outside the mask changed; 2 new colours | Keep for a scene that has to be split. |
 | 15 | Generate each layer on its own, wide | PixelLab pixflux with one forced palette, 4 generations; Retro Diffusion environment with `tile_x`, $0.24 | PixelLab's four layers agree and scroll as one scene; Retro Diffusion's each draw a whole scene, and background removal breaks the seam `tile_x` made | Keep PixelLab with a shared palette. Retro Diffusion's environment style is not a layer generator. |
-| 16 | Generate silhouettes and compose a skyline from them | PixelLab pixflux, 3 generations; our script | Usable landforms, but none fades at the foot as asked, so each run ends on a hard dark base | Keep the route; the faded foot needs a different generator or a cleanup pass. |
+| 16 | Generate silhouettes and compose a skyline from them | PixelLab pixflux, 3 generations; our script | Usable landforms, but none fades at the foot as asked, so each run ends on a hard dark base | Keep the route; the faded foot needs a cleanup pass. Step 18 dithers it. |
 | 17 | Ask a layer-splitting model for the layers | Qwen-Image-Layered fp8 in ComfyUI, RTX 3060 12 GB, 35 to 42 minutes a picture | The sky and sun come apart from the land with the hidden sun filled in; far range, volcano, near ridges and lava stay in one layer; a blank fill layer and a pink blob take the other slots | Drop for parallax: it splits sky from scene, not near from far, and it is too slow on this card. |
+| 18 | Refine steps 12, 15 and 16: better prompts, three candidates each, finishing by script | PixelLab pixflux, 51 generations over two biomes; our script | A sprite-style prompt gives isolated landforms where a scene-style one did not; a dithered foot, a tint per tier and a scripted sky turn them into stacks that read as one scene | Keep. This is the route the [parallax guide](./PARALLAX.md) teaches. |
 
 ## Ways to make the effect
 
@@ -46,8 +53,8 @@ There are six ways to make a background move with depth. Most games combine two 
 
 | Route | What it needs | Status here |
 |---|---|---|
-| Generate silhouettes and compose each layer from them in the engine | A few transparent landforms a biome, each fading out at its foot; placement rules in the game | Step 12: in use in a game. |
-| Generate each layer on its own, with a transparent background | A prompt per layer; the layers must agree in palette, light and horizon | Step 15. A forced palette shared by every layer is what makes them agree. |
+| Generate silhouettes and compose each layer from them in the engine | A few transparent landforms a biome, each fading out at its foot; placement rules in the game | Step 12: in use in a game. Step 18: two working sets from PixelLab. |
+| Generate each layer on its own, with a transparent background | A prompt per layer; the layers must agree in palette, light and horizon | Steps 15 and 18. A forced palette shared by every layer is what makes them agree. |
 | Generate one picture and split it with a depth model | A depth model and a fill for what the near layers hid | Steps 4 to 6, 13 and 14. |
 | A model that outputs layers directly | LayerDiffuse on SDXL, or Qwen-Image-Layered | Step 17: Qwen-Image-Layered splits sky from scene, not by distance, and takes over half an hour a picture on a 12 GB card. LayerDiffuse is untried. Neither is trained on pixel art. |
 | A wide picture that wraps, then cut into layers | A provider's seamless option, or step 2 on the result | Retro Diffusion's `tile_x` is the only hosted seamless flag found. |
@@ -97,7 +104,7 @@ The one low ratio is a coincidence of composition: Retro Diffusion's alpine vall
 
 ![The alpine valley looped by a cut (left) and a crossfade (right), each shown twice side by side](../website/public/research/parallax/alpine-loops.png)
 
-**Verdict.** The cut and the crossfade both make a loop that holds up at the join. The mirror closes the seam perfectly and shows its symmetry at once ([picture](../website/public/research/parallax/alpine-mirror.png)). All three expose the bigger problem: a scenic picture has a focal point, and a repeating peak or volcano is obvious. A loop wants a layer with no single landmark, which is also Pixelblog 23's advice. Landmarks belong on a layer of their own that does not repeat, or repeats rarely.
+**Verdict.** The cut and the crossfade both make a loop that holds up at the join. The mirror closes the seam perfectly and shows its symmetry at once. All three expose the bigger problem: a scenic picture has a focal point, and a repeating peak or volcano is obvious. A loop wants a layer with no single landmark, which is also Pixelblog 23's advice. Landmarks belong on a layer of their own that does not repeat, or repeats rarely.
 
 ## 3. Split by distance from the sky colour
 
@@ -105,9 +112,7 @@ The one low ratio is a coincidence of composition: Retro Diffusion's alpine vall
 
 **Setup.** `parallax.py split <png> <out> 4`. Nearness is each pixel's RGB distance from the median colour of the top rows, median-filtered over 5×5. A 1D k-means finds three cut points. For each cut, a skyline is the first row in each column where nearness stays above the cut for three rows, kept in depth order. Layer *k* is everything from its skyline down. Where a nearer layer hid it, the gap is filled by reflecting the layer's own rows, so a revealed gap shows its texture rather than a smear. Composited at rest, the layers rebuild the source exactly; the script checks this.
 
-**Result.** On the volcano (left), the bands follow colour: the lit flank of the volcano lands in one band and its shadowed flank in another, and the sun gets a band of its own.
-
-![Volcanic pass split four ways by sky distance (left) and by Depth Anything (middle), with the depth map (right)](../website/public/research/parallax/volcano-split.png)
+**Result.** On the volcano, the bands follow colour: the lit flank of the volcano lands in one band and its shadowed flank in another, and the sun gets a band of its own.
 
 **Verdict.** Drop. Colour is a poor stand-in for distance as soon as a scene has its own light.
 
@@ -122,8 +127,6 @@ The one low ratio is a coincidence of composition: Retro Diffusion's alpine vall
 ![Alpine valley split by sky distance (left) and by Depth Anything (middle)](../website/public/research/parallax/alpine-split.png)
 
 Retro Diffusion's alpine valley A is the exception. Tall trees frame it from the top of the picture to the bottom on both sides. A skyline split assumes the near ground starts lower in every column than what is behind it, so it puts the whole frame in the nearest layer along with the full column above it, and most of each layer would have to be invented as the camera moves.
-
-![Retro Diffusion alpine valley: the framing trees take whole columns](../website/public/research/parallax/rd-alpine-split.png)
 
 The script also counts the pixels a layer does not have but would show if the layer in front of it moved a twelfth of the picture's width (32 px on the volcano) relative to it. These are the pixels the fill makes up. With the depth map they are 15 to 40% of a layer on the PixelLab pictures, and 29 to 101% on the framed Retro Diffusion one. The count is an upper bound and depends on how far the camera travels.
 
@@ -141,10 +144,6 @@ The script also counts the pixels a layer does not have but would show if the la
 - **The plume drags a strip of sky.** The depth model puts the smoke nearer than the sky behind it. Since a layer here is everything below a skyline, the strip of sky between the smoke and the volcano's slope moves with the volcano.
 
 ![At the far end of the pan: before the grow (left) and after (right)](../website/public/research/parallax/volcano-grow.png)
-
-![Volcano layers panning](../website/public/research/parallax/volcano-layers.gif)
-
-![Alpine valley layers panning](../website/public/research/parallax/alpine-layers.gif)
 
 **Verdict.** Keep, with step 6. Floating things (smoke, clouds, birds, a moon) need to be cut out as their own sprites instead of riding a skyline.
 
@@ -167,8 +166,6 @@ The script also counts the pixels a layer does not have but would show if the la
 **Result.** The alpine valley's forested floor and river sweep convincingly, with no gaps to fill. The volcano shows the limit: its cone and the near ridges stand across many rows, so each row slides by a different amount and they lean.
 
 ![Alpine valley, per-row scroll](../website/public/research/parallax/alpine-line.gif)
-
-![Volcanic pass, per-row scroll: tall shapes shear](../website/public/research/parallax/volcano-line.gif)
 
 **Verdict.** Keep for floors, water, cloud bands and wide valleys. Combine it with layers: line-scroll the ground layer and move the tall shapes as layers.
 
@@ -279,8 +276,6 @@ The same layer, at a quarter of the camera's speed, in each tool:
 
 ![Volcano layers cut per pixel, panning](../website/public/research/parallax/volcano-cut.gif)
 
-![The framed valley cut per pixel](../website/public/research/parallax/rd-alpine-cut-bands.png)
-
 The price is invention. The fill has to make up 115 to 189% of a layer's own pixel count on the volcano and 175 to 333% on the framed valley, because the bands are thin and the pan is long. Where a framing tree slides away, the cheap fill shows as sideways smears (step 14, left).
 
 **Verdict.** Keep the per-pixel cut. The fill is the weak part.
@@ -310,14 +305,10 @@ The PixelLab layers were looped with step 2's crossfade, because pixflux has no 
 
 **Result.**
 
-![PixelLab layers, one palette, scrolling](../website/public/research/parallax/pixellab-layers.gif)
-
-![Retro Diffusion layers with tile_x, scrolling](../website/public/research/parallax/retrodiffusion-layers.gif)
-
 - **PixelLab** reads as one scene: same palette, same light, a clean cutout on all three layers (60 to 71% transparent). The far range came back as a flat two-colour silhouette, so it reads as a band of fog. The sky drew a mountain and hills along its bottom despite "no mountains".
 - **Retro Diffusion** does not. The environment style draws a whole scene whatever the prompt says: the sky has its own volcano and river, the far layer is a range with sky still on it, and the near layer is a wall. `tile_x` works on the drawing: the sky wraps with a seam no rougher than its inside (ratio 1.0). Background removal then breaks it: the near layer keeps ground on one side of the join and removes it on the other (seam ratio 3.9).
 
-**Verdict.** Keep PixelLab pixflux with one forced palette for every layer: it is the cheapest route in this note and the layers agree. Retro Diffusion's environment style is a scene generator, not a layer generator; its `tile_x` is still the only hosted seamless option found, and would suit a sky or a layer that needs no background removal.
+**Verdict.** Keep PixelLab pixflux with one forced palette for every layer: it is the cheapest route in this note and the layers agree. Retro Diffusion's environment style is a scene generator, not a layer generator; its `tile_x` is still the only hosted seamless option found, and would suit a sky or a layer that needs no background removal. Step 18 fixes the fog-band far range and the sky with mountains in it, and its pictures replace this step's.
 
 ## 16. A skyline from generated silhouettes
 
@@ -327,9 +318,7 @@ The PixelLab layers were looped with step 2's crossfade, because pixflux has no 
 
 **Result.** The landforms are usable and cut out cleanly, 44 to 73% transparent. None fades at the foot: pixel-art background removal gives a pixel either fully on or off, so each comes back with a hard dark base, a disc under the cone and a plateau under the mesa. In a run those bases read as a black band where step 12's game shows haze.
 
-![A skyline composed from three generated silhouettes, as the camera rises](../website/public/research/parallax/silhouette-skyline.png)
-
-**Verdict.** Keep the route. The faded foot has to come from somewhere else: a generator that returns soft alpha (the game's redraws came from Scenario), a dithered fade drawn afterwards, or a skirt and treeline in front, as step 12's game uses.
+**Verdict.** Keep the route. The faded foot has to come from somewhere else: a generator that returns soft alpha (the game's redraws came from Scenario), a dithered fade drawn afterwards, or a skirt and treeline in front, as step 12's game uses. Step 18 draws the dithered fade and finds the prompt that gives isolated landforms.
 
 ## 17. A model that splits a picture into layers
 
@@ -339,8 +328,6 @@ The PixelLab layers were looped with step 2's crossfade, because pixflux has no 
 
 **Result.**
 
-![Qwen-Image-Layered on the volcano: four layers, back to front, then the four stacked](../website/public/research/parallax/qwen-layered.png)
-
 - **It runs, slowly.** The model does not fit beside the desktop's own use of the card, so ComfyUI streams the weights from system RAM every step: about 40 s a step, 35 minutes for 4 layers and 42 for 3.
 - **The split is sky against everything else.** In both runs the back layer is a flat near-white fill and one layer holds the sky and sun. A single layer holds the far range, the volcano and its plume, the near ridges and the lava. The 4-layer run spent its extra slot on a pink blob over the lower half that matches nothing in the scene. Nothing in front can move at a different speed from anything behind it.
 - **What it does well.** The sun behind the volcano is filled in on the sky layer, which is the work step 14 paid PixelLab to do. Stacked back to front, the layers rebuild the input to within 3.5 of 255 per channel on average.
@@ -349,6 +336,35 @@ The PixelLab layers were looped with step 2's crossfade, because pixflux has no 
 Other prompts, seeds and the full-precision model were not tried. The model's documentation says the prompt does not choose what goes in each layer.
 
 **Verdict.** Drop for parallax. It separates the objects a person would select, not the distances a camera would see, and a picture takes over half an hour on this card. Splitting by a depth map (steps 4 and 13) with inpainting (step 14) stays the route for a picture that has to be split.
+
+## 18. Refine the two routes that worked
+
+**Question.** Steps 12, 15 and 16 found two routes worth keeping, but their pictures were weak: silhouettes with hard dark bases, a far range that read as a band of fog, and a sky with mountains drawn into it. How good can they get with better prompts, a choice of candidates, and finishing by script?
+
+**Setup.** Two biomes, each on one forced palette: volcanic dusk on the 44 colours of the step 4 volcano, and alpine dusk on the 38 colours of PixelLab's alpine valley A. Every asset was generated at three seeds (101, 202, 303) through PixelKiln: three silhouettes at 256×128 and three whole layers (far, middle, near) at 400×100, all pixflux with background removal and `view: side`. That is 36 generations. The silhouette retries cost 9 more volcanic and 6 more alpine, 51 in all. The manifests, lockfiles, preview specs and build script are in [`benchmarks/parallax-refined`](../benchmarks/parallax-refined). The sky is not generated: `parallax.py sky` draws six flat palette bands with a dithered step between neighbours.
+
+**Result.**
+
+- **The prompt decides whether a silhouette is a sprite or a scene.** The first round used step 16's pattern: "distant", "hazy dusk light as if seen from far away", "fading to nothing at its foot". All nine volcanic silhouettes came back as small scenes, with ground, clouds or a moon. 14 of the 18 silhouettes over both biomes ran off the side of the canvas, and a glow asked for at a crater was drawn as a setting sun. The retry described one object as "a lone landform game sprite on a plain empty background", listed what must not be in the picture, asked for "about two thirds as wide as the picture", and left the distance and the glow out. All 15 retries came back as one isolated landform each, and 14 were clear of both sides; the fifteenth, a ridge, touched the right edge at its foot, where the dithered fade thins it out.
+
+![The same three landforms and seed: the scene-style prompt (top) and the sprite prompt (bottom)](../website/public/research/parallax/refined/prompt-compare.png)
+
+- **Whole layers came back usable on the first round.** Every far range was a flat one-colour band, which suits the farthest layer once it is recoloured. The alpine middle and near layers (sunlit peaks, a pine treeline) were good on every seed. Every volcanic middle layer was a single volcano, which repeats obviously, so the preview draws it once as a landmark instead of looping it.
+- **A dithered foot replaces soft alpha.** `parallax.py foot` trims a silhouette and thins its bottom 30% with a 4×4 ordered dither, so it dissolves into whatever is behind it and stays pixel art.
+
+![One landform: as generated, with the dithered foot, then the far-tier and near-tier copies](../website/public/research/parallax/refined/foot-and-tiers.png)
+
+- **Each tier needs its own tint target.** `parallax.py tint` mixes a picture toward a colour and snaps it to the biome palette. Tinting both tiers toward one light haze colour made the near tier lighter than the far range behind it, so depth read backwards. Pulling the far tier toward a mid violet and the near tier toward a dark one gives the right order: far range lightest, near layer darkest.
+- **A sparse palette flattens a pale tint.** The alpine palette has few pale colours, so snow tinted toward the haze snapped to two or three colours. The alpine near tier keeps its snow at a light tint (0.2) instead.
+- **The far range is extended down, not floated.** Repeating the far range's bottom row to the foot of the view gives the tiers' dithered feet distant land to dissolve into. A flat haze band in its place read as a separate rectangle.
+
+![Volcanic dusk from whole layers: a far range, a volcano drawn once, near ridges](../website/public/research/parallax/refined/volcanic/layers.webp)
+
+![Alpine dusk from silhouettes: two tiers of five peaks between a far range and a treeline](../website/public/research/parallax/refined/alpine/silhouettes.webp)
+
+The four previews scroll the whole stack 480 px and back at 0, 1/8, 1/4, 1/2 and 1 of the camera's speed. They are lossless animated WebP, about 1.1 MB each against 2.3 to 3.2 MB as GIF.
+
+**Verdict.** Keep both routes, finished this way. Generate silhouettes as sprites, never as distant scenery, and add the distance afterwards with a palette-held tint per tier. Draw the sky. Take two or three seeds of everything: 15 of the 51 candidates made it into the previews, and none from the first silhouette round. The [parallax guide](./PARALLAX.md) walks through it.
 
 ## A proposal for PixelKiln
 
@@ -398,12 +414,14 @@ Research only; nothing here is built.
 - Retro Diffusion's environment style as a layer generator (step 15), and its background removal on a seamless picture.
 - Asking pixflux for a foot that fades out (step 16).
 - Qwen-Image-Layered as a depth splitter (step 17).
+- Describing a silhouette as distant or hazy in the prompt (step 18). Pixflux paints a scene around it.
+- Tinting every tier toward one light haze colour (step 18). Depth reads backwards.
 
 ## What is next
 
 - **Build the proposal** above: the manifest shape, a preview, and Tiled, Godot and LDtk export. Open the LDtk result in the editor to check the factor's direction.
-- **A faded foot for silhouettes** (step 16): soft alpha from Scenario, or a dithered fade drawn after generation and held to the palette.
-- **A second PixelLab layer set** at another time of day on the same palette, to see whether a forced palette keeps sets consistent across a biome.
+- **Check the finished sets in an engine.** Step 18's previews come from the script; neither set has been placed in Tiled, Godot or Phaser.
+- **A second time of day** on one biome's palette, to see whether a forced palette keeps sets consistent across a day.
 - **Retro Diffusion `tile_x` without background removal** on each layer, with the background keyed out afterwards so the seam survives.
 
 ## Running the scripts
@@ -444,4 +462,22 @@ python3 research/scripts/parallax.py scroll <out.gif> 0.05,0.25,0.5,1.0 200 sky.
 
 # Layers composed from separate silhouettes; the camera pans north to the skyline. Rates are sky,far,near.
 python3 research/scripts/parallax.py compose <out.gif> 0.6,0.85,0.92 7 <silhouette.png>...
+
+# Step 18. Numbers for choosing between candidates: how much touches each side, colours, the opaque box.
+python3 research/scripts/parallax.py screen <png>...
+
+# Trim a silhouette and dither its bottom 30% out.
+python3 research/scripts/parallax.py foot <png> <out.png> 0.3
+
+# Mix toward a colour and snap to the biome palette (a manifest's or a picture's).
+python3 research/scripts/parallax.py tint <png> <out.png> "#7f4776" 0.55 pixelkiln.manifest.json
+
+# Flat sky bands with dithered steps, top to bottom.
+python3 research/scripts/parallax.py sky <out.png> 384 216 "#2e3253,#503e68,#7b5f94,#ad628e,#d66283,#f96076"
+
+# Side-scrolling preview of runs, whole layers and fills from a JSON spec; .webp or .gif.
+STILL=<first-frame.png> SCALE=2 python3 research/scripts/parallax.py skyline <out.webp> <spec.json>
+
+# Everything for step 18 at once.
+sh benchmarks/parallax-refined/build.sh
 ```

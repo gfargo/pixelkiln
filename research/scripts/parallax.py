@@ -18,6 +18,15 @@ Research script for docs/RESEARCH_PARALLAX.md. Rough, takes paths as arguments.
     python3 parallax.py bands <png> <bands> [depth.png]     contrast and sky distance per depth band
     python3 parallax.py compose <out.gif> <sky,far,near> <seed> <sprite.png>...
                                                             layers built from separate silhouettes, camera pans up
+    python3 parallax.py screen <png>...                     numbers for choosing between candidates
+    python3 parallax.py foot <png> <out.png> <frac>         trim, then dither the bottom frac out
+    python3 parallax.py tint <png> <out.png> <#hex> <t> <palette.json|png>
+                                                            mix toward a colour, snap to a biome palette
+    python3 parallax.py sky <out.png> <w> <h> <#hex,#hex,...>
+                                                            flat sky bands with dithered steps
+    python3 parallax.py skyline <out.gif|webp> <spec.json>  side-scrolling preview of runs and layers
+    python3 parallax.py sheet <out.png> <cols> <#bg> <png>...
+                                                            transparent pictures in a grid, enlarged twice
 
 Needs numpy, pillow and scipy.
 """
@@ -379,7 +388,14 @@ def write_gif(frames, out, scale=None, ms=33):
     for f in frames:
         im = Image.fromarray(f.astype(np.uint8), "RGB")
         im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
-        imgs.append(im.quantize(colors=255, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE))
+        if out.endswith(".webp"):
+            imgs.append(im)
+        else:
+            imgs.append(im.quantize(colors=255, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE))
+    if out.endswith(".webp"):
+        # Lossless animated WebP: the same pixels as a GIF, about 2.5 times smaller on these.
+        imgs[0].save(out, save_all=True, append_images=imgs[1:], duration=ms, loop=0, lossless=True, method=6)
+        return
     imgs[0].save(out, save_all=True, append_images=imgs[1:], duration=ms, loop=0, optimize=True)
 
 
@@ -679,6 +695,235 @@ def cmd_compose(out, rates, seed, paths):
           f"{(1 - sky_r) * headroom:.0f}, {(1 - far_r) * headroom:.0f}, {(1 - near_r) * headroom:.0f} px")
 
 
+# --- refined process: screen, fade the foot, tint, sky, skyline ---------------
+
+
+BAYER4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
+
+
+def palette_file(path):
+    """A palette from a manifest (its first style's `palette`) or from a picture's colours."""
+    if path.endswith(".json"):
+        import json
+
+        m = json.load(open(path))
+        for s in m.get("styles", {}).values():
+            if s.get("palette"):
+                return {tuple(int(v) for v in hexrgb(c)) for c in s["palette"]}
+        raise SystemExit(f"{path}: no style has a palette")
+    return colours(load(path)[:, :, :3][load(path)[:, :, 3] > 0])
+
+
+def cmd_screen(paths):
+    """Numbers for choosing between candidates of one transparent layer or silhouette.
+
+    edge: opaque pixels in the outer column on the left / right, as a share of the
+    picture's height (a silhouette that touches the side was cut off by the canvas);
+    top: opaque pixels on the first row; opaque: share of opaque pixels; colours used.
+    """
+    for p in paths:
+        a = load(p)
+        on = a[:, :, 3] > 0
+        h, w = on.shape
+        left, right, top = on[:, 0].mean(), on[:, -1].mean(), on[0].mean()
+        rows = np.nonzero(on.any(1))[0]
+        cols = np.nonzero(on.any(0))[0]
+        box = f"x {cols[0]}..{cols[-1]}, y {rows[0]}..{rows[-1]}" if len(rows) else "empty"
+        n = len(colours(a[:, :, :3][on])) if on.any() else 0
+        print(f"{p}: edge {left:.2f}/{right:.2f}, top {top:.2f}, opaque {on.mean():.2f}, {n} colours, box {box}")
+
+
+def cmd_foot(src, out, frac):
+    """Trim to the opaque box, then fade the bottom `frac` of it out with a 4x4 ordered dither.
+
+    Alpha stays 0 or 255, so the sprite is still pixel art: the fade is a thinning pattern,
+    not soft alpha. Row by row the share of pixels kept falls from all to none.
+    """
+    a = load(src)
+    on = a[:, :, 3] > 0
+    rows = np.nonzero(on.any(1))[0]
+    cols = np.nonzero(on.any(0))[0]
+    a = a[rows[0] : rows[-1] + 1, cols[0] : cols[-1] + 1].copy()
+    h, w = a.shape[:2]
+    band = max(1, int(round(h * float(frac))))
+    for y in range(h - band, h):
+        keep = 1 - (y - (h - band) + 1) / (band + 1)  # just under 1 -> just over 0
+        thresh = BAYER4[y % 4][np.arange(w) % 4]
+        drop = thresh >= keep * 16
+        a[y, drop, 3] = 0
+    save(a, out)
+    print(f"{out}: {w}x{h}, bottom {band} rows dithered out")
+
+
+def cmd_tint(src, out, hexc, t, pal_src):
+    """Mix toward a colour (a haze or the sky's horizon) and snap to a biome palette.
+
+    Unlike `haze`, the target colour is given, so it works on a transparent layer, and the
+    snap is to the whole biome palette rather than to the layer's own colours.
+    """
+    a = load(src)
+    pal = palette_file(pal_src)
+    mixed = np.round(a[:, :, :3] * (1 - float(t)) + hexrgb(hexc) * float(t)).astype(int)
+    res = a.copy()
+    res[:, :, :3] = palette_snap(mixed, pal)
+    save(res, out)
+    on = a[:, :, 3] > 0
+    sd0, sd1 = lum(a[:, :, :3][on].astype(float)).std(), lum(res[:, :, :3][on].astype(float)).std()
+    print(f"{out}: toward {hexc} by {t}, luminance sd {sd0:.1f} -> {sd1:.1f}, {len(colours(res[:, :, :3][on]))} colours")
+
+
+def sky_array(w, h, hexes, blend=8):
+    """Flat colour bands, top to bottom, with an ordered-dither step between neighbours."""
+    cols = [hexrgb(c) for c in hexes]
+    n = len(cols)
+    out = np.zeros((h, w, 4), np.int16)
+    out[:, :, 3] = 255
+    for y in range(h):
+        pos = y / h * n
+        i = min(int(pos), n - 1)
+        frac = pos - i
+        row = np.repeat(cols[i][None, :], w, 0)
+        # Within `blend` rows of the next band, dither toward it.
+        rows_left = (i + 1) * h / n - y
+        if i < n - 1 and rows_left <= blend:
+            share = 1 - rows_left / (blend + 1)
+            mask = BAYER4[y % 4][np.arange(w) % 4] < share * 16
+            row[mask] = cols[i + 1]
+        out[y, :, :3] = row
+    return out
+
+
+def cmd_sky(out, w, h, hexes):
+    save(sky_array(int(w), int(h), hexes.split(",")), out)
+    print(f"{out}: {w}x{h}, {len(hexes.split(','))} bands")
+
+
+def cmd_skyline(out, spec):
+    """A side-scrolling preview: a sky, runs of silhouettes, whole layers, a ground strip.
+
+    `spec` is a JSON file:
+      {"view": [320, 180], "sky": ["#..", ...], "seed": 7, "frames": 120, "travel": 480,
+       "layers": [
+         {"run": ["a.png", "b.png"], "foot": 120, "speed": 0.25, "step": 0.72, "gap": 16, "jitter": 4},
+         {"image": "near.png", "bottom": 180, "speed": 1.0},
+         {"image": "volcano.png", "bottom": 170, "speed": 0.25, "repeat": false, "x": 200},
+         {"fill": "#623e6a", "top": 140, "bottom": 180, "speed": 0.5}
+       ]}
+    An image layer repeats sideways at its own width unless `repeat` is false, when it is drawn
+    once at `x` (a landmark). A fill is a flat band of one colour between `top` and `bottom`.
+    A run is laid left to right, each sprite starting `step` of the way across the last plus up
+    to `gap` px, flipped at random, never the same sprite twice in a row, its foot moved up to
+    `jitter` px. An image layer repeats sideways at its own width. The camera moves `travel` px
+    to the right and back, eased, in whole pixels; each layer moves floor(camera x speed).
+    """
+    import json
+
+    cfg = json.load(open(spec))
+    base = os.path.dirname(os.path.abspath(spec))
+    vw, vh = cfg["view"]
+    rng = np.random.default_rng(cfg.get("seed", 7))
+    travel = cfg.get("travel", 480)
+    world_w = vw + travel + 64
+
+    def path(p):
+        return p if os.path.isabs(p) else os.path.join(base, p)
+
+    layers = []
+    for spec_l in cfg["layers"]:
+        canvas = np.zeros((vh, world_w, 4), np.int16)
+        if "run" in spec_l:
+            sprites = [load(path(p)) for p in spec_l["run"]]
+            x = -int(rng.uniform(0, 32))
+            last = -1
+            while x < world_w:
+                pick = int(rng.integers(len(sprites)))
+                if len(sprites) > 1 and pick == last:
+                    pick = (pick + 1) % len(sprites)
+                last = pick
+                s = sprites[pick][:, ::-1] if rng.random() < 0.5 else sprites[pick]
+                sh, sw = s.shape[:2]
+                y0 = spec_l["foot"] - sh + int(rng.integers(-spec_l.get("jitter", 0), spec_l.get("jitter", 0) + 1))
+                for yy in range(sh):
+                    cy = y0 + yy
+                    if not 0 <= cy < vh:
+                        continue
+                    xs = np.arange(sw) + x
+                    ok = (xs >= 0) & (xs < world_w) & (s[yy, :, 3] > 0)
+                    canvas[cy, xs[ok]] = s[yy, ok]
+                x += int(sw * spec_l.get("step", 0.72) + rng.uniform(0, spec_l.get("gap", 16)))
+            canvas = canvas[:, : world_w]
+        elif "image" in spec_l:
+            img = load(path(spec_l["image"]))
+            ih, iw = img.shape[:2]
+            top = spec_l["bottom"] - ih
+            if spec_l.get("repeat", True):
+                reps = int(np.ceil(world_w / iw)) + 1
+                strip = np.concatenate([img] * reps, axis=1)[:, :world_w]
+            else:  # a landmark: drawn once, `x` px from the world's left edge
+                strip = np.zeros((ih, world_w, 4), np.int16)
+                x = spec_l.get("x", 0)
+                strip[:, x : x + iw] = img[:, : max(0, min(iw, world_w - x))]
+            # The layer may hang off the top or the bottom of the view: copy the overlap only.
+            y0, y1 = max(top, 0), min(spec_l["bottom"], vh)
+            if y1 > y0:
+                canvas[y0:y1] = strip[y0 - top : y1 - top]
+            if spec_l.get("extend"):
+                canvas[spec_l["bottom"] :] = strip[-1]
+        elif "fill" in spec_l:
+            y0, y1 = spec_l["top"], spec_l.get("bottom", vh)
+            canvas[y0:y1, :, :3] = hexrgb(spec_l["fill"])
+            canvas[y0:y1, :, 3] = 255
+        layers.append((canvas, spec_l["speed"]))
+    sky = sky_array(vw, vh, cfg["sky"])
+    frames = []
+    n = cfg.get("frames", 120)
+    for i in range(n):
+        cam = int(round((1 - np.cos(2 * np.pi * i / n)) / 2 * travel))
+        frame = sky[:, :, :3].copy()
+        for canvas, speed in layers:
+            off = int(np.floor(cam * speed))
+            part = canvas[:, off : off + vw]
+            m = part[:, :, 3] > 0
+            frame[m] = part[:, :, :3][m]
+        frames.append(frame)
+    write_gif(frames, out)
+    still = os.environ.get("STILL")
+    if still:
+        save(np.dstack([frames[0], np.full(frames[0].shape[:2], 255)]), still, int(os.environ.get("SCALE", "1")))
+    print(f"{out}: {n} frames, {vw}x{vh}, travel {travel}px, speeds {[s for _, s in layers]}")
+
+
+def cmd_sheet(out, cols, bg, paths):
+    """Transparent pictures on one background colour in a grid, 6 px apart, enlarged twice.
+
+    Each picture is trimmed to its opaque box and sits on the bottom of its cell, 6 px clear
+    of every edge.
+    """
+    ims = []
+    for p in paths:
+        a = load(p)
+        on = a[:, :, 3] > 0
+        rows, cols_on = np.nonzero(on.any(1))[0], np.nonzero(on.any(0))[0]
+        a = a[rows[0] : rows[-1] + 1, cols_on[0] : cols_on[-1] + 1]
+        pad = np.zeros((a.shape[0] + 12, a.shape[1] + 12, 4), np.int16)
+        pad[6:-6, 6:-6] = a
+        ims.append(pad)
+    cols = int(cols)
+    w = max(a.shape[1] for a in ims)
+    h = max(a.shape[0] for a in ims)
+    rows = (len(ims) + cols - 1) // cols
+    sheet = np.zeros((rows * (h + 6) - 6, cols * (w + 6) - 6, 4), np.int16)
+    sheet[:, :, :3] = hexrgb(bg)
+    sheet[:, :, 3] = 255
+    for i, a in enumerate(ims):
+        y = (i // cols) * (h + 6) + h - a.shape[0]
+        x = (i % cols) * (w + 6) + (w - a.shape[1]) // 2
+        m = a[:, :, 3] > 0
+        sheet[y : y + a.shape[0], x : x + a.shape[1]][m] = a[m]
+    save(sheet, out, 2)
+    print(f"{out}: {len(ims)} pictures, {cols} a row")
+
+
 def main():
     cmd, *args = sys.argv[1:]
     {
@@ -693,6 +938,12 @@ def main():
         "haze": lambda: cmd_haze(*args),
         "bands": lambda: cmd_bands(*args),
         "compose": lambda: cmd_compose(args[0], args[1], args[2], args[3:]),
+        "screen": lambda: cmd_screen(args),
+        "foot": lambda: cmd_foot(*args),
+        "tint": lambda: cmd_tint(*args),
+        "sky": lambda: cmd_sky(*args),
+        "skyline": lambda: cmd_skyline(*args),
+        "sheet": lambda: cmd_sheet(args[0], args[1], args[2], args[3:]),
     }[cmd]()
 
 

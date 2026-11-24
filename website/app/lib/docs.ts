@@ -122,6 +122,13 @@ export const docs: DocEntry[] = [
     group: "Guides",
   },
   {
+    slug: "parallax",
+    title: "Parallax backgrounds",
+    description: "Build a scrolling background in layers: one palette, silhouettes or whole layers from PixelLab, finished by script, and engine settings for Tiled, Godot, Phaser and LDtk.",
+    file: "docs/PARALLAX.md",
+    group: "Guides",
+  },
+  {
     slug: "provider-benchmark",
     title: "Environment provider benchmark",
     description: "Thirty outputs from four providers, with ComfyUI cleanup, native-grid limits, and palette results.",
