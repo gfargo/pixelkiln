@@ -1,7 +1,7 @@
 # Alpine at night
 
-Step 20 of the [parallax research note](../../docs/RESEARCH_PARALLAX.md): step 18's
-alpine dusk set at a second time of day, made two ways.
+Step 20 of the [parallax research note](../../docs/RESEARCH_PARALLAX.md). It takes step 18's
+alpine dusk set to a second time of day, made two ways.
 
 - `reference/` holds the manifest and lockfile for one PixelLab pixflux picture:
   the prompt and seed of PixelLab's alpine valley A from the provider benchmark,

@@ -1,8 +1,8 @@
 # Retro Diffusion layers keyed by script
 
-Step 21 of the [parallax research note](../../docs/RESEARCH_PARALLAX.md): step
-15's volcanic layers again, with `tileX` on and `removeBg` off, and the background
-keyed out by script so the seam survives.
+Step 21 of the [parallax research note](../../docs/RESEARCH_PARALLAX.md). It makes
+step 15's volcanic layers again, with `tileX` on and `removeBg` off, and keys the
+background out by script so the seam survives.
 
 - `pixelkiln.manifest.json` and its lockfile: a far range and near ridges from
   `rd_plus__environment`, and a far range, a row of volcanoes and near ridges from
