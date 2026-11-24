@@ -1,0 +1,40 @@
+{
+  "view": [
+    384,
+    216
+  ],
+  "sky": [
+    "#050722",
+    "#0b173a",
+    "#111b55",
+    "#132b6c",
+    "#213c7e",
+    "#2d4888"
+  ],
+  "seed": 7,
+  "frames": 96,
+  "travel": 480,
+  "layers": [
+    {
+      "image": "../../website/public/research/parallax/night/picked/recoloured/far.png",
+      "bottom": 150,
+      "speed": 0.125,
+      "extend": true
+    },
+    {
+      "image": "../../website/public/research/parallax/night/picked/recoloured/mid.png",
+      "bottom": 204,
+      "speed": 0.25
+    },
+    {
+      "fill": "#050722",
+      "top": 206,
+      "speed": 1.0
+    },
+    {
+      "image": "../../website/public/research/parallax/night/picked/recoloured/near.png",
+      "bottom": 256,
+      "speed": 1.0
+    }
+  ]
+}

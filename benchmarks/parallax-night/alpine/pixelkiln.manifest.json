@@ -1,0 +1,213 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-parallax-night-alpine",
+  "provider": "pixellab",
+  "styles": {
+    "layer-a": {
+      "generator": "pixflux",
+      "noBackground": true,
+      "palette": [
+        "#050722",
+        "#060c25",
+        "#07081c",
+        "#0b173a",
+        "#0e1b4d",
+        "#101f55",
+        "#111b55",
+        "#11235c",
+        "#124e71",
+        "#132b6c",
+        "#143258",
+        "#143f6b",
+        "#144261",
+        "#164974",
+        "#173171",
+        "#174a6e",
+        "#174e76",
+        "#213c79",
+        "#213c7e",
+        "#234478",
+        "#244280",
+        "#244f95",
+        "#2d4888",
+        "#2e4c94",
+        "#2f5199",
+        "#375da1",
+        "#4a73a7",
+        "#5c363c",
+        "#6691c0",
+        "#6691c7",
+        "#686a5f",
+        "#7097c6",
+        "#877759",
+        "#a8abb8",
+        "#afc3ef",
+        "#c6d1ed",
+        "#d39851",
+        "#dae3f0",
+        "#e5bb84",
+        "#e7cfb6",
+        "#f7f4ec",
+        "#fbdbb3"
+      ],
+      "seed": 101,
+      "view": "side",
+      "outDir": "../../../website/public/research/parallax/night/alpine/a"
+    },
+    "layer-b": {
+      "generator": "pixflux",
+      "noBackground": true,
+      "palette": [
+        "#050722",
+        "#060c25",
+        "#07081c",
+        "#0b173a",
+        "#0e1b4d",
+        "#101f55",
+        "#111b55",
+        "#11235c",
+        "#124e71",
+        "#132b6c",
+        "#143258",
+        "#143f6b",
+        "#144261",
+        "#164974",
+        "#173171",
+        "#174a6e",
+        "#174e76",
+        "#213c79",
+        "#213c7e",
+        "#234478",
+        "#244280",
+        "#244f95",
+        "#2d4888",
+        "#2e4c94",
+        "#2f5199",
+        "#375da1",
+        "#4a73a7",
+        "#5c363c",
+        "#6691c0",
+        "#6691c7",
+        "#686a5f",
+        "#7097c6",
+        "#877759",
+        "#a8abb8",
+        "#afc3ef",
+        "#c6d1ed",
+        "#d39851",
+        "#dae3f0",
+        "#e5bb84",
+        "#e7cfb6",
+        "#f7f4ec",
+        "#fbdbb3"
+      ],
+      "seed": 202,
+      "view": "side",
+      "outDir": "../../../website/public/research/parallax/night/alpine/b"
+    },
+    "silhouette-b": {
+      "generator": "pixflux",
+      "noBackground": true,
+      "palette": [
+        "#050722",
+        "#060c25",
+        "#07081c",
+        "#0b173a",
+        "#0e1b4d",
+        "#101f55",
+        "#111b55",
+        "#11235c",
+        "#124e71",
+        "#132b6c",
+        "#143258",
+        "#143f6b",
+        "#144261",
+        "#164974",
+        "#173171",
+        "#174a6e",
+        "#174e76",
+        "#213c79",
+        "#213c7e",
+        "#234478",
+        "#244280",
+        "#244f95",
+        "#2d4888",
+        "#2e4c94",
+        "#2f5199",
+        "#375da1",
+        "#4a73a7",
+        "#5c363c",
+        "#6691c0",
+        "#6691c7",
+        "#686a5f",
+        "#7097c6",
+        "#877759",
+        "#a8abb8",
+        "#afc3ef",
+        "#c6d1ed",
+        "#d39851",
+        "#dae3f0",
+        "#e5bb84",
+        "#e7cfb6",
+        "#f7f4ec",
+        "#fbdbb3"
+      ],
+      "seed": 202,
+      "view": "side",
+      "outDir": "../../../website/public/research/parallax/night/alpine/b"
+    }
+  },
+  "assets": {
+    "layer-far": {
+      "prompt": "a far-off snowy mountain range silhouette across the whole width at night, many peaks of different heights, dark hazy blue, very low contrast, little detail, flat bottom edge, no sky, no ground plane, side view, transparent background",
+      "width": 400,
+      "height": 100,
+      "styles": [
+        "layer-a",
+        "layer-b"
+      ]
+    },
+    "layer-mid": {
+      "prompt": "a range of tall snow-capped peaks at night, snow lit pale blue by the moon with dark navy shadowed faces, spans the full width, flat bottom edge, no sky, no ground plane, side view, transparent background",
+      "width": 400,
+      "height": 100,
+      "styles": [
+        "layer-a",
+        "layer-b"
+      ]
+    },
+    "layer-near": {
+      "prompt": "a dense dark pine forest treeline close to the viewer at night, uneven tree heights, near-black blue-green, spans the full width, flat bottom edge, no sky, no ground plane, side view, transparent background",
+      "width": 400,
+      "height": 100,
+      "styles": [
+        "layer-a",
+        "layer-b"
+      ]
+    },
+    "landform-peak": {
+      "prompt": "a single snow-capped mountain peak at night, dark blue rock with moonlit pale blue snow on one side, simple shading, about two thirds as wide as the picture, its slopes flare out to a flat base, a lone landform game sprite on a plain empty background, nothing else in the picture: no clouds, no moon, no stars, no sun, no hills, trees or ground around it, side view, transparent background",
+      "width": 256,
+      "height": 128,
+      "styles": [
+        "silhouette-b"
+      ]
+    },
+    "landform-twin": {
+      "prompt": "a single twin-peaked snowy mountain at night, dark blue rock with moonlit pale blue snow, simple shading, about two thirds as wide as the picture, flat base, a lone landform game sprite on a plain empty background, nothing else in the picture: no clouds, no moon, no stars, no sun, no hills, trees or ground around it, side view, transparent background",
+      "width": 256,
+      "height": 128,
+      "styles": [
+        "silhouette-b"
+      ]
+    },
+    "landform-ridge": {
+      "prompt": "a single long snowy mountain ridge with three small summits at night, dark blue rock with moonlit pale blue snow, simple shading, about two thirds as wide as the picture, flat base, a lone landform game sprite on a plain empty background, nothing else in the picture: no clouds, no moon, no stars, no sun, no hills, trees or ground around it, side view, transparent background",
+      "width": 256,
+      "height": 128,
+      "styles": [
+        "silhouette-b"
+      ]
+    }
+  }
+}

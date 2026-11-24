@@ -1,0 +1,59 @@
+{
+  "view": [
+    384,
+    216
+  ],
+  "sky": [
+    "#050722",
+    "#0b173a",
+    "#111b55",
+    "#132b6c",
+    "#213c7e",
+    "#2d4888"
+  ],
+  "seed": 7,
+  "frames": 120,
+  "travel": 480,
+  "layers": [
+    {
+      "image": "../../website/public/research/parallax/night/picked/far.png",
+      "bottom": 150,
+      "speed": 0.125,
+      "extend": true
+    },
+    {
+      "run": [
+        "../../website/public/research/parallax/night/picked/peak.far.png",
+        "../../website/public/research/parallax/night/picked/twin.far.png",
+        "../../website/public/research/parallax/night/picked/ridge.far.png"
+      ],
+      "foot": 158,
+      "speed": 0.25,
+      "step": 0.72,
+      "gap": 16,
+      "jitter": 4
+    },
+    {
+      "run": [
+        "../../website/public/research/parallax/night/picked/peak.near.png",
+        "../../website/public/research/parallax/night/picked/twin.near.png",
+        "../../website/public/research/parallax/night/picked/ridge.near.png"
+      ],
+      "foot": 176,
+      "speed": 0.5,
+      "step": 0.72,
+      "gap": 16,
+      "jitter": 4
+    },
+    {
+      "fill": "#050722",
+      "top": 206,
+      "speed": 1.0
+    },
+    {
+      "image": "../../website/public/research/parallax/night/picked/near.png",
+      "bottom": 236,
+      "speed": 1.0
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-parallax-night-reference",
+  "provider": "pixellab",
+  "styles": {
+    "background-a": {
+      "generator": "pixflux",
+      "outDir": "../../../website/public/research/parallax/night/reference",
+      "seed": 31415,
+      "noBackground": false
+    }
+  },
+  "assets": {
+    "alpine-valley-night": {
+      "prompt": "a wide alpine valley at night, layered mountains, pine forest, winding river, small warm-lit village, full-bleed scenic background",
+      "width": 256,
+      "height": 256,
+      "styles": ["background-a"]
+    }
+  }
+}

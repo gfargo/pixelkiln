@@ -333,12 +333,49 @@ The specs, manifests and build script are in
 [`benchmarks/parallax-vertical`](../benchmarks/parallax-vertical), and step 19
 of the [research note](./RESEARCH_PARALLAX.md) has the numbers.
 
+## 9. A second time of day
+
+To show the same place at another time, recolour the finished set instead of
+generating it again. A palette swap keeps every shape, so the two times line up
+when the game fades from one to the other, and it costs nothing.
+
+![Alpine at night, the dusk set above recoloured by script](../website/public/research/parallax/night/recoloured.webp)
+
+1. Take a palette for the new time the way you took the first one. The night
+   palette here is the 42 colours of PixelLab's mountain valley, sent again
+   with the same prompt and seed and "at night" in place of "at dusk".
+2. Swap each finished piece onto it by luminance rank, the far range, layers,
+   landforms and tier copies alike:
+
+   ```bash
+   $P recolour far.png far.night.png dusk.manifest.json night.manifest.json cool
+   ```
+
+   `cool` leaves out the new palette's light colours, those whose red is above
+   their blue: lit windows, lamplight and the moon. Without it, pink-lit snow
+   turns orange.
+3. Draw the sky from the new palette.
+
+Generating the set again on the new palette also gives layers that agree, but
+in a different place. Every peak moves. "At night" in a prompt also brought a
+moon or stars into 7 of 9 pictures, two of them despite "no moon, no stars" in
+the prompt. Generate only
+what the new time adds, such as a moon, as its own sprite. A swap keeps the
+light where the first time put it, which suits dusk to night; light from
+another side needs new pictures. The manifests and build script are in
+[`benchmarks/parallax-night`](../benchmarks/parallax-night).
+
 ## What this guide does not cover
 
 - Splitting a finished scene into layers. A depth model and inpainting can do
   it, at 10 to 25 PixelLab generations a layer for the fill; see steps 4, 13
   and 14 of the [research note](./RESEARCH_PARALLAX.md).
-- Retro Diffusion for sideways layers. Its environment style draws a whole
-  scene whatever the prompt says, so it is not a layer generator (step 15). It
-  appears above only for a vertical loop.
+- Retro Diffusion for sideways layers, beyond this. Its environment style
+  draws a whole scene whatever the prompt says (step 15). `rd_plus__default`
+  with `tileX`, no background removal and "a plain flat chroma-key green
+  background" in the prompt gives a layer that loops as generated, once the
+  background is keyed out by script (`parallax.py key`). Retro Diffusion's own
+  background removal breaks the seam. The default style drew a flat background
+  on 2 of 3 tries, and its colours are its own, so the rest of the set has to
+  follow them (step 21).
 - A `pixelkiln parallax` command. The research note sketches one.

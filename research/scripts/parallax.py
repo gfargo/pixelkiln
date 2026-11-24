@@ -19,7 +19,7 @@ Research script for docs/RESEARCH_PARALLAX.md. Rough, takes paths as arguments.
     python3 parallax.py compose <out.gif> <sky,far,near> <seed> <sprite.png>...
                                                             layers built from separate silhouettes, camera pans up
     python3 parallax.py screen <png>...                     numbers for choosing between candidates
-    python3 parallax.py foot <png> <out.png> <frac>         trim, then dither the bottom frac out
+    python3 parallax.py foot <png> <out.png> <frac> [drop]  trim, then dither the bottom frac out
     python3 parallax.py tint <png> <out.png> <#hex> <t> <palette.json|png>
                                                             mix toward a colour, snap to a biome palette
     python3 parallax.py sky <out.png> <w> <h> <#hex,#hex,...>
@@ -28,6 +28,12 @@ Research script for docs/RESEARCH_PARALLAX.md. Rough, takes paths as arguments.
     python3 parallax.py climb <out.gif|webp> <spec.json>    vertical preview: the camera climbs through the layers
     python3 parallax.py wall <png> <out.png> <height> <cap-rows>
                                                             stack a cliff into a tall wall, looping its body
+    python3 parallax.py key <png> <out.png> [thresh] [flood|all]
+                                                            key out a flat background, wrapping sideways
+    python3 parallax.py recolour <png> <out.png> <from.json|png> <to.json|png> [all|cool]
+                                                            swap palettes by luminance rank
+    python3 parallax.py isolate <png> <out.png>             keep the largest shape and what touches the bottom
+    python3 parallax.py twice <png> <out.png>               the picture twice side by side, to show its seam
     python3 parallax.py sheet <out.png> <cols> <#bg> <png>...
                                                             transparent pictures in a grid, enlarged twice
 
@@ -736,14 +742,18 @@ def cmd_screen(paths):
         print(f"{p}: edge {left:.2f}/{right:.2f}, top {top:.2f}, opaque {on.mean():.2f}, {n} colours, box {box}")
 
 
-def cmd_foot(src, out, frac):
+def cmd_foot(src, out, frac, drop="0"):
     """Trim to the opaque box, then fade the bottom `frac` of it out with a 4x4 ordered dither.
 
     Alpha stays 0 or 255, so the sprite is still pixel art: the fade is a thinning pattern,
-    not soft alpha. Row by row the share of pixels kept falls from all to none.
+    not soft alpha. Row by row the share of pixels kept falls from all to none. `drop` rows are
+    cut off the bottom of the opaque box first, for a sprite that came with a ground line.
     """
     a = load(src)
     on = a[:, :, 3] > 0
+    if int(drop):
+        a = a[: np.nonzero(on.any(1))[0][-1] + 1 - int(drop)].copy()
+        on = a[:, :, 3] > 0
     rows = np.nonzero(on.any(1))[0]
     cols = np.nonzero(on.any(0))[0]
     a = a[rows[0] : rows[-1] + 1, cols[0] : cols[-1] + 1].copy()
@@ -1065,6 +1075,102 @@ def cmd_climb(out, spec):
     print(f"{out}: {n} frames, {vw}x{vh}, climb {climb}px, travel {travel}px, headroom by speed_y {heads}")
 
 
+def cmd_key(src, out, thresh="24", mode="flood"):
+    """Key out a flat background: the most common colour on the top row.
+
+    A pixel is background when no channel differs from that colour by more than `thresh`.
+    With `flood` (the default) only background pixels connected to the top row count, so
+    the same colour inside the picture stays. Connection is worked out on three copies side
+    by side and the middle one kept, so a picture that wraps sideways keys the same at both
+    edges. With `all` every pixel within `thresh` goes. Alpha stays 0 or 255.
+    """
+    from scipy.ndimage import label
+
+    a = load(src)
+    h, w = a.shape[:2]
+    top = a[0, :, :3].reshape(-1, 3)
+    u, c = np.unique(top, axis=0, return_counts=True)
+    bg = u[c.argmax()]
+    near = (np.abs(a[:, :, :3] - bg[None, None, :]).max(-1) <= int(thresh)) & (a[:, :, 3] > 0)
+    if mode == "flood":
+        lab, _ = label(np.concatenate([near] * 3, axis=1))
+        seeds = set(np.unique(lab[0])) - {0}
+        drop = np.isin(lab, list(seeds))[:, w : 2 * w]
+    else:
+        drop = near
+    res = a.copy()
+    res[drop, 3] = 0
+    before, after = seam_ratio(a)[2], seam_ratio(res)[2]
+    # The share of rows where the left and right edges disagree about being background.
+    edge = float((drop[:, 0] != drop[:, -1]).mean())
+    save(res, out)
+    print(
+        f"{out}: key #{bg[0]:02x}{bg[1]:02x}{bg[2]:02x} within {thresh} ({mode}), removed {drop.mean():.2f}, "
+        f"seam ratio {before:.1f} -> {after:.1f}, edge rows that disagree {edge:.2f}"
+    )
+
+
+def cmd_recolour(src, out, from_pal, to_pal, which="all"):
+    """Swap one palette for another by luminance rank: a palette swap for a time of day.
+
+    Both palettes are sorted dark to light. A colour at a given share of the way up the first
+    is replaced by the colour at the same share of the way up the second, so every piece of a
+    set goes through the same table and the set's light and dark parts keep their order. With
+    `cool`, only target colours whose blue is at least their red are used, which leaves out a
+    night palette's lamp and moon colours. Colours not in the first palette are snapped to it.
+    """
+    src_pal = np.array(sorted(palette_file(from_pal)), dtype=np.int32)
+    dst = np.array(sorted(palette_file(to_pal)), dtype=np.int32)
+    if which == "cool":
+        dst = dst[dst[:, 2] >= dst[:, 0]]
+    so = np.argsort(lum(src_pal.astype(float)), kind="stable")
+    do = np.argsort(lum(dst.astype(float)), kind="stable")
+    table = {}
+    for r, i in enumerate(so):
+        table[tuple(src_pal[i])] = dst[do[int(round(r / max(len(so) - 1, 1) * (len(do) - 1)))]]
+    a = load(src)
+    snapped = palette_snap(a[:, :, :3], {tuple(c) for c in src_pal})
+    res = a.copy()
+    res[:, :, :3] = np.array([table[tuple(c)] for c in snapped.reshape(-1, 3)]).reshape(snapped.shape)
+    save(res, out)
+    on = a[:, :, 3] > 0
+    print(f"{out}: {len(colours(a[:, :, :3][on]))} colours -> {len(colours(res[:, :, :3][on]))}, {len(dst)} target colours ({which})")
+
+
+def cmd_isolate(src, out):
+    """Keep the largest opaque shape and anything touching the bottom row; drop the rest.
+
+    Takes the moon, stars and specks a prompt brought along off a layer or a silhouette, then
+    drops the empty rows above and below what is left, so a layer's bottom row is its foot.
+    The width stays, so a layer still loops at its own width.
+    """
+    from scipy.ndimage import label
+
+    a = load(src)
+    on = a[:, :, 3] > 0
+    lab, n = label(on, structure=np.ones((3, 3)))
+    if n == 0:
+        save(a, out)
+        return
+    sizes = np.bincount(lab.ravel())
+    sizes[0] = 0
+    keep = {int(sizes.argmax())} | (set(np.unique(lab[-1])) - {0})
+    drop = on & ~np.isin(lab, list(keep))
+    res = a.copy()
+    res[drop, 3] = 0
+    rows = np.nonzero((res[:, :, 3] > 0).any(1))[0]
+    res = res[rows[0] : rows[-1] + 1]
+    save(res, out)
+    print(f"{out}: {n} shapes, kept {len(keep)}, dropped {int(drop.sum())} px, rows {rows[0]}..{rows[-1]} kept")
+
+
+def cmd_twice(src, out):
+    """The picture twice side by side, so its wrap seam sits in the middle."""
+    a = load(src)
+    save(np.concatenate([a, a], axis=1), out)
+    print(f"{out}: seam ratio {seam_ratio(a)[2]:.1f}")
+
+
 def cmd_sheet(out, cols, bg, paths):
     """Transparent pictures on one background colour in a grid, 6 px apart, enlarged twice.
 
@@ -1118,6 +1224,10 @@ def main():
         "climb": lambda: cmd_climb(*args),
         "wall": lambda: cmd_wall(*args),
         "sheet": lambda: cmd_sheet(args[0], args[1], args[2], args[3:]),
+        "key": lambda: cmd_key(*args),
+        "recolour": lambda: cmd_recolour(*args),
+        "isolate": lambda: cmd_isolate(*args),
+        "twice": lambda: cmd_twice(*args),
     }[cmd]()
 
 
