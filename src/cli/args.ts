@@ -265,7 +265,7 @@ export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "model", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw",
-  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "help", "--help", "-h", "--version", "-v",
+  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "parallax", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -281,6 +281,7 @@ const MUSIC_SUBCOMMANDS = ["make", "style", "lyrics"] as const
 const TALK_SUBCOMMANDS = ["visemes", "gif", "plan"] as const
 const ASSET_SUBCOMMANDS = ["canvas", "mirror", "import", "save", "expand", "review", "export"] as const
 const UI_SUBCOMMANDS = ["show", "split", "states", "nine-slice", "pull"] as const
+const PARALLAX_SUBCOMMANDS = ["preview", "export"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -439,6 +440,15 @@ export function parseArgs(argv: string[]): Args {
       throw new UsageError(`Unknown music subcommand "${subcommand}". Known: ${MUSIC_SUBCOMMANDS.join(", ")}`)
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
+  } else if (command === "parallax") {
+    subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "preview" : rest[0]
+    if (!(PARALLAX_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown parallax subcommand "${subcommand}". Known: ${PARALLAX_SUBCOMMANDS.join(", ")}`)
+    }
+    if (rest[0] === subcommand) rest = rest.slice(1)
+    // The set id; optional when the manifest has one set.
+    target = rest[0]?.startsWith("-") ? undefined : rest[0]
+    if (target !== undefined) rest = rest.slice(1)
   } else if (command === "refine") {
     subcommand = rest[0]?.startsWith("-") || rest[0] === undefined ? "run" : rest[0]
     if (!(REFINE_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
@@ -554,6 +564,7 @@ export function parseArgs(argv: string[]): Args {
   // or godot. Each command checks its own set once it knows what it is.
   const rawFormat = get("--format")
   const formats = command === "export" ? ["generic", "tiled", "godot", "ldtk"]
+    : command === "parallax" ? ["tiled", "godot", "ldtk"]
     : command === "asset" ? ["zip", "spritesheet", "aseprite", "gif"]
     : ["generic", "aseprite", "godot"]
   if (rawFormat && !formats.includes(rawFormat)) {

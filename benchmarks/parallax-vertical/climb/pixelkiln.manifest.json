@@ -194,5 +194,166 @@
         "climb-b"
       ]
     }
+  },
+  "parallax": {
+    "climb": {
+      "view": [
+        240,
+        256
+      ],
+      "travel": 0,
+      "climb": 480,
+      "layers": [
+        {
+          "name": "sky",
+          "sky": [
+            "#040920",
+            "#060e2c",
+            "#142b60",
+            "#203f7b",
+            "#405e9c",
+            "#60649f",
+            "#a596b9",
+            "#c38eb3",
+            "#de889c",
+            "#f9b59c"
+          ],
+          "speed": 0,
+          "speedY": 0.3
+        },
+        {
+          "name": "far",
+          "file": "../../../website/public/research/parallax/refined/alpine/picked/far.png",
+          "bottom": 200,
+          "speed": 0.1,
+          "speedY": 0.1,
+          "extend": true
+        },
+        {
+          "name": "massif",
+          "file": "../../../website/public/research/parallax/vertical/picked/massif.png",
+          "x": 60,
+          "bottom": 262,
+          "speed": 0.2,
+          "speedY": 0.2,
+          "repeat": false
+        },
+        {
+          "name": "cloud_far_1",
+          "file": "../../../website/public/research/parallax/vertical/picked/a-cloud-puff.far.png",
+          "x": 10,
+          "bottom": -20,
+          "speed": 0.4,
+          "speedY": 0.4,
+          "repeat": false
+        },
+        {
+          "name": "cloud_far_2",
+          "file": "../../../website/public/research/parallax/vertical/picked/b-cloud-puff.far.png",
+          "x": 120,
+          "bottom": -130,
+          "speed": 0.4,
+          "speedY": 0.4,
+          "repeat": false
+        },
+        {
+          "name": "cloud_far_3",
+          "file": "../../../website/public/research/parallax/vertical/picked/c-cloud-puff.far.png",
+          "x": 30,
+          "bottom": -240,
+          "speed": 0.4,
+          "speedY": 0.4,
+          "repeat": false
+        },
+        {
+          "name": "ground",
+          "sky": [
+            "#040920"
+          ],
+          "bottom": 972,
+          "speed": 1,
+          "speedY": 1
+        },
+        {
+          "name": "treeline",
+          "file": "../../../website/public/research/parallax/refined/alpine/picked/near.png",
+          "bottom": 290,
+          "speed": 1,
+          "speedY": 1
+        },
+        {
+          "name": "wall",
+          "file": "../../../website/public/research/parallax/vertical/picked/wall.png",
+          "x": -8,
+          "bottom": 300,
+          "speed": 1,
+          "speedY": 1,
+          "repeat": false
+        },
+        {
+          "name": "cloud_near_1",
+          "file": "../../../website/public/research/parallax/vertical/picked/b-cloud-puff.png",
+          "x": 130,
+          "bottom": -160,
+          "speed": 1.3,
+          "speedY": 1.3,
+          "repeat": false
+        },
+        {
+          "name": "cloud_near_2",
+          "file": "../../../website/public/research/parallax/vertical/picked/a-cloud-puff.png",
+          "x": 70,
+          "bottom": -450,
+          "speed": 1.3,
+          "speedY": 1.3,
+          "repeat": false
+        }
+      ]
+    },
+    "endless": {
+      "view": [
+        192,
+        256
+      ],
+      "travel": 0,
+      "climb": 768,
+      "layers": [
+        {
+          "name": "sky",
+          "file": "../../../website/public/research/parallax/vertical/picked/sky-tile.png",
+          "speed": 0,
+          "speedY": 0.5,
+          "repeat": true,
+          "repeatY": true
+        },
+        {
+          "name": "cloud_1",
+          "file": "../../../website/public/research/parallax/vertical/picked/a-cloud-puff.sky.png",
+          "x": 10,
+          "bottom": -60,
+          "speed": 0,
+          "speedY": 1,
+          "repeat": false
+        },
+        {
+          "name": "cloud_2",
+          "file": "../../../website/public/research/parallax/vertical/picked/b-cloud-puff.sky.png",
+          "x": 60,
+          "bottom": -330,
+          "speed": 0,
+          "speedY": 1,
+          "repeat": false
+        },
+        {
+          "name": "cloud_3",
+          "file": "../../../website/public/research/parallax/vertical/picked/c-cloud-puff.sky.png",
+          "x": 20,
+          "bottom": -600,
+          "speed": 0,
+          "speedY": 1,
+          "repeat": false
+        }
+      ]
+    }
   }
 }

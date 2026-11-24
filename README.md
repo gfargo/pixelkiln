@@ -63,7 +63,7 @@ Released on npm through Semantic Release and npm Trusted Publishing, with signed
 | Shared-account safety | Cross-project claim files or a registered workspace catalog, sibling-style exclusion, reviewed salvage, keep/discard tags, separate confirmed purge. |
 | Quality control | Palette snapping on download, native grid recovery, named approval, regression baselines, and fail-closed packaging. |
 | Sprite packaging | Deterministic RGBA packing, stable-cell mounting, explicit external input lists, structural output roles. |
-| Engine export | Aseprite sheet JSON and Godot SpriteFrames from `pack`; Tiled Wang sets and Godot terrain sets from `export`. |
+| Engine export | Aseprite sheet JSON and Godot SpriteFrames from `pack`; Tiled Wang sets and Godot terrain sets from `export`; parallax backgrounds for Tiled, Godot and LDtk from `parallax export`. |
 | Artifact integrity | Portable source/output hashes, canonical fingerprints, manual-edit protection, transactional promotion, crash journal recovery. |
 | Library/extension | Public TypeScript primitives, provider capability interface, and deterministic `FakeProvider`. |
 

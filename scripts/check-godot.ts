@@ -22,6 +22,7 @@ import { runExport } from "../src/cli/commands/pack.ts"
 import { packStyle } from "../src/pipeline/pack.ts"
 import { renderGodotSpriteFrames } from "../src/pipeline/sheet-formats.ts"
 import { exportTileset } from "../src/pipeline/tileset-export.ts"
+import { exportGodot, skyBands } from "../src/pipeline/parallax.ts"
 import { encodeRgbaPng } from "../src/png.ts"
 import type { Lock, LockEntry, ResolvedSpec } from "../src/types.ts"
 
@@ -193,6 +194,28 @@ await runExport(parseArgs([
   "export", "--manifest", path.join(coastDir, "pixelkiln.manifest.json"), "--lock", path.join(coastDir, "pixelkiln.lock.json"),
   "--style", "coast", "--format", "godot", "--merge-connected", "--out", path.join(dir, "paint-coast"),
 ]))
+
+// A parallax scene: a sky, a looping far layer and a vertical loop, as `parallax export` writes it.
+{
+  const solid = (w: number, h: number, shade: number) => {
+    const pixels = Buffer.alloc(w * h * 4, shade)
+    for (let i = 3; i < pixels.length; i += 4) pixels[i] = 255
+    return { width: w, height: h, pixels }
+  }
+  const scene = exportGodot({
+    id: "bg",
+    view: [64, 48],
+    travel: 96,
+    climb: 40,
+    warnings: [],
+    layers: [
+      { name: "sky", png: skyBands(64, 60, ["#102030", "#405060"]), speed: 0, speedY: 0.3, x: 0, y: -12, repeat: true, repeatY: false, source: { kind: "sky", colors: [] } },
+      { name: "far", png: solid(40, 20, 90), speed: 0.25, speedY: 0.25, x: 0, y: 20, repeat: true, repeatY: false, source: { kind: "file", path: "far.png" } },
+      { name: "clouds", png: solid(30, 24, 150), speed: 0.5, speedY: 0.5, x: 50, y: -70, repeat: false, repeatY: true, source: { kind: "file", path: "clouds.png" } },
+    ],
+  }, path.join(dir, "bg"))
+  for (const file of scene.files) await writeFile(file.path, file.data)
+}
 
 await writeFile(path.join(dir, "project.godot"), `; Engine configuration file.
 config_version=5
@@ -367,6 +390,22 @@ func _init() -> void:
 	report["painting"] = {}
 	for name in ["paint-square-corner", "paint-square-edge", "paint-iso-corner", "paint-iso-edge", "paint-coast"]:
 		report["painting"][name] = paint_audit(name)
+	var bg = (load("res://bg.tscn") as PackedScene).instantiate()
+	report["parallax"] = {}
+	report["parallax_order"] = []
+	for child in bg.get_children():
+		report["parallax_order"].append(child.name)
+		var sprite = child.get_child(0) as Sprite2D
+		report["parallax"][child.name] = {
+			"type": child.get_class(),
+			"scroll_scale": [child.scroll_scale.x, child.scroll_scale.y],
+			"scroll_offset": [child.scroll_offset.x, child.scroll_offset.y],
+			"repeat_size": [child.repeat_size.x, child.repeat_size.y],
+			"repeat_times": child.repeat_times,
+			"position": [sprite.position.x, sprite.position.y],
+			"texture": [sprite.texture.get_width(), sprite.texture.get_height()],
+		}
+	report["parallax_filter"] = bg.texture_filter
 	print("PIXELKILN_REPORT " + JSON.stringify(report))
 	quit(0)
 `)
@@ -409,6 +448,14 @@ try {
   check(JSON.stringify(report.iso_tileset?.texture_origin) === "[0,-4]", `each image is moved so its diamond sits on the cell (${JSON.stringify(report.iso_tileset?.texture_origin)})`)
   check(report.iso_tileset?.bottom_corner === 0, `isometric tileset's diamond-point peering bit round-trips through Godot (${report.iso_tileset?.bottom_corner})`)
   check(report.iso_tileset?.square_bottom_right_corner_is_invalid === true, "isometric tileset does not also carry the square corner name Godot would reject")
+  const layers = report.parallax ?? {}
+  check(JSON.stringify(report.parallax_order) === JSON.stringify(["sky", "far", "clouds"]), `the parallax scene loads with its three Parallax2D layers, far first (${JSON.stringify(report.parallax_order)})`)
+  check(Object.values(layers).every((layer: any) => layer.type === "Parallax2D"), "every parallax layer is a Parallax2D")
+  check(JSON.stringify(layers.far?.scroll_scale) === "[0.25,0.25]", `the far layer scrolls at a quarter of the camera (${JSON.stringify(layers.far?.scroll_scale)})`)
+  check(JSON.stringify(layers.far?.repeat_size) === "[40,0]" && JSON.stringify(layers.far?.texture) === "[40,20]", `the far layer repeats sideways at its width (${JSON.stringify(layers.far?.repeat_size)})`)
+  check(JSON.stringify(layers.clouds?.repeat_size) === "[0,24]" && JSON.stringify(layers.clouds?.position) === "[50,18]", `the cloud loop repeats upward from inside its first repeat (${JSON.stringify(layers.clouds?.repeat_size)}, ${JSON.stringify(layers.clouds?.position)})`)
+  check(JSON.stringify(layers.clouds?.scroll_offset) === "[0,-20]", `a climbing layer keeps what the start view would move it (${JSON.stringify(layers.clouds?.scroll_offset)})`)
+  check(report.parallax_filter === 1, `the parallax scene draws with nearest filtering (${report.parallax_filter})`)
   for (const [name, terrains] of [["paint-square-corner", 2], ["paint-square-edge", 2], ["paint-iso-corner", 2], ["paint-iso-edge", 2], ["paint-coast", 3]] as Array<[string, number]>) {
     const result = report.painting?.[name]
     check(

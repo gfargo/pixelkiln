@@ -2490,6 +2490,123 @@
             },
             "additionalProperties": false
           }
+        },
+        "parallax": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "view": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": [
+                  {
+                    "type": "integer",
+                    "minimum": 8,
+                    "maximum": 4096
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": 8,
+                    "maximum": 4096
+                  }
+                ]
+              },
+              "travel": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000
+              },
+              "climb": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000
+              },
+              "layers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+                    },
+                    "asset": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "style": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "file": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sky": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^#?[0-9a-f]{6}$"
+                      },
+                      "minItems": 1,
+                      "maxItems": 64
+                    },
+                    "speed": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4
+                    },
+                    "speedY": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 4
+                    },
+                    "x": {
+                      "type": "integer",
+                      "minimum": -100000,
+                      "maximum": 100000
+                    },
+                    "bottom": {
+                      "type": "integer",
+                      "minimum": -100000,
+                      "maximum": 100000
+                    },
+                    "extend": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4096
+                        }
+                      ]
+                    },
+                    "repeat": {
+                      "type": "boolean"
+                    },
+                    "repeatY": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "speed"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 32
+              }
+            },
+            "required": [
+              "view",
+              "layers"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [

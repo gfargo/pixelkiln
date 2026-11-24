@@ -374,5 +374,55 @@
         "silhouette-b"
       ]
     }
+  },
+  "parallax": {
+    "alpine-dusk": {
+      "view": [
+        384,
+        216
+      ],
+      "travel": 480,
+      "layers": [
+        {
+          "name": "sky",
+          "sky": [
+            "#405e9c",
+            "#60649f",
+            "#a596b9",
+            "#c38eb3",
+            "#de889c",
+            "#f9b59c"
+          ],
+          "speed": 0
+        },
+        {
+          "name": "far",
+          "file": "../../../website/public/research/parallax/refined/alpine/picked/far.png",
+          "bottom": 150,
+          "speed": 0.125,
+          "extend": true
+        },
+        {
+          "name": "mid",
+          "file": "../../../website/public/research/parallax/refined/alpine/picked/mid.png",
+          "bottom": 204,
+          "speed": 0.25
+        },
+        {
+          "name": "ground",
+          "sky": [
+            "#040920"
+          ],
+          "bottom": 422,
+          "speed": 1
+        },
+        {
+          "name": "near",
+          "file": "../../../website/public/research/parallax/refined/alpine/picked/near.png",
+          "bottom": 256,
+          "speed": 1
+        }
+      ]
+    }
   }
 }

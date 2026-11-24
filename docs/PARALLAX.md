@@ -1,8 +1,9 @@
 # Parallax backgrounds
 
 A parallax background is a stack of layers that scroll at different speeds as
-the camera moves. PixelKiln has no parallax command yet, so this guide builds
-one from ordinary manifest assets and a free script. Everything below was run
+the camera moves. This guide builds one from ordinary manifest assets, finishes
+the pieces with a free script, and then hands the stack to `pixelkiln
+parallax`, which previews it and exports it to Tiled, Godot and LDtk. Everything below was run
 to make the pictures on this page: two biomes, 51 PixelLab generations in all,
 including the retries, and a climb for a camera that scrolls up. The evidence behind each choice is in the
 [research note](./RESEARCH_PARALLAX.md).
@@ -184,7 +185,49 @@ it, darker than the horizon and lighter than the tiers.
 
 ## 6. Preview the stack
 
-The script draws the sky and scrolls the whole stack, from a small JSON file:
+Name the stack in the manifest, under `parallax`, far layer first. A layer is
+a generated `asset`, a finished `file`, or `sky` bands that PixelKiln draws.
+This is the alpine set from the pictures above:
+
+```jsonc
+"parallax": {
+  "alpine-dusk": {
+    "view": [384, 216],          // the game's view in pixels
+    "travel": 480,               // how far the camera moves across the level
+    "layers": [
+      { "name": "sky", "sky": ["#405e9c", "#60649f", "#a596b9", "#c38eb3", "#de889c", "#f9b59c"], "speed": 0 },
+      { "name": "far", "file": "picked/far.png", "bottom": 150, "speed": 0.125, "extend": true },
+      { "name": "mid", "file": "picked/mid.png", "bottom": 204, "speed": 0.25 },
+      { "name": "ground", "sky": ["#040920"], "bottom": 422, "speed": 1 },
+      { "name": "near", "file": "picked/near.png", "bottom": 256, "speed": 1 }
+    ]
+  }
+}
+```
+
+```bash
+pixelkiln parallax preview alpine-dusk
+```
+
+It writes `parallax/alpine-dusk/alpine-dusk.preview.html`, a page that
+scrolls the set in a browser with a slider to stop it anywhere, and a strip of
+frames from the start to the far end (`--frames` sets how many). It spends
+nothing.
+
+- `bottom` is the canvas row a layer's foot sits on; the canvas starts at the
+  top-left of the view. `x` moves a layer sideways.
+- Layers repeat sideways unless `"repeat": false`. For one that repeats, the
+  command measures the join and warns when it is more than twice as rough as
+  the rest of the picture, so loop it first.
+- `extend: true` repeats a layer's bottom row down to the foot of the view, so
+  the layers in front dissolve into distant land, not into sky.
+- `asset` reads the generated picture from the lockfile. Add `style` when the
+  asset has more than one.
+- A one-colour `sky` is a flat fill: the `ground` layer above fills the strip
+  under the treeline.
+
+The command has no silhouette runs yet. Lay runs with the script, which draws
+the sky and scrolls the whole stack from a small JSON file:
 
 ```jsonc
 {
@@ -221,6 +264,30 @@ The specs and the build script for both biomes are in
 
 ## 7. Put it in the engine
 
+```bash
+pixelkiln parallax export alpine-dusk                   # Tiled, Godot and LDtk
+pixelkiln parallax export alpine-dusk --format godot    # one of them
+```
+
+Each format goes in its own folder under `parallax/<set>/` (or `--out`), with
+the layer pictures it uses and a provenance record:
+
+| Format | What it writes |
+|---|---|
+| Tiled | A map (`.tmj`) with one image layer per parallax layer, `parallaxx` and `parallaxy` set to the speeds, `repeatx` on looping layers. The map's parallax origin is the start view's centre, where Tiled puts layers at their offsets. |
+| Godot 4.3+ | A scene (`.tscn`) with one `Parallax2D` per layer holding a `Sprite2D`, `scroll_scale` set to the speeds and `repeat_size` to the picture. Instance it next to a `Camera2D` whose top-left starts at `(0, climb)`. |
+| LDtk | A project (`.ldtk`) with one level as wide as the camera's travel. LDtk has no image layer, so each layer is a Tiles layer over a picture of everything the camera can see of it, repeats included, with `parallaxFactorX` = 1 − speed and scaling off. |
+
+We checked the exports against the preview, pixel for pixel. Godot 4.7
+rendered every camera position the same as the preview, sideways, climbing and
+in a vertical loop, with Rendering > 2D > Snap 2D Transforms to Pixel on. Turn
+it on for pixel art: without it, a layer sitting on a half pixel is sampled
+differently. The LDtk level, drawn the way LDtk's editor draws it, matched as
+well, except where a layer moves faster than the camera, since LDtk draws
+nothing past a level's edge. The command warns when that happens. We have not
+opened the Tiled map in Tiled. Step 22 of the [research note](./RESEARCH_PARALLAX.md)
+has the numbers.
+
 Speed is the fraction of the camera's movement a layer follows. The previews
 use 0 for the sky, 1/8 for the far range, 1/4 and 1/2 for the two tiers, and 1
 for the near layer.
@@ -246,7 +313,8 @@ The same layer at a quarter of the camera's speed in each tool:
 
 LDtk counts the other way: its factor is how much the layer follows the
 camera, so write 1 − speed. With `parallaxScaling` on it also shrinks a far
-layer off the pixel grid. PixelKiln's LDtk export writes factor 0 today.
+layer off the pixel grid. `pixelkiln parallax export` writes both settings
+for you.
 
 ## 8. Scroll vertically
 
@@ -320,6 +388,27 @@ its colours, the sky below kept 5 of its 47.
 
 ![A vertical shooter's loop: a tile_y sky at half speed, clouds at full speed](../website/public/research/parallax/vertical/loop.webp)
 
+In the manifest, a climbing set has `climb` (and `travel: 0` if it never
+moves sideways), `speedY` on layers, and `repeatY` for a vertical loop. Sky
+bands are drawn tall enough for the climb at their vertical speed. Scatter
+sprites one layer each, with `"repeat": false`. The climb and the loop above
+are both in [`benchmarks/parallax-vertical/climb`](../benchmarks/parallax-vertical/climb):
+
+```jsonc
+"endless": {
+  "view": [192, 256],
+  "travel": 0,
+  "climb": 768,
+  "layers": [
+    { "name": "sky", "file": "picked/sky-tile.png", "speed": 0, "speedY": 0.5, "repeatY": true },
+    { "name": "cloud_1", "file": "picked/a-cloud-puff.sky.png", "x": 10, "bottom": -60, "speed": 0, "speedY": 1, "repeat": false }
+  ]
+}
+```
+
+For a layer that repeats vertically the command measures that join too. The
+Retro Diffusion sky's comes out at 1.9.
+
 The same layer at a quarter of the camera's speed both ways:
 
 | Tool | Setting |
@@ -378,4 +467,6 @@ another side needs new pictures. The manifests and build script are in
   background removal breaks the seam. The default style drew a flat background
   on 2 of 3 tries, and its colours are its own, so the rest of the set has to
   follow them (step 21).
-- A `pixelkiln parallax` command. The research note sketches one.
+- Silhouette runs, haze, dithered feet and looping inside `pixelkiln
+  parallax`. Finish those pieces with `parallax.py` and name the results as
+  `file` layers.

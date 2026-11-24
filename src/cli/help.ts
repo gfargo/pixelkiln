@@ -34,6 +34,10 @@ Commands
   mount     Write a style's sprites into their declared cells of an existing
             sheet, leaving every other pixel untouched. Offline.
   export    Build a tile atlas, engine metadata, and offline provenance record.
+  parallax  A manifest's parallax sets. parallax preview [set] writes a page
+            that scrolls the set and a strip of frames; parallax export [set]
+            writes a Tiled map, a Godot scene and an LDtk project (or one,
+            with --format) with the layer pictures. Offline.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
   prune     Drop lock entries the manifest no longer declares. Offline; asks
             first. Local art is untouched.
@@ -142,6 +146,7 @@ Options
   --inputs <path>     pack/quality snapshot: JSON input list; needs --out
   --format <format>   export: generic (default), tiled, godot (TileSet), or ldtk
                       pack/mount: generic (default), aseprite, or godot (SpriteFrames)
+                      parallax export: tiled, godot, or ldtk (default: all three)
   --output-role <r>   pack: include only this output role (repeatable)
   --primary-only      pack: include only unambiguous primary/single outputs
   --max-distance <n>  audit: maximum palette distance
@@ -211,6 +216,7 @@ Options
   --style-weight <n>  music: how closely to follow the style, 0-1
   --frames <n>        estimate-skeleton: poses to scaffold, 3-15;
                       normal-map: equal frames in the --from strip, 1-32
+                      parallax preview: frames in the strip, 3-15 (default 3)
   --convention <c>    normal-map: opengl (green up, default) or directx (green down)
   --preset <name>     vfx: start from a whole-effect preset (vfx presets lists them)
   --recipe <file>     vfx: render a recipe or an earlier run's .vfx.json record
