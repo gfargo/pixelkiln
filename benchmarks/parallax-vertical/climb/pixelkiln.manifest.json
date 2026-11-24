@@ -1,0 +1,198 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-parallax-vertical-climb",
+  "provider": "pixellab",
+  "styles": {
+    "climb-a": {
+      "generator": "pixflux",
+      "noBackground": true,
+      "palette": [
+        "#040920",
+        "#060e2c",
+        "#142b60",
+        "#19335a",
+        "#1e4a6d",
+        "#203f7b",
+        "#224f71",
+        "#2a4e84",
+        "#2e4324",
+        "#2e5488",
+        "#333d67",
+        "#405e9c",
+        "#46586a",
+        "#54633f",
+        "#56609d",
+        "#60649f",
+        "#684f67",
+        "#834d5f",
+        "#8c9bba",
+        "#9499b9",
+        "#9d97b9",
+        "#a36a96",
+        "#a596b9",
+        "#a9715c",
+        "#aa89b8",
+        "#ac93b8",
+        "#b394b6",
+        "#b43940",
+        "#bbc1ec",
+        "#bc90b4",
+        "#c38eb3",
+        "#cc8eaf",
+        "#d58aa9",
+        "#de889c",
+        "#e0b7ba",
+        "#ed8a8c",
+        "#f8d39f",
+        "#f9b59c"
+      ],
+      "seed": 101,
+      "view": "side",
+      "outDir": "../../../website/public/research/parallax/vertical/a"
+    },
+    "climb-b": {
+      "generator": "pixflux",
+      "noBackground": true,
+      "palette": [
+        "#040920",
+        "#060e2c",
+        "#142b60",
+        "#19335a",
+        "#1e4a6d",
+        "#203f7b",
+        "#224f71",
+        "#2a4e84",
+        "#2e4324",
+        "#2e5488",
+        "#333d67",
+        "#405e9c",
+        "#46586a",
+        "#54633f",
+        "#56609d",
+        "#60649f",
+        "#684f67",
+        "#834d5f",
+        "#8c9bba",
+        "#9499b9",
+        "#9d97b9",
+        "#a36a96",
+        "#a596b9",
+        "#a9715c",
+        "#aa89b8",
+        "#ac93b8",
+        "#b394b6",
+        "#b43940",
+        "#bbc1ec",
+        "#bc90b4",
+        "#c38eb3",
+        "#cc8eaf",
+        "#d58aa9",
+        "#de889c",
+        "#e0b7ba",
+        "#ed8a8c",
+        "#f8d39f",
+        "#f9b59c"
+      ],
+      "seed": 202,
+      "view": "side",
+      "outDir": "../../../website/public/research/parallax/vertical/b"
+    },
+    "climb-c": {
+      "generator": "pixflux",
+      "noBackground": true,
+      "palette": [
+        "#040920",
+        "#060e2c",
+        "#142b60",
+        "#19335a",
+        "#1e4a6d",
+        "#203f7b",
+        "#224f71",
+        "#2a4e84",
+        "#2e4324",
+        "#2e5488",
+        "#333d67",
+        "#405e9c",
+        "#46586a",
+        "#54633f",
+        "#56609d",
+        "#60649f",
+        "#684f67",
+        "#834d5f",
+        "#8c9bba",
+        "#9499b9",
+        "#9d97b9",
+        "#a36a96",
+        "#a596b9",
+        "#a9715c",
+        "#aa89b8",
+        "#ac93b8",
+        "#b394b6",
+        "#b43940",
+        "#bbc1ec",
+        "#bc90b4",
+        "#c38eb3",
+        "#cc8eaf",
+        "#d58aa9",
+        "#de889c",
+        "#e0b7ba",
+        "#ed8a8c",
+        "#f8d39f",
+        "#f9b59c"
+      ],
+      "seed": 303,
+      "view": "side",
+      "outDir": "../../../website/public/research/parallax/vertical/c"
+    }
+  },
+  "assets": {
+    "massif": {
+      "prompt": "a huge mountain massif seen from the side, a broad snowy summit near the top edge and long pale blue-violet rock slopes running all the way down to the bottom edge of the picture, simple shading, low contrast, about two thirds as wide as the picture, a lone landform game sprite on a plain empty background, nothing else in the picture: no clouds, no sky, no sun, no moon, no trees, side view, transparent background",
+      "width": 200,
+      "height": 200,
+      "styles": [
+        "climb-a",
+        "climb-b",
+        "climb-c"
+      ]
+    },
+    "cloud-puff": {
+      "prompt": "a single puffy cumulus cloud, pink-lit top and blue-violet shaded underside, simple shading, about two thirds as wide as the picture, a lone cloud game sprite on a plain empty background, nothing else in the picture: no sky, no sun, no moon, no mountains, side view, transparent background",
+      "width": 160,
+      "height": 96,
+      "styles": [
+        "climb-a",
+        "climb-b",
+        "climb-c"
+      ]
+    },
+    "cloud-streak": {
+      "prompt": "a single long thin flat stratus cloud streak, pale lilac with a pink-lit upper edge, very simple shading, nearly as wide as the picture, a lone cloud game sprite on a plain empty background, nothing else in the picture: no sky, no sun, no moon, no mountains, side view, transparent background",
+      "width": 192,
+      "height": 48,
+      "styles": [
+        "climb-a",
+        "climb-c"
+      ]
+    },
+    "cliff": {
+      "prompt": "a tall vertical cliff wall of dark blue-grey rock with narrow snowy ledges and a few tiny pine shrubs, the rock fills the left two thirds of the picture from the top edge to the bottom edge, its right side is a jagged rock edge with empty space beyond it, a game level wall sprite, nothing else in the picture: no sky, no ground, no clouds, no sun, side view, transparent background",
+      "width": 128,
+      "height": 304,
+      "styles": [
+        "climb-a",
+        "climb-b",
+        "climb-c"
+      ]
+    },
+    "cloud-bank": {
+      "prompt": "a long flat bank of soft clouds, much wider than tall, pink-lit upper edge and lilac shaded underside, simple shading, nearly as wide as the picture, a lone cloud game sprite on a plain empty background, nothing else in the picture: no sky, no sun, no moon, no mountains, side view, transparent background",
+      "width": 256,
+      "height": 64,
+      "styles": [
+        "climb-a",
+        "climb-b"
+      ]
+    }
+  }
+}

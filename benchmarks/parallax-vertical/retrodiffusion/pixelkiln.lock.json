@@ -1,0 +1,111 @@
+{
+  "version": 2,
+  "entries": {
+    "tile-y/cliff-tile": {
+      "styleId": "tile-y",
+      "assetId": "cliff-tile",
+      "specHash": "adcbbfb9a49a8929a98de6452dbe948033425251aae6cef26f14ce3898655e6a",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a tall vertical cliff wall of dark blue-grey rock with narrow snowy ledges and a few tiny pine shrubs, seen from the side, the rock fills the whole picture, seamless vertical texture for a climbing game",
+      "width": 128,
+      "height": 384,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "283dfb19-e6f6-4be7-91e6-568f2c50561a",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "283dfb19-e6f6-4be7-91e6-568f2c50561a#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=283dfb19-e6f6-4be7-91e6-568f2c50561a&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=283dfb19-e6f6-4be7-91e6-568f2c50561a&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/research/parallax/vertical/retrodiffusion/cliff-tile.png",
+          "sha256": "04edf5bd39a75a557930c70f51e31fd3bbf0895a40dfff702451ec5cee96746d",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.06,
+          "remainingBalance": 8.934,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__default",
+          "width": 128,
+          "height": 384
+        }
+      },
+      "submittedAt": "2026-11-24T05:25:59.532Z",
+      "downloadedAt": "2026-11-24T05:26:08.817Z",
+      "cost": 0.06,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    },
+    "tile-y/sky-tile": {
+      "styleId": "tile-y",
+      "assetId": "sky-tile",
+      "specHash": "15398c55cbe2f57257b39068bd98b248a2c3b03181e96803d77d6a08fd596e4a",
+      "generator": "map",
+      "tileFeature": null,
+      "prompt": "a dusk sky full of scattered puffy pink and lilac clouds over deep blue, seen from below while flying upward, no ground, no mountains, seamless vertical background for a vertical scrolling game",
+      "width": 192,
+      "height": 384,
+      "revision": null,
+      "mirror": null,
+      "batch": null,
+      "outfit": null,
+      "supersededOutputs": [],
+      "jobId": "05fe13eb-89cf-4674-aa6a-69294ce4d9c3",
+      "submissionComplete": true,
+      "reviewObjectId": null,
+      "objectId": "05fe13eb-89cf-4674-aa6a-69294ce4d9c3#0",
+      "candidateIndex": null,
+      "status": "downloaded",
+      "error": null,
+      "sourceUrl": "retrodiffusion://output?job=05fe13eb-89cf-4674-aa6a-69294ce4d9c3&index=0&mediaType=image%2Fpng",
+      "sourceUrls": [
+        {
+          "url": "retrodiffusion://output?job=05fe13eb-89cf-4674-aa6a-69294ce4d9c3&index=0&mediaType=image%2Fpng",
+          "mediaType": "image/png"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "../../../website/public/research/parallax/vertical/retrodiffusion/sky-tile.png",
+          "sha256": "bb0d7b84e0c5472d7ed2a99967528df979e68acc8045f3311abb987482d4c310",
+          "mediaType": "image/png"
+        }
+      ],
+      "providerMetadata": {
+        "retrodiffusion": {
+          "balanceCost": 0.06,
+          "remainingBalance": 8.874,
+          "mediaType": "image/png",
+          "kind": "image",
+          "promptStyle": "rd_plus__default",
+          "width": 192,
+          "height": 384
+        }
+      },
+      "submittedAt": "2026-11-24T05:26:02.036Z",
+      "downloadedAt": "2026-11-24T05:26:09.010Z",
+      "cost": 0.06,
+      "costUnit": "usd",
+      "billed": null,
+      "provider": "retrodiffusion"
+    }
+  }
+}

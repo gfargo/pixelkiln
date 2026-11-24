@@ -25,6 +25,9 @@ Research script for docs/RESEARCH_PARALLAX.md. Rough, takes paths as arguments.
     python3 parallax.py sky <out.png> <w> <h> <#hex,#hex,...>
                                                             flat sky bands with dithered steps
     python3 parallax.py skyline <out.gif|webp> <spec.json>  side-scrolling preview of runs and layers
+    python3 parallax.py climb <out.gif|webp> <spec.json>    vertical preview: the camera climbs through the layers
+    python3 parallax.py wall <png> <out.png> <height> <cap-rows>
+                                                            stack a cliff into a tall wall, looping its body
     python3 parallax.py sheet <out.png> <cols> <#bg> <png>...
                                                             transparent pictures in a grid, enlarged twice
 
@@ -893,6 +896,175 @@ def cmd_skyline(out, spec):
     print(f"{out}: {n} frames, {vw}x{vh}, travel {travel}px, speeds {[s for _, s in layers]}")
 
 
+def cmd_wall(src, out, height, cap):
+    """Stack a generated cliff into a wall `height` rows tall, its summit on top.
+
+    The cliff is trimmed to its opaque box. Its top `cap` rows stay on top as the summit. The
+    rest is the body: the two rows at least 60% of its height apart where the lower one best
+    continues into the upper are found (step 2's cut, turned on its side), and below the body
+    that stretch repeats until the wall is tall enough. Nothing is redrawn and no colour is new.
+    """
+    a = load(src)
+    on = a[:, :, 3] > 0
+    rows, cols = np.nonzero(on.any(1))[0], np.nonzero(on.any(0))[0]
+    a = a[rows[0] : rows[-1] + 1, cols[0] : cols[-1] + 1]
+    cap, height = int(cap), int(height)
+    top, body = a[:cap], a[cap:]
+    d, i, j = best_cut(np.ascontiguousarray(np.transpose(body, (1, 0, 2))), 0.6)
+    loop = body[i:j]
+    parts = [top, body[:j]]
+    while sum(p.shape[0] for p in parts) < height:
+        parts.append(loop)
+    wall = np.concatenate(parts, 0)[:height]
+    save(wall, out)
+    seam = seam_ratio(np.ascontiguousarray(np.transpose(loop, (1, 0, 2))))
+    print(f"{out}: {wall.shape[1]}x{height}, summit {cap} rows, body rows {i}..{j} repeat, seam ratio {seam[2]:.2f}")
+
+
+def cmd_climb(out, spec):
+    """A vertical preview: the camera climbs `climb` px (and pans `travel` px), eased, and back.
+
+    `spec` is a JSON file:
+      {"view": [256, 256], "sky": ["#top", ..., "#horizon"], "sky_speed": 0.05, "stars": 40,
+       "climb": 320, "travel": 0, "frames": 120, "seed": 7,
+       "layers": [
+         {"image": "far.png", "bottom": 150, "speed": 0.125, "extend": true},
+         {"image": "wall.png", "x": 0, "repeat": false, "repeat_y": true, "speed": 1.0},
+         {"scatter": ["cloud.png", ...], "top": -300, "bottom": -60, "count": 6, "speed": 0.5},
+         {"run": ["a.png", ...], "foot": 170, "speed": 0.25},
+         {"fill": "#040920", "top": 206, "speed": 1.0}
+       ]}
+    Rows are view rows at rest: 0 is the top of the view, negative is above it. Each layer has
+    `speed` and optionally its own `speed_y` (default `speed`). A layer gets ceil(climb x
+    speed_y) rows of headroom above the view, which is how tall it must be drawn. `extend`
+    repeats a layer's bottom row down to the canvas foot (true) or that many rows. The sky's
+    bands spread over its whole height, so a climb at `sky_speed_y` passes through them; `stars` scatters
+    single pixels of the top band's lightest neighbour over its top third. The camera is
+    rounded to whole pixels first and each layer offset is floor(camera x speed). With STILL
+    set, frames at the bottom, middle and top of the climb are written side by side.
+    """
+    import json
+
+    cfg = json.load(open(spec))
+    base = os.path.dirname(os.path.abspath(spec))
+    vw, vh = cfg["view"]
+    rng = np.random.default_rng(cfg.get("seed", 7))
+    climb, travel = cfg.get("climb", 240), cfg.get("travel", 0)
+
+    def path(p):
+        return p if os.path.isabs(p) else os.path.join(base, p)
+
+    def blank(sx, sy):
+        head = int(np.ceil(climb * sy)) + 2
+        return np.zeros((head + vh + 2, vw + int(np.ceil(travel * sx)) + 64, 4), np.int16), head
+
+    def stamp(canvas, s, x, y):
+        sh, sw = s.shape[:2]
+        H, W = canvas.shape[:2]
+        ys, xs = np.arange(sh) + y, np.arange(sw) + x
+        oy, ox = (ys >= 0) & (ys < H), (xs >= 0) & (xs < W)
+        if not oy.any() or not ox.any():
+            return
+        sub = s[np.ix_(oy, ox)]
+        m = sub[:, :, 3] > 0
+        region = canvas[ys[oy][0] : ys[oy][-1] + 1, xs[ox][0] : xs[ox][-1] + 1]
+        region[m] = sub[m]
+
+    layers = []
+    sky_speed = cfg.get("sky_speed", 0.05)
+    sky_speed_y = cfg.get("sky_speed_y", sky_speed)
+    sky, sky_head = blank(travel and sky_speed, sky_speed_y)
+    sky[:] = sky_array(sky.shape[1], sky.shape[0], cfg["sky"])
+    if cfg.get("stars"):
+        top = hexrgb(cfg["sky"][0])
+        pal = [hexrgb(c) for c in cfg["sky"]]
+        light = max(pal[1:], key=lambda c: int(c.sum())) if len(pal) > 1 else top
+        third = sky.shape[0] // 3
+        for _ in range(cfg["stars"]):
+            sky[int(rng.integers(third)), int(rng.integers(sky.shape[1])), :3] = light
+    layers.append((sky, sky_head, sky_speed, sky_speed_y))
+
+    for L in cfg["layers"]:
+        sx = L["speed"]
+        sy = L.get("speed_y", sx)
+        canvas, head = blank(sx, sy)
+        H, W = canvas.shape[:2]
+        if "image" in L:
+            img = load(path(L["image"]))
+            ih, iw = img.shape[:2]
+            xs = range(-int(rng.integers(iw)) if L.get("offset") else 0, W, iw) if L.get("repeat", True) else [L.get("x", 0)]
+            if L.get("repeat_y"):
+                bottom = L.get("bottom", vh) + head
+                ys = range(bottom - ih, L.get("top", -head) + head - ih, -ih)
+            else:
+                ys = [L["bottom"] - ih + head]
+            for y in ys:
+                for x in xs:
+                    stamp(canvas, img, x, y)
+            if L.get("extend") and not L.get("repeat_y"):
+                b = min(L["bottom"] + head, H)
+                stop = H if L["extend"] is True else min(H, b + int(L["extend"]))
+                row = canvas[b - 1].copy()
+                canvas[b:stop] = np.where(row[None, :, 3:] > 0, row[None], canvas[b:stop])
+        elif "scatter" in L:
+            sprites = [load(path(p)) for p in L["scatter"]]
+            n, last = L.get("count", 6), -1
+            band = (L["bottom"] - L["top"]) / n
+            for k in range(n):
+                pick = int(rng.integers(len(sprites)))
+                if len(sprites) > 1 and pick == last:
+                    pick = (pick + 1) % len(sprites)
+                last = pick
+                s = sprites[pick][:, ::-1] if rng.random() < 0.5 else sprites[pick]
+                # One sprite per horizontal band, so they spread up the climb instead of clumping.
+                y = int(L["top"] + band * k + rng.uniform(0, max(1, band - s.shape[0] / 2))) + head
+                x = int(rng.uniform(-s.shape[1] / 3, W - s.shape[1] * 2 / 3))
+                stamp(canvas, s, x, y)
+        elif "run" in L:
+            sprites = [load(path(p)) for p in L["run"]]
+            x, last = -int(rng.uniform(0, 32)), -1
+            while x < W:
+                pick = int(rng.integers(len(sprites)))
+                if len(sprites) > 1 and pick == last:
+                    pick = (pick + 1) % len(sprites)
+                last = pick
+                s = sprites[pick][:, ::-1] if rng.random() < 0.5 else sprites[pick]
+                j = L.get("jitter", 0)
+                stamp(canvas, s, x, L["foot"] - s.shape[0] + int(rng.integers(-j, j + 1)) + head)
+                x += int(s.shape[1] * L.get("step", 0.72) + rng.uniform(0, L.get("gap", 16)))
+        elif "fill" in L:
+            y0 = L.get("top", -head) + head
+            y1 = min(H, L.get("bottom", H - head) + head)
+            canvas[y0:y1, :, :3] = hexrgb(L["fill"])
+            canvas[y0:y1, :, 3] = 255
+        layers.append((canvas, head, sx, sy))
+
+    frames = []
+    n = cfg.get("frames", 120)
+    for i in range(n):
+        e = (1 - np.cos(2 * np.pi * i / n)) / 2
+        cy, cx = int(round(e * climb)), int(round(e * travel))
+        frame = np.zeros((vh, vw, 3), np.int16)
+        for canvas, head, sx, sy in layers:
+            oy, ox = int(np.floor(cy * sy)), int(np.floor(cx * sx))
+            part = canvas[head - oy : head - oy + vh, ox : ox + vw]
+            m = part[:, :, 3] > 0
+            frame[m] = part[:, :, :3][m]
+        frames.append(frame)
+    write_gif(frames, out)
+    still = os.environ.get("STILL")
+    if still:
+        picks = [frames[0], frames[n // 4], frames[n // 2]]
+        strip = np.zeros((vh, vw * 3 + 8, 4), np.int16)
+        strip[:, :, :3] = 255
+        strip[:, :, 3] = 255
+        for k, f in enumerate(picks):
+            strip[:, k * (vw + 4) : k * (vw + 4) + vw, :3] = f
+        save(strip, still, int(os.environ.get("SCALE", "1")))
+    heads = {round(sy, 3): int(np.ceil(climb * sy)) for _, _, _, sy in layers}
+    print(f"{out}: {n} frames, {vw}x{vh}, climb {climb}px, travel {travel}px, headroom by speed_y {heads}")
+
+
 def cmd_sheet(out, cols, bg, paths):
     """Transparent pictures on one background colour in a grid, 6 px apart, enlarged twice.
 
@@ -943,6 +1115,8 @@ def main():
         "tint": lambda: cmd_tint(*args),
         "sky": lambda: cmd_sky(*args),
         "skyline": lambda: cmd_skyline(*args),
+        "climb": lambda: cmd_climb(*args),
+        "wall": lambda: cmd_wall(*args),
         "sheet": lambda: cmd_sheet(args[0], args[1], args[2], args[3:]),
     }[cmd]()
 

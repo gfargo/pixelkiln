@@ -1,0 +1,11 @@
+{
+  "view": [192, 256],
+  "sky": ["#203f7b"],
+  "climb": 768,
+  "frames": 160,
+  "seed": 3,
+  "layers": [
+    {"image": "../../website/public/research/parallax/vertical/picked/sky-tile.png", "repeat_y": true, "bottom": 256, "speed": 0, "speed_y": 0.5},
+    {"scatter": ["../../website/public/research/parallax/vertical/picked/a-cloud-puff.sky.png", "../../website/public/research/parallax/vertical/picked/b-cloud-puff.sky.png", "../../website/public/research/parallax/vertical/picked/c-cloud-puff.sky.png"], "top": -800, "bottom": 200, "count": 7, "speed": 0, "speed_y": 1.0}
+  ]
+}
