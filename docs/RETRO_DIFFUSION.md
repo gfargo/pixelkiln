@@ -257,11 +257,12 @@ resolves that reference to the current result URL and downloads it immediately.
 it needs `RD_API_KEY` to refresh the task result. Candidate image URLs are used
 only by the local picker and are not written to the lockfile.
 
-The shared PixelKiln manifest currently allows arbitrary width and height from
-16 to 400 pixels, while Retro Diffusion styles can impose smaller limits. In
-the current service catalog, the useful environment and scene-object styles
-top out at 384px. Build very large scenes from separate terrain, background,
-building, landmark, and foreground layers.
+The PixelKiln manifest allows width and height from 16 to 8192 pixels, but
+Retro Diffusion output is 16 to 512 pixels, and PixelKiln refuses a larger size
+while planning. Many styles have narrower limits. In the live catalog on 23
+November 2026, `rd_plus__environment` takes 64 to 512 pixels and
+`rd_tile__scene_object` takes 64 to 384. Build very large scenes from separate
+terrain, background, building, landmark, and foreground layers.
 
 The [environment benchmark](./PROVIDER_BENCHMARK.md) found clean transparent,
 low-color Retro Diffusion cutouts, while PixelLab followed the more complex
