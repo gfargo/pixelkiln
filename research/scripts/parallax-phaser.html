@@ -1,0 +1,74 @@
+<!doctype html>
+<!--
+  Checks parallax sets in Phaser 3 against `pixelkiln parallax preview`'s frames.
+  Each layer is a Phaser image with setScrollFactor(speed, speedY), copied where it
+  repeats; the camera scrolls (x, -climb). For each set id in SETS below, the folder
+  beside this page needs <id>/<id>.preview.pixelkiln.json and <id>/<id>.preview.png
+  (pixelkiln parallax preview <id> --frames 9 --out <id>) and the layer pictures in
+  <id>/godot/ (pixelkiln parallax export <id> --format godot --out <id>). Serve the
+  folder over http (python3 -m http.server) and open this page; results print on it.
+-->
+<html><head><meta charset="utf-8"><title>Phaser parallax check</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+</head><body style="background:#222;color:#ddd;font:14px monospace"><pre id="log"></pre>
+<script>
+const log = (s) => { document.getElementById("log").textContent += s + "\n"; };
+window.results = [];
+function loadImage(src) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; }); }
+async function check(id) {
+  const meta = await (await fetch(`${id}/${id}.preview.pixelkiln.json`)).json();
+  const o = meta.options;
+  const [vw, vh] = o.view;
+  const frames = o.preview.frames;
+  const positions = Array.from({ length: frames }, (_, i) => { const t = frames === 1 ? 0 : i / (frames - 1); const e = (1 - Math.cos(t * Math.PI)) / 2; return [Math.round(e * o.travel), Math.round(e * o.climb)]; });
+  const strip = await loadImage(`${id}/${id}.preview.png`);
+  const ref = document.createElement("canvas"); ref.width = strip.width; ref.height = strip.height;
+  const rctx = ref.getContext("2d"); rctx.drawImage(strip, 0, 0);
+  return new Promise((resolve) => {
+    let step = -1;
+    const game = new Phaser.Game({
+      type: Phaser.CANVAS, width: vw, height: vh, pixelArt: true, roundPixels: true, transparent: true, banner: false,
+      scene: {
+        preload() { for (const l of o.layers) this.load.image(l.name, `${id}/godot/${id}-${l.name}.png`); },
+        create() {
+          for (const l of o.layers) {
+            const tex = this.textures.get(l.name).getSourceImage();
+            const w = tex.width, h = tex.height;
+            const span = (pos, size, view, travel, speed) => {
+              const lo = Math.floor((-size - pos - travel * speed) / size) - 1, hi = Math.ceil((view + travel * speed - pos) / size) + 1;
+              return Array.from({ length: hi - lo + 1 }, (_, k) => pos + (lo + k) * size);
+            };
+            const xs = l.repeat ? span(l.x, w, vw, o.travel, l.speed) : [l.x];
+            const ys = l.repeatY ? span(l.y, h, vh, o.climb, l.speedY).concat(span(l.y, h, vh, -o.climb, l.speedY)) : [l.y];
+            for (const y of [...new Set(ys)]) for (const x of xs) this.add.image(x, y, l.name).setOrigin(0, 0).setScrollFactor(l.speed, l.speedY);
+          }
+          this.cameras.main.roundPixels = true;
+          step = 0;
+          this.cameras.main.setScroll(positions[0][0], -positions[0][1]);
+          let wait = 0;
+          game.events.on("postrender", () => {
+            if (step < 0 || step >= frames) return;
+            if (wait++ < 2) return;
+            wait = 0;
+            const got = game.canvas.getContext("2d").getImageData(0, 0, vw, vh).data;
+            const want = rctx.getImageData(step * vw, 0, vw, vh).data;
+            let diff = 0;
+            for (let p = 0; p < vw * vh; p++) {
+              let d = 0;
+              for (let c = 0; c < 3; c++) d = Math.max(d, Math.abs(got[p * 4 + c] - want[p * 4 + c]));
+              if (d > 2) diff++;
+            }
+            const line = `${id} camera ${positions[step]}: ${diff} of ${vw * vh} pixels differ`;
+            log(line); window.results.push(line);
+            step++;
+            if (step >= frames) { game.destroy(true); resolve(); return; }
+            this.cameras.main.setScroll(positions[step][0], -positions[step][1]);
+          });
+        },
+      },
+    });
+  });
+}
+(async () => { const SETS = new URLSearchParams(location.search).get("sets")?.split(",") ?? ["alpine-dusk", "climb", "endless"];
+  for (const id of SETS) await check(id); window.done = true; log("done"); })();
+</script></body></html>

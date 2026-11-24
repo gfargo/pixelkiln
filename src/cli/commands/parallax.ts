@@ -39,9 +39,8 @@ export async function runParallax(args: Args): Promise<void> {
       await provenanceFile("$lock", args.lock),
       ...(await Promise.all(
         set.layers
-          .map((layer) => layer.source)
-          .filter((source) => source.kind !== "sky")
-          .map((source, index) => provenanceFile(`layer${index + 1}`, (source as { path: string }).path)),
+          .filter((layer) => layer.source.kind !== "sky")
+          .map((layer) => provenanceFile(`layer:${layer.name}`, (layer.source as { path: string }).path)),
       )),
     ]
     const describe = setOptions(set)

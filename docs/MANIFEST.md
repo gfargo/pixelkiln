@@ -745,8 +745,9 @@ style with `outDir: "art/cast"` lands as `art/cast/bot-south.png`,
 ## Parallax sets
 
 A `parallax` set names a background's layers, far to near, for `pixelkiln
-parallax preview` and `export`. It changes nothing about generation: the
-assets it names are planned, generated and locked as usual. The
+parallax preview` and `export`. It changes nothing about generation. The
+assets it names are planned, generated and locked as usual. A set id is
+letters, digits, `-` and `_`, since it names folders and a Godot node. The
 [parallax guide](./PARALLAX.md) walks through building one.
 
 | Set field | Required | Meaning |

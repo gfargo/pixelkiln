@@ -114,11 +114,17 @@ function columnDiff(png: DecodedPng, a: number, b: number): number {
  */
 export function seamRatio(png: DecodedPng): number {
   if (png.width < 3) return 0
+  // Only steps that change count: art drawn at 2x, or flat art, repeats most
+  // columns exactly, and a median of 0 would make any join look infinitely rough.
   const inner: number[] = []
-  for (let x = 0; x < png.width - 1; x++) inner.push(columnDiff(png, x, x + 1))
+  for (let x = 0; x < png.width - 1; x++) {
+    const step = columnDiff(png, x, x + 1)
+    if (step > 0) inner.push(step)
+  }
+  const seam = columnDiff(png, png.width - 1, 0)
+  if (!inner.length) return seam > 0 ? Infinity : 0
   inner.sort((a, b) => a - b)
-  const median = inner[Math.floor(inner.length / 2)]!
-  return columnDiff(png, png.width - 1, 0) / Math.max(median, 1e-6)
+  return seam / inner[Math.floor(inner.length / 2)]!
 }
 
 function layerName(layer: ParallaxLayer, index: number): string {
@@ -204,6 +210,13 @@ export async function resolveParallaxSet(
       image.seamRatioY = seamRatio(transpose(png))
       if (climb * speedY > 0 && image.seamRatioY > SEAM_WARN_RATIO) {
         warnings.push(`${name}: its vertical join is ${image.seamRatioY.toFixed(1)} times rougher than the picture's own steps`)
+      }
+    }
+    if (climb > 0 && !image.repeatY && png.width >= viewW && image.y <= 0) {
+      // A backdrop that fills the top of the view at the start must still fill it at the top of the climb.
+      const shown = Math.round(climb * speedY)
+      if (image.y + shown > 0) {
+        warnings.push(`${name}: fills the top of the view at the start, but ${image.y + shown} empty row(s) show above it at the top of the climb; draw it taller or set repeatY`)
       }
     }
     if (!repeat && png.width >= viewW) {
@@ -305,9 +318,12 @@ export interface ParallaxExport {
 /**
  * A Tiled map (JSON, .tmj) with one image layer per parallax layer. The map
  * is the level: `travel` wider and `climb` taller than the view, with the
- * start view in its bottom-left corner. Tiled puts a layer at its offset when
- * the view's centre is on the map's parallax origin, so the origin is the
- * start view's centre.
+ * start view in its bottom-left corner. Tiled moves a layer by (1 - factor)
+ * x the view's centre measured from the map's parallax origin. The origin
+ * is left at (0, 0), and each layer's offset takes back what the start
+ * view's centre would move it, so loaders that ignore the origin agree, and
+ * so does Tiled 1.11+, whose editor applies a non-zero origin with the
+ * opposite sign to its manual (src/tiled/mapscene.cpp, parallaxOffset).
  */
 export function exportTiled(set: ResolvedParallaxSet, base: string): ParallaxExport {
   const [vw, vh] = set.view
@@ -322,8 +338,8 @@ export function exportTiled(set: ResolvedParallaxSet, base: string): ParallaxExp
     image: file,
     imagewidth: layer.png.width,
     imageheight: layer.png.height,
-    offsetx: layer.x,
-    offsety: layer.y + set.climb,
+    offsetx: tiledNumber(layer.x - (1 - layer.speed) * (vw / 2)),
+    offsety: tiledNumber(layer.y + set.climb - (1 - layer.speedY) * (set.climb + vh / 2)),
     parallaxx: layer.speed,
     parallaxy: layer.speedY,
     repeatx: layer.repeat,
@@ -344,8 +360,6 @@ export function exportTiled(set: ResolvedParallaxSet, base: string): ParallaxExp
     height: Math.ceil(mapH / grid),
     tilewidth: grid,
     tileheight: grid,
-    parallaxoriginx: vw / 2,
-    parallaxoriginy: set.climb + vh / 2,
     nextlayerid: layers.length + 1,
     nextobjectid: 1,
     compressionlevel: -1,
@@ -360,6 +374,10 @@ export function exportTiled(set: ResolvedParallaxSet, base: string): ParallaxExp
     files: [{ path: `${base}.tmj`, data: JSON.stringify(map, null, 2) + "\n" }, ...pictures.map((p) => ({ path: path.join(path.dirname(base), p.file), data: p.png }))],
     options: { format: "tiled", start: [0, set.climb] },
   }
+}
+
+function tiledNumber(value: number): number {
+  return Number(value.toFixed(6))
 }
 
 function godotNumber(value: number): string {
@@ -437,6 +455,7 @@ export function exportLdtk(set: ResolvedParallaxSet, base: string): ParallaxExpo
   const name = path.basename(base)
   const files: Array<{ path: string; data: Buffer | string }> = []
   const warnings: string[] = []
+  const identifiers = new Set<string>()
   const layerDefs: unknown[] = []
   const tilesets: unknown[] = []
   const layerInstances: unknown[] = []
@@ -452,37 +471,37 @@ export function exportLdtk(set: ResolvedParallaxSet, base: string): ParallaxExpo
     const y1 = vh
     // LDtk draws a tile at its cell plus round(offset + (camera centre - layer
     // centre) x factor), where the layer is the level less its own offset, so
-    // the offset feeds back into the centre. Solve for the start view (camera
-    // at the level's bottom-left) putting the span on its canvas position.
+    // the offset feeds back into the centre. Pick the offset within a tile
+    // whose unrounded value is nearest a whole pixel, so camera positions
+    // round as the preview does, and put what is left of a tile into
+    // transparent padding at the start of the picture, so the start view
+    // lands exactly on any speed.
     const place = (canvas: number, start: number, extent: number, factor: number) => {
-      // Try offsets up to a few tiles: keep those that land the start view
-      // exactly, and of those the one whose unrounded offset is a whole pixel
-      // (or nearest one), so later camera positions round as the preview does.
-      let best: { cell: number; off: number; cells: number; frac: number } | null = null
-      for (let off = 0; off < grid * 4 && (!best || best.frac > 1e-9); off++) {
+      let best = { off: 0, rounded: 0, frac: Infinity }
+      for (let off = 0; off < grid; off++) {
         const shift = off + (start - (extent - off) / 2) * factor
-        const landed = canvas - Math.round(shift)
-        if (((landed % grid) + grid) % grid !== 0) continue
         const frac = Math.abs(shift - Math.round(shift))
-        if (!best || frac < best.frac - 1e-9) best = { cell: landed / grid, off, cells: Math.ceil((extent - off) / grid), frac }
+        if (frac < best.frac - 1e-9) best = { off, rounded: Math.round(shift), frac }
       }
-      if (!best) throw new Error(`ldtk export: no layer offset places ${layer.name} on its start position`)
-      return best
+      const pad = (((canvas - best.rounded) % grid) + grid) % grid
+      return { off: best.off, pad, cell: (canvas - best.rounded - pad) / grid, cells: Math.ceil((extent - best.off) / grid) }
     }
     const px = place(x0, vw / 2, levelW, factorX)
     const py = place(y0 + set.climb, levelH - vh / 2, levelH, factorY)
     const offX = px.off
     const offY = py.off
-    const cols = Math.ceil((x1 - x0) / grid)
-    const rows = Math.ceil((y1 - y0) / grid)
+    const cols = Math.ceil((px.pad + x1 - x0) / grid)
+    const rows = Math.ceil((py.pad + y1 - y0) / grid)
     const span: DecodedPng = { width: cols * grid, height: rows * grid, pixels: Buffer.alloc(cols * grid * rows * grid * 4) }
-    drawLayer(span, layer, layer.x - x0, layer.y - y0)
+    drawLayer(span, layer, px.pad + layer.x - x0, py.pad + layer.y - y0)
     const file = `${name}-${layer.name}.png`
     files.push({ path: path.join(path.dirname(base), file), data: encodeRgbaPng(span.width, span.height, span.pixels) })
 
     const tilesetUid = uid++
     const layerUid = uid++
-    const identifier = layer.name.replace(/[^A-Za-z0-9_]/g, "_")
+    let identifier = layer.name.replace(/[^A-Za-z0-9_]/g, "_")
+    for (let n = 2; identifiers.has(identifier); n++) identifier = `${layer.name.replace(/[^A-Za-z0-9_]/g, "_")}_${n}`
+    identifiers.add(identifier)
     tilesets.push({
       __cWid: cols,
       __cHei: rows,
@@ -555,8 +574,8 @@ export function exportLdtk(set: ResolvedParallaxSet, base: string): ParallaxExpo
     }
     if (dropped) {
       warnings.push(
-        `${layer.name}: ${dropped} tile(s) fall past the level's edge, which LDtk does not draw; ` +
-          "a layer faster than the camera shows more than the level holds",
+        `${layer.name}: ${dropped} tile(s) fall past the level's edge, which LDtk does not draw` +
+          (layer.speed > 1 || layer.speedY > 1 ? "; a layer faster than the camera shows more than the level holds" : ""),
       )
     }
     layerInstances.unshift({
@@ -702,7 +721,7 @@ export function previewHtml(set: ResolvedParallaxSet, scale = 3): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${set.id} parallax</title>
+<title>${set.id.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)} parallax</title>
 <style>
   :root { color-scheme: dark; }
   body { margin: 0; background: #111318; color: #d8dae0; font: 14px/1.4 system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; }

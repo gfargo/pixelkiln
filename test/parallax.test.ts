@@ -58,6 +58,22 @@ const differing = (a: DecodedPng, b: DecodedPng) => {
   return n
 }
 
+/** The smallest sideways shift (0 to 2 px) at which `got` matches `want`, ignoring the columns the shift uncovers; 99 if none. */
+function nearestShift(got: DecodedPng, want: DecodedPng): number {
+  for (const shift of [0, 1, -1, 2, -2]) {
+    let ok = true
+    for (let y = 0; y < want.height && ok; y++) {
+      for (let x = 2; x < want.width - 2 && ok; x++) {
+        const a = (y * want.width + x) * 4
+        const b = (y * want.width + x + shift) * 4
+        if ([0, 1, 2, 3].some((c) => got.pixels[b + c] !== want.pixels[a + c])) ok = false
+      }
+    }
+    if (ok) return Math.abs(shift)
+  }
+  return 99
+}
+
 /**
  * Draws an exported LDtk level the way LDtk's editor does: each tile at its
  * cell (counted across the layer, which is the level less the layer's pixel
@@ -126,6 +142,14 @@ describe("parallax layers", () => {
     expect(seamRatio(looped)).toBeLessThan(seamRatio(ramp))
   })
 
+  it("does not call a picture drawn at 2x rough", () => {
+    const base = striped(32, 4, 0)
+    for (let y = 0; y < 4; y++) base.pixels.copy(base.pixels, (y * 32 + 31) * 4, (y * 32) * 4, (y * 32) * 4 + 4)
+    const doubled: DecodedPng = { width: 64, height: 4, pixels: Buffer.alloc(64 * 4 * 4) }
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 64; x++) base.pixels.copy(doubled.pixels, (y * 64 + x) * 4, (y * 32 + (x >> 1)) * 4, (y * 32 + (x >> 1)) * 4 + 4)
+    expect(seamRatio(doubled)).toBeLessThan(2)
+  })
+
   it("extends the bottom row down", () => {
     const png = extendDown(striped(4, 2, 1), 3)
     expect(png.height).toBe(5)
@@ -175,8 +199,18 @@ describe("parallax exports", () => {
       ["far", "imagelayer", 0.25, true],
       ["near", "imagelayer", 1, true],
     ])
-    // The parallax origin is the start view's centre, where layers sit at their offsets.
-    expect([map.parallaxoriginx, map.parallaxoriginy]).toEqual([32, 24])
+    // The origin stays at (0, 0); each offset takes back what the start view's centre moves it.
+    expect(map.parallaxoriginx).toBeUndefined()
+    expect(map.layers.map((l: { offsetx: number }) => l.offsetx)).toEqual([-32, -24, 0])
+    // Tiled draws a layer at offset + (1 - factor) x view centre; with the camera
+    // moved camX that must equal the preview's x - round(camX x speed) + camX.
+    const s = sample()
+    for (const camX of [0, 10, 96]) {
+      for (const [i, l] of map.layers.entries()) {
+        const drawn = l.offsetx + (1 - l.parallaxx) * (32 + camX) - camX
+        expect(drawn).toBeCloseTo(s.layers[i]!.x - camX * s.layers[i]!.speed, 6)
+      }
+    }
     expect(result.files.slice(1).map((f) => path.basename(f.path))).toEqual(["bg-sky.png", "bg-far.png", "bg-near.png"])
   })
 
@@ -206,6 +240,28 @@ describe("parallax exports", () => {
     ])
     for (const camX of [0, 1, 2, 6, 7, 33, 50, 96]) {
       expect(differing(await drawLdtk(`${base}.ldtk`, s.view, camX, 0), composeParallaxFrame(s, camX, 0)), `camera ${camX}`).toBe(0)
+    }
+  })
+
+  it("lands every LDtk layer's start view exactly, at any view, travel and speed", async () => {
+    let n = 0
+    for (const [vw, vh] of [[384, 216], [320, 180], [256, 144], [480, 270]] as Array<[number, number]>) {
+      for (const travel of [160, 330, 480]) {
+        for (const speed of [0, 0.1, 0.125, 0.33, 0.5, 0.75, 1, 1.3, 3]) {
+          const s = set([layer(striped(vw, vh, n % 7, (x, y) => (x * 3 + y) % 11 === 0), { name: "l", speed, speedY: 1 })], { view: [vw, vh], travel })
+          const base = path.join(dir, `sweep${n++}`)
+          const result = exportLdtk(s, base)
+          for (const file of result.files) await writeFile(file.path, file.data)
+          // A layer faster than the camera may lose tiles past the level's edge; anything else loses none.
+          if (speed > 1) continue
+          const at = `${vw}x${vh} travel ${travel} speed ${speed}`
+          expect(result.options.warnings, at).toEqual([])
+          expect(differing(await drawLdtk(`${base}.ldtk`, s.view, 0, 0), composeParallaxFrame(s, 0, 0)), at).toBe(0)
+          // Where no offset within a tile makes LDtk's offset a whole pixel, later
+          // positions may round one pixel apart from the preview, never more.
+          expect(nearestShift(await drawLdtk(`${base}.ldtk`, s.view, travel, 0), composeParallaxFrame(s, travel, 0)), at).toBeLessThanOrEqual(1)
+        }
+      }
     }
   })
 
@@ -259,6 +315,32 @@ describe("pixelkiln parallax", () => {
     expect(decodePng(await readFile(path.join(out, "dusk.preview.png"))).width).toBe(64 * 3)
     expect(await readFile(path.join(out, "dusk.preview.html"), "utf8")).toContain("image-rendering: pixelated")
     expect(await readFile(path.join(out, "godot", "dusk.tscn"), "utf8")).toContain('type="Parallax2D"')
+  })
+
+  it("rejects a set id that is not safe for a folder or a node name", async () => {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "p",
+      styles: { s: { palette: ["#000000", "#ffffff"], outDir: "out" } },
+      assets: {},
+      parallax: { "../escape": { view: [64, 48], layers: [{ sky: ["#000000"], speed: 0 }] } },
+    }))
+    await expect(loadManifest(manifestPath)).rejects.toThrow(/set id/)
+  })
+
+  it("warns when a climbing backdrop runs out above the view", async () => {
+    await writeFile(path.join(dir, "back.png"), encodeRgbaPng(64, 60, striped(64, 60, 2).pixels))
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "p",
+      styles: { s: { palette: ["#000000", "#ffffff"], outDir: "out" } },
+      assets: {},
+      parallax: { up: { view: [64, 48], travel: 0, climb: 40, layers: [{ file: "back.png", speed: 0.5, speedY: 0.5 }] } },
+    }))
+    const loaded = await loadManifest(manifestPath)
+    const resolved = await resolveParallaxSet(loaded.manifest, dir, { version: 2, entries: {} } as unknown as Lock, "up")
+    // 60 rows ending at row 48 start at row -12; a 40 px climb at 0.5 shows 20 rows higher.
+    expect(resolved.warnings.join("\n")).toMatch(/8 empty row\(s\) show above it/)
   })
 
   it("rejects a layer whose asset is not in the manifest", async () => {

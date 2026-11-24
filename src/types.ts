@@ -2570,8 +2570,8 @@ export const ParallaxLayerSchema = z
     /** The canvas row the layer's bottom edge sits on; the view's height when absent. */
     bottom: z.number().int().min(-100_000).max(100_000).optional(),
     /**
-     * Repeat the bottom row downward: true to the foot of the view (and the
-     * climb), or this many rows. A far range extended this way gives nearer
+     * Repeat the bottom row downward: true to the foot of the view, or this
+     * many rows. A far range extended this way gives nearer
      * layers' feet distant land to dissolve into instead of floating.
      */
     extend: z.union([z.boolean(), z.number().int().min(1).max(4096)]).optional(),
@@ -2604,6 +2604,9 @@ export const ParallaxSetSchema = z
   })
   .strict()
 
+/** A set id names output folders and a Godot node, so it keeps to letters, digits, - and _. */
+export const ParallaxSetIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/, "a set id is letters, digits, - and _, starting with a letter or digit")
+
 export type ParallaxLayer = z.infer<typeof ParallaxLayerSchema>
 export type ParallaxSet = z.infer<typeof ParallaxSetSchema>
 
@@ -2618,7 +2621,7 @@ export const ManifestSchema = z
     styles: z.record(StyleSchema),
     assets: z.record(AssetSchema),
     /** Parallax backgrounds built from the assets, by set id. */
-    parallax: z.record(ParallaxSetSchema).optional(),
+    parallax: z.record(ParallaxSetIdSchema, ParallaxSetSchema).optional(),
   })
   .strict()
 
@@ -2631,7 +2634,7 @@ export const ManifestInputSchema = z
     history: HistoryLimitSchema.optional(),
     styles: z.record(StyleInputSchema),
     assets: z.record(AssetSchema),
-    parallax: z.record(ParallaxSetSchema).optional(),
+    parallax: z.record(ParallaxSetIdSchema, ParallaxSetSchema).optional(),
   })
   .strict()
 

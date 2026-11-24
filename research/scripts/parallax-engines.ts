@@ -9,12 +9,18 @@
  * Maker (`--write-movie`, which opens a window) and compares the frames.
  * `--snap` turns on Rendering > 2D > Snap 2D Transforms to Pixel.
  *
+ * Tiled: exports with `--format tiled`, bakes Tiled's parallax offset for
+ * each camera position into a copy of the map and renders it with Tiled's
+ * tmxrasterizer (set TMXRASTERIZER, or the macOS app is used).
+ *
  * LDtk: exports with `--format ldtk` and draws the level the way LDtk's
  * editor does (Camera.getParallaxOffsetX and LayerInstance.pxParallaxX in
  * LDtk's source), since the editor itself has no command line.
  *
  * Camera positions are how far right and how far up the camera has moved
  * from the start. Needs a Godot 4.3+ binary (GODOT, or the macOS app).
+ * Phaser has no file format; research/scripts/parallax-phaser.html checks it
+ * in a browser.
  */
 import { execFile } from "node:child_process"
 import { existsSync } from "node:fs"
@@ -129,6 +135,49 @@ if (!godot) {
     const frame = (i + 1) * hold - 2
     const got = decodePng(await readFile(path.join(project, "out", `f${String(frame).padStart(8, "0")}.png`)))
     console.log(`  camera ${x},${y}: ${differing(composeParallaxFrame(set, x, y), got)} of ${vw * vh} pixels differ`)
+  }
+}
+
+// Tiled ------------------------------------------------------------------
+// Tiled's editor applies parallax only on screen, and its tmxrasterizer draws
+// layers at their offsets. So for each camera position the offset Tiled's
+// editor would add, (1 - factor) x the view's centre measured from the map's
+// origin (MapScene::parallaxOffset; the export leaves the origin at 0, 0), is
+// baked into a copy of the map, Tiled renders the copy, and the view is cut out.
+const rasterizer = [process.env.TMXRASTERIZER, "/Applications/Tiled.app/Contents/MacOS/tmxrasterizer", "/usr/bin/tmxrasterizer"]
+  .filter((candidate): candidate is string => Boolean(candidate))
+  .find((candidate) => existsSync(candidate))
+if (!rasterizer) {
+  console.log("tiled: no tmxrasterizer found; set TMXRASTERIZER")
+} else {
+  await cli("tiled")
+  const tmj = path.join(work, "export", "tiled", `${setId}.tmj`)
+  const map = JSON.parse(await readFile(tmj, "utf8"))
+  console.log("tiled (rendered by tmxrasterizer)")
+  for (const [camX, camY] of positions) {
+    const cx = vw / 2 + camX
+    const cy = set.climb + vh / 2 - camY
+    const baked = structuredClone(map)
+    for (const layer of baked.layers) {
+      layer.offsetx = Math.round(layer.offsetx + (1 - layer.parallaxx) * cx)
+      layer.offsety = Math.round(layer.offsety + (1 - layer.parallaxy) * cy)
+      layer.parallaxx = 1
+      layer.parallaxy = 1
+    }
+    const copy = path.join(work, "export", "tiled", "camera.tmj")
+    const png = path.join(work, "export", "tiled", "camera.png")
+    await writeFile(copy, JSON.stringify(baked))
+    await run(rasterizer, ["--no-smoothing", copy, png])
+    const image = decodePng(await readFile(png))
+    // The render starts at the corner of the map and of every layer that does not repeat.
+    const left = Math.min(0, ...baked.layers.filter((l: { repeatx: boolean }) => !l.repeatx).map((l: { offsetx: number }) => l.offsetx))
+    const top = Math.min(0, ...baked.layers.filter((l: { repeaty: boolean }) => !l.repeaty).map((l: { offsety: number }) => l.offsety))
+    const view: DecodedPng = { width: vw, height: vh, pixels: Buffer.alloc(vw * vh * 4) }
+    for (let y = 0; y < vh; y++) {
+      const from = ((set.climb - camY - top + y) * image.width + camX - left) * 4
+      if (from >= 0 && from + vw * 4 <= image.pixels.length) image.pixels.copy(view.pixels, y * vw * 4, from, from + vw * 4)
+    }
+    console.log(`  camera ${camX},${camY}: ${differing(composeParallaxFrame(set, camX, camY), view)} of ${vw * vh} pixels differ`)
   }
 }
 

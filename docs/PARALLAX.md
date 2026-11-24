@@ -223,7 +223,7 @@ nothing.
   the layers in front dissolve into distant land, not into sky.
 - `asset` reads the generated picture from the lockfile. Add `style` when the
   asset has more than one.
-- A one-colour `sky` is a flat fill: the `ground` layer above fills the strip
+- A one-colour `sky` is a flat fill. The `ground` layer above fills the strip
   under the treeline.
 
 The command has no silhouette runs yet. Lay runs with the script, which draws
@@ -274,19 +274,27 @@ the layer pictures it uses and a provenance record:
 
 | Format | What it writes |
 |---|---|
-| Tiled | A map (`.tmj`) with one image layer per parallax layer, `parallaxx` and `parallaxy` set to the speeds, `repeatx` on looping layers. The map's parallax origin is the start view's centre, where Tiled puts layers at their offsets. |
+| Tiled | A map (`.tmj`) with one image layer per parallax layer, `parallaxx` and `parallaxy` set to the speeds, `repeatx` on looping layers. Each layer's offset allows for where the camera starts, and the map's parallax origin stays at (0, 0). |
 | Godot 4.3+ | A scene (`.tscn`) with one `Parallax2D` per layer holding a `Sprite2D`, `scroll_scale` set to the speeds and `repeat_size` to the picture. Instance it next to a `Camera2D` whose top-left starts at `(0, climb)`. |
-| LDtk | A project (`.ldtk`) with one level as wide as the camera's travel. LDtk has no image layer, so each layer is a Tiles layer over a picture of everything the camera can see of it, repeats included, with `parallaxFactorX` = 1 − speed and scaling off. |
+| LDtk | A project (`.ldtk`) with one level the size of the view plus the camera's travel. LDtk has no image layer, so each layer is a Tiles layer over a picture of everything the camera can see of it, repeats included, with `parallaxFactorX` = 1 − speed and scaling off. |
 
-We checked the exports against the preview, pixel for pixel. Godot 4.7
-rendered every camera position the same as the preview, sideways, climbing and
-in a vertical loop, with Rendering > 2D > Snap 2D Transforms to Pixel on. Turn
-it on for pixel art: without it, a layer sitting on a half pixel is sampled
-differently. The LDtk level, drawn the way LDtk's editor draws it, matched as
-well, except where a layer moves faster than the camera, since LDtk draws
-nothing past a level's edge. The command warns when that happens. We have not
-opened the Tiled map in Tiled. Step 22 of the [research note](./RESEARCH_PARALLAX.md)
-has the numbers.
+We checked the exports against the preview, pixel for pixel, at camera
+positions sideways, climbing and in a vertical loop. Godot 4.7, Tiled 1.12's
+renderer and Phaser 3.80 drew every one the same as the preview, and so did
+the LDtk level drawn the way LDtk's editor draws it. Step 22 of the
+[research note](./RESEARCH_PARALLAX.md) has the numbers.
+
+- **Godot.** Turn on Rendering > 2D > Snap 2D Transforms to Pixel for pixel
+  art. Without it, a layer sitting on a half pixel is sampled differently.
+- **Tiled.** Leave the map's parallax origin at (0, 0). Tiled 1.11 and later
+  draw a non-zero origin with the opposite sign to its manual, so the export
+  puts the start into each layer's offset instead.
+- **LDtk.** A layer faster than the camera can show more than the level holds,
+  and LDtk draws nothing past a level's edge. The command warns when tiles are
+  lost. Where a layer's speed leaves LDtk's offset between two pixels, it can
+  round a pixel away from the preview later in the level.
+- **Phaser.** It has no file format. Use `setScrollFactor(speed, speedY)` with
+  `roundPixels` on, as the table below says.
 
 Speed is the fraction of the camera's movement a layer follows. The previews
 use 0 for the sky, 1/8 for the far range, 1/4 and 1/2 for the two tiers, and 1
@@ -407,7 +415,8 @@ are both in [`benchmarks/parallax-vertical/climb`](../benchmarks/parallax-vertic
 ```
 
 For a layer that repeats vertically the command measures that join too. The
-Retro Diffusion sky's comes out at 1.9.
+Retro Diffusion sky's comes out at 1.6. The command counts only the steps
+where the picture changes, so it reads a little lower than the script's 1.9.
 
 The same layer at a quarter of the camera's speed both ways:
 

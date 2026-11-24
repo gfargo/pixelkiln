@@ -17,12 +17,14 @@ and numbers, at https://pixelkiln.griffen.codes/docs/research-parallax.
   foot. Layers repeat sideways unless `repeat: false`; `repeatY` loops up.
 - A set has `view` and `travel`; a climbing set adds `climb` and `speedY`.
 - `pixelkiln parallax preview <set>` writes a scrolling HTML page and a strip
-  of frames. Read its warnings: a rough join (loop the layer first), a
-  backdrop that ends before the camera does, LDtk tiles past the level edge.
-- `pixelkiln parallax export <set> [--format tiled|godot|ldtk]`. Godot and
-  LDtk output were checked pixel for pixel against the preview; tell the user
-  to turn on Godot's Rendering > 2D > Snap 2D Transforms to Pixel. The Tiled
-  map has not been opened in Tiled.
+  of frames. Read its warnings: a rough join (loop the layer first), or a
+  backdrop that ends before the camera does, sideways or at the top of a
+  climb. Export adds one for LDtk tiles past the level's edge.
+- `pixelkiln parallax export <set> [--format tiled|godot|ldtk]`. Godot,
+  Tiled and Phaser (`setScrollFactor`) were checked pixel for pixel against
+  the preview, and LDtk by its drawing code. Tell the user to turn on Godot's
+  Rendering > 2D > Snap 2D Transforms to Pixel, and to keep a Tiled map's
+  parallax origin at (0, 0), since Tiled 1.11+ applies a non-zero one backwards.
 - Not in the command: silhouette runs, haze, dithered feet, looping. Finish
   those with `research/scripts/parallax.py` and name the results as `file`
   layers.

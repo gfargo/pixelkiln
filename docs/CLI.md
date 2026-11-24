@@ -1315,13 +1315,14 @@ pixelkiln parallax export dusk                # Tiled .tmj, Godot .tscn and LDtk
 pixelkiln parallax export dusk --format godot --out game/bg
 ```
 
-The set id may be left out when the manifest has one set. Output goes to
+Without a set id the command runs every set, and `--out` then needs one. Output goes to
 `parallax/<set>/` beside the manifest, or `--out`; each export format gets its
 own folder with the layer pictures it uses and a `.pixelkiln.json` provenance
 record, which `--force` overwrites. The command prints each layer's size,
 position, speeds and seam ratio, and warns about a looping layer whose join is
 more than twice as rough as its inside, a backdrop that does not reach the
-camera's far end, and LDtk tiles past the level's edge. See
+camera's far end or the top of the climb, and (on export) LDtk tiles past the
+level's edge. See
 [parallax backgrounds](./PARALLAX.md) for the manifest fields and engine
 setup.
 
