@@ -43,6 +43,7 @@ Which command:
 | build a sprite sheet | `pixelkiln pack --style base` |
 | place sprites on a sheet at declared cells | `pixelkiln mount --style base` |
 | export a tileset for Tiled, Godot or LDtk | `pixelkiln export --style ground --format tiled` |
+| preview a parallax background and export it to Tiled, Godot or LDtk | `pixelkiln parallax preview dusk`, then `pixelkiln parallax export dusk` |
 | get a sheet Phaser, Unity, or Godot loads as animations | `pixelkiln pack --style hero --format aseprite` or `--format godot` |
 | check the art against the style's palette and grid | `pixelkiln audit --style base` |
 | produce the palette-clean, grid-true final art | `pixelkiln refine` then `pixelkiln refine approve --from <record> --reviewer "Name"` |
@@ -1300,6 +1301,30 @@ pixelkiln export --style ground --format godot --merge-connected
 ```
 
 See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
+
+### `parallax`
+
+Preview or export a set from the manifest's `parallax` section: layers far to
+near, each a generated asset, a finished file, or sky bands. Offline; spends
+nothing.
+
+```bash
+pixelkiln parallax preview dusk               # dusk.preview.html + dusk.preview.png
+pixelkiln parallax preview dusk --frames 5    # 3-15 frames in the strip (default 3)
+pixelkiln parallax export dusk                # Tiled .tmj, Godot .tscn and LDtk .ldtk
+pixelkiln parallax export dusk --format godot --out game/bg
+```
+
+Without a set id the command runs every set, and `--out` then needs one. Output goes to
+`parallax/<set>/` beside the manifest, or `--out`; each export format gets its
+own folder with the layer pictures it uses and a `.pixelkiln.json` provenance
+record, which `--force` overwrites. The command prints each layer's size,
+position, speeds and seam ratio, and warns about a looping layer whose join is
+more than twice as rough as its inside, a backdrop that does not reach the
+camera's far end or the top of the climb, and (on export) LDtk tiles past the
+level's edge. See
+[parallax backgrounds](./PARALLAX.md) for the manifest fields and engine
+setup.
 
 ## PixelLab utilities
 

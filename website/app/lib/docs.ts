@@ -124,7 +124,7 @@ export const docs: DocEntry[] = [
   {
     slug: "parallax",
     title: "Parallax backgrounds",
-    description: "Build a scrolling background in layers, sideways or climbing: one palette, silhouettes or whole layers from PixelLab, finished by script, and engine settings for Tiled, Godot, Phaser and LDtk.",
+    description: "Build a scrolling background in layers, sideways or climbing: one palette, silhouettes or whole layers from PixelLab, finished by script, then previewed and exported to Tiled, Godot and LDtk with pixelkiln parallax.",
     file: "docs/PARALLAX.md",
     group: "Guides",
   },
@@ -145,7 +145,7 @@ export const docs: DocEntry[] = [
   {
     slug: "research-parallax",
     title: "Research: parallax backgrounds",
-    description: "Ways to make a background scroll in depth, and to get the layers out of a generator: looping, depth-model splits, line scroll, haze, rounding, vertical climbs and engine settings, with pictures.",
+    description: "Ways to make a background scroll in depth, and to get the layers out of a generator: looping, depth-model splits, line scroll, haze, rounding, vertical climbs, a second time of day, and the exports checked in engines, with pictures.",
     file: "docs/RESEARCH_PARALLAX.md",
     group: "Research",
   },

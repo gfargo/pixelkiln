@@ -284,6 +284,25 @@ async function loadExpanded(abs: string, expansion: Expansion): Promise<LoadedMa
     connectVisited.add(assetId)
   }
   for (const assetId of Object.keys(parsed.data.assets)) visitConnections(assetId)
+  for (const [setId, set] of Object.entries(parsed.data.parallax ?? {})) {
+    const names = new Set<string>()
+    set.layers.forEach((layer, index) => {
+      const at = `parallax.${setId}.layers.${index}`
+      if (layer.asset !== undefined) {
+        const asset = parsed.data.assets[layer.asset]
+        if (!asset) unknownReferences.push(`${at}.asset: unknown asset "${layer.asset}"`)
+        else if (layer.style !== undefined && !asset.styles.includes(layer.style)) {
+          unknownReferences.push(`${at}.style: asset "${layer.asset}" is not generated under style "${layer.style}"`)
+        } else if (layer.style === undefined && asset.styles.length > 1) {
+          unknownReferences.push(`${at}.style: asset "${layer.asset}" has ${asset.styles.length} styles; name one`)
+        }
+      }
+      if (layer.name !== undefined) {
+        if (names.has(layer.name)) unknownReferences.push(`${at}.name: "${layer.name}" is used twice`)
+        names.add(layer.name)
+      }
+    })
+  }
   if (unknownReferences.length) {
     throw new ProjectError(`Manifest at ${abs} is invalid:\n${unknownReferences.map((i) => `  ${i}`).join("\n")}`)
   }

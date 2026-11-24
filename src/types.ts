@@ -2544,6 +2544,72 @@ export const AssetSchema = z
 export const DEFAULT_HISTORY_LIMIT = 5
 const HistoryLimitSchema = z.number().int().min(0).max(100)
 
+/**
+ * One layer of a parallax set, far to near. Its picture is a generated asset
+ * from the lockfile, a picture on disk, or flat sky bands drawn at export.
+ * `speed` is the fraction of the camera's movement the layer moves, the
+ * convention of Tiled, Godot and Phaser; LDtk's factor is written as 1 - speed.
+ */
+export const ParallaxLayerSchema = z
+  .object({
+    /** Names the layer in exports; defaults to the asset id, the file name, or "sky". */
+    name: z.string().regex(/^[A-Za-z][A-Za-z0-9_-]*$/, "letters, digits, - and _, starting with a letter").optional(),
+    /** A manifest asset, read from the lockfile once generated. */
+    asset: z.string().min(1).optional(),
+    /** The style the asset was generated under, when it was generated under more than one. */
+    style: z.string().min(1).optional(),
+    /** A picture on disk, relative to the manifest: a layer finished by hand or by script. */
+    file: z.string().min(1).optional(),
+    /** Flat colour bands, top to bottom, with a dithered step between neighbours. */
+    sky: z.array(HexColorSchema).min(1).max(64).optional(),
+    speed: z.number().min(0).max(4),
+    /** Vertical speed; 1, moving with the level, when the set does not climb. */
+    speedY: z.number().min(0).max(4).optional(),
+    /** Left edge on the set's canvas, whose origin is the view's top-left at the start. */
+    x: z.number().int().min(-100_000).max(100_000).optional(),
+    /** The canvas row the layer's bottom edge sits on; the view's height when absent. */
+    bottom: z.number().int().min(-100_000).max(100_000).optional(),
+    /**
+     * Repeat the bottom row downward: true to the foot of the view, or this
+     * many rows. A far range extended this way gives nearer
+     * layers' feet distant land to dissolve into instead of floating.
+     */
+    extend: z.union([z.boolean(), z.number().int().min(1).max(4096)]).optional(),
+    /** Repeat sideways (the default) so the layer loops. */
+    repeat: z.boolean().optional(),
+    /** Repeat vertically, for an endless climb. */
+    repeatY: z.boolean().optional(),
+  })
+  .strict()
+  .superRefine((layer, ctx) => {
+    const sources = [layer.asset, layer.file, layer.sky].filter((value) => value !== undefined).length
+    if (sources !== 1) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "a layer needs exactly one of asset, file, or sky" })
+    }
+    if (layer.style !== undefined && layer.asset === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["style"], message: "style only applies to an asset layer" })
+    }
+  })
+
+/** A parallax background: layers far to near over one view, and how far the camera travels. */
+export const ParallaxSetSchema = z
+  .object({
+    /** The game's view in pixels, [width, height]. */
+    view: z.tuple([z.number().int().min(8).max(4096), z.number().int().min(8).max(4096)]),
+    /** How far the camera moves sideways across the level, in pixels. */
+    travel: z.number().int().min(0).max(100_000).optional(),
+    /** How far the camera climbs, in pixels. */
+    climb: z.number().int().min(0).max(100_000).optional(),
+    layers: z.array(ParallaxLayerSchema).min(1).max(32),
+  })
+  .strict()
+
+/** A set id names output folders and a Godot node, so it keeps to letters, digits, - and _. */
+export const ParallaxSetIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/, "a set id is letters, digits, - and _, starting with a letter or digit")
+
+export type ParallaxLayer = z.infer<typeof ParallaxLayerSchema>
+export type ParallaxSet = z.infer<typeof ParallaxSetSchema>
+
 export const ManifestSchema = z
   .object({
     $schema: z.string().optional(),
@@ -2554,6 +2620,8 @@ export const ManifestSchema = z
     history: HistoryLimitSchema.optional(),
     styles: z.record(StyleSchema),
     assets: z.record(AssetSchema),
+    /** Parallax backgrounds built from the assets, by set id. */
+    parallax: z.record(ParallaxSetIdSchema, ParallaxSetSchema).optional(),
   })
   .strict()
 
@@ -2566,6 +2634,7 @@ export const ManifestInputSchema = z
     history: HistoryLimitSchema.optional(),
     styles: z.record(StyleInputSchema),
     assets: z.record(AssetSchema),
+    parallax: z.record(ParallaxSetIdSchema, ParallaxSetSchema).optional(),
   })
   .strict()
 

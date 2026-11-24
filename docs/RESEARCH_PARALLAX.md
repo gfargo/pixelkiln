@@ -1,8 +1,8 @@
 # Parallax backgrounds
 
-This is a research note, not a feature. Nothing here is a PixelKiln command, and the scripts are rough.
+This is a research note. Its scripts are rough. What it found is now built into `pixelkiln parallax`, which previews a manifest's parallax set and exports it to Tiled, Godot and LDtk ([what was built](#the-pixelkiln-parallax-command)).
 
-PixelKiln can generate a scenic background as one flat picture. A parallax background is several layers that scroll at different speeds as the camera moves. This note tries the ways to build one and the ways to get the layers out of AI generators. Steps 1 to 11 use art we already had. Step 12 records how a game that already uses PixelKiln builds its skyline. Steps 13 to 16 spent 17 PixelLab generations and $0.24 of Retro Diffusion. Step 17 ran a layer-splitting model on our own 12 GB GPU. Step 18 spent 51 PixelLab generations turning the two routes that worked into the sets below. Step 19 turns the camera upward, with 14 PixelLab generations and $0.12 of Retro Diffusion. Step 20 takes the alpine set to night with 10 PixelLab generations, and step 21 spent $0.30 of Retro Diffusion on seamless layers keyed by script.
+PixelKiln can generate a scenic background as one flat picture. A parallax background is several layers that scroll at different speeds as the camera moves. This note tries the ways to build one and the ways to get the layers out of AI generators. Steps 1 to 11 use art we already had. Step 12 records how a game that already uses PixelKiln builds its skyline. Steps 13 to 16 spent 17 PixelLab generations and $0.24 of Retro Diffusion. Step 17 ran a layer-splitting model on our own 12 GB GPU. Step 18 spent 51 PixelLab generations turning the two routes that worked into the sets below. Step 19 turns the camera upward, with 14 PixelLab generations and $0.12 of Retro Diffusion. Step 20 takes the alpine set to night with 10 PixelLab generations, and step 21 spent $0.30 of Retro Diffusion on seamless layers keyed by script. Step 22 checks the command's exports in Godot, Tiled, Phaser and against LDtk's own drawing code, for free.
 
 The short version is that generators are good at one isolated shape and bad at agreeing across several pictures, so ask them for shapes and do the agreeing yourself. Steps 12 and 18 show how. To build a background, follow the [parallax guide](./PARALLAX.md). This note is the evidence behind it. A picture stays in this note only if it shows a result worth using or the one fault a step found. The rest is in the text and the scripts.
 
@@ -37,6 +37,7 @@ Last updated 24 November 2026.
 | 19 | Scroll vertically: a climb, and a loop that scrolls up forever | PixelLab pixflux, 14 generations; Retro Diffusion `rd_plus__default` with `tile_y`, $0.12; our script | Sideways strips run out within a quarter of a climb. Tall layers, clouds placed up the climb, a sky that moves and a wall stacked from a generated cliff read as one climb. `tile_y` wraps vertically. | Keep. Every layer needs headroom of climb × its vertical speed. |
 | 20 | A second time of day: generate the alpine set again on a night palette, or recolour the dusk set | PixelLab pixflux, 10 generations; our script | Regenerated layers stay on the palette and agree, but 7 of 9 drew a moon or stars and every peak moved. A palette swap by luminance rank gives the same place at night, free. | Recolour for a second time of day. Generate only what the new time adds. |
 | 21 | Retro Diffusion `tile_x` without background removal, keyed by script | Retro Diffusion `rd_plus__default` and `rd_plus__environment`, $0.30; our script | Keyed layers join with seam ratios of 0.3 to 1.4, against 3.9 with `remove_bg`. The default style drew a flat background on 2 of 3 layers; the environment style drew a sky behind both of its layers. | Keep, with `rd_plus__default`. A transparent layer that loops as generated. |
+| 22 | Check `pixelkiln parallax` exports in engines, pixel for pixel | Godot 4.7.2, Tiled 1.12.2's renderer, Phaser 3.80, LDtk's drawing code from its source; three sets from steps 18 and 19 | Every engine drew every tested camera position the same as the preview, once the exports were fixed. Godot needs 2D pixel snapping on. Tiled's editor applies a non-zero parallax origin backwards, so the export leaves it at (0, 0). | Keep. Turn on Godot's pixel snapping. The LDtk editor itself is not yet opened. |
 
 ## Ways to make the effect
 
@@ -468,37 +469,45 @@ The silhouette route behaves the same way. Step 18's runs recoloured keep their 
 
 **Verdict.** Keep, with `rd_plus__default`. Generate with `tileX` and no background removal, ask for a plain flat background, and key it out by script, and the seam survives. Check each candidate for a flat background first, since one in three came with a gradient. The environment style is still a scene generator; its pale-sky far ranges key well and its dark layers do not. This is the one way in this note to get a transparent layer that loops sideways as generated, with no cut or crossfade, at $0.06 a layer. Its colours are Retro Diffusion's own, so keep the rest of the set on them, as step 19 found.
 
-## A proposal for PixelKiln
+## 22. Check the exports in engines
 
-Research only. Nothing here is built.
+**Question.** `pixelkiln parallax export` writes a Tiled map, a Godot scene and an LDtk level from a manifest's set (see [below](#the-pixelkiln-parallax-command)). Does each engine draw the set the way the preview does, at every camera position?
 
-**A parallax set in the manifest.** A set names its layers in order, far to near, and what they share:
+**Setup.** Three sets, all from art we already had, so nothing was generated. Step 18's alpine dusk scrolls 480 px sideways. Step 19's climb rises 480 px, with eleven layers at vertical speeds from 0.1 to 1.3. Step 19's loop rises 768 px over the Retro Diffusion sky repeating vertically. Each engine's frame is compared with the command's own frame for the same camera position. A pixel counts as different when a channel is off by more than 2. We picked camera positions where a layer lands on a half pixel (2, 6 and 50 sideways; 5 and 15 up) as well as ordinary ones.
 
-```jsonc
-"parallax": {
-  "volcanic-dusk": {
-    "palette": ["#050a14", "..."],           // one forced palette for every layer (step 15)
-    "width": 400,                              // every layer, so they wrap together
-    "loop": "crossfade",                       // or "provider" where the provider is seamless, or "none" for a bounded level
-    "layers": [
-      { "asset": "volcanic-sky",  "speed": 0.05, "bottom": 160 },
-      { "asset": "volcanic-far",  "speed": 0.25, "bottom": 150, "haze": 0.5 },
-      { "asset": "volcanic-mid",  "speed": 0.5,  "bottom": 175 },
-      { "asset": "volcanic-near", "speed": 1.0,  "bottom": 200 }
-    ]
-  }
-}
-```
+- **Godot 4.7.2.** [`parallax-engines.ts`](../research/scripts/parallax-engines.ts) puts the exported scene in a small project with a `Camera2D` and renders each position with Godot's Movie Maker.
+- **Tiled 1.12.2.** Tiled applies parallax only on screen in its editor, and its `tmxrasterizer` draws layers at their offsets. The script adds the offset Tiled's editor would add (from `MapScene::parallaxOffset`) to a copy of the map for each position and has Tiled render the copy.
+- **Phaser 3.80.** [`parallax-phaser.html`](../research/scripts/parallax-phaser.html) loads the layer pictures as Phaser images with `setScrollFactor(speed, speedY)` and `roundPixels`, scrolls the camera, and reads the canvas back. Phaser has no file format to export, so this checks the guide's settings.
+- **LDtk 1.5.3.** Its editor has no command line, so the script draws the level the way the editor's source does (`Camera.getParallaxOffsetX` and `LayerInstance.pxParallaxX`).
 
-`speed` is the fraction of the camera's movement. That is the convention of Tiled, Godot and Phaser, so it is what a person would type. `bottom` places a layer on a shared canvas. `haze` is step 9's push toward the sky colour, applied after generation with the palette held. The assets are ordinary manifest assets, so planning, budgets, the lockfile and review work as they do today. A silhouette set (step 12) would have the same shape, with runs instead of single layers.
+**Result.**
 
-**Export.**
+| Set | Godot, snapping on | Godot, snapping off | Tiled | Phaser | LDtk |
+|---|---|---|---|---|---|
+| Alpine, sideways | 8 of 8 identical | 3 of 8 differ (half pixels) | 5 of 5 identical | 9 of 9 identical | 8 of 8 identical |
+| Climb | 6 of 6 identical | 2 of 6 differ (half pixels) | 5 of 5 identical | 9 of 9 identical | 6 of 6 identical |
+| Endless loop | 5 of 5 identical | 1 of 5 differs (a half pixel) | 4 of 4 identical | 9 of 9 identical | 5 of 5 identical |
 
-- **Tiled** fits best. Each parallax layer becomes an image layer, with `parallaxx` set to the speed and `repeatx` for a looping layer.
-- **Godot** gets a `Parallax2D` per layer, with `scroll_scale` set to the speed and `repeat_size` to the width.
-- **LDtk** has no image layer. Each layer would be a Tiles layer over a tileset cut from the layer's picture, with `parallaxFactorX` written as 1 − speed and `parallaxScaling: false` (step 11).
+- **Godot needs pixel snapping.** With Rendering > 2D > Snap 2D Transforms to Pixel, every position matched. Without it, the positions where a layer lands on a half pixel differed in 1,069 to 5,902 pixels of a frame, because Godot then samples the texture between two pixels.
+- **Tiled's editor applies the parallax origin backwards.** Tiled's manual says layers sit at their offsets when the view's centre is on the map's parallax origin, and the origin was subtracted when it was added in 2021. A 2024 refactor (commit eb0dcd1) turned `viewCenter -= mapItem->pos() + parallaxOrigin` into `viewCenter += parallaxOrigin`, and 1.12.2 still adds it. The first export put the origin on the start view's centre, which a game loader following the manual would read correctly and Tiled 1.11+ would draw shifted. The export now leaves the origin at (0, 0), where the sign does not matter, and folds the start into each layer's offset. Loaders that ignore the origin read it correctly too.
+- **A repeating Godot layer has to start inside its first repeat.** Godot keeps a repeating `Parallax2D` within one repeat of the screen's edge and draws `repeat_times` + 1 copies centred on it. The first export put the loop's sprite 640 rows down, and Godot drew nothing at the start of the climb. The exporter now wraps the sprite into the first repeat and asks for enough copies on both sides.
+- **The preview had to round the way the engines do.** At first the preview floored each layer's offset and then rounded it up at a half pixel. Godot, LDtk and Phaser all put a half pixel toward the right and bottom of the screen. The preview now does the same.
+- **LDtk needs one picture per layer, not a shared tile grid.** LDtk draws a tile only on its layer's grid. The alpine layers are 398, 338 and 275 px wide, which share no divisor, so the first export cut them into 1 px tiles: a 109 MB file. The exporter now draws everything the camera can see of each layer across the level, repeats included, into one picture and cuts that into 16 px tiles.
+- **LDtk's offset feeds back into its centre.** LDtk offsets a layer by (camera centre − layer centre) × factor, measures the layer as the level less the layer's own pixel offset, and rounds. A review of the first version found it threw on ordinary speeds such as 0.33 and dropped a column of tiles on slow layers. The exporter now picks the offset within a tile whose value is nearest a whole pixel and puts the rest of a tile into transparent padding at the start of the picture, so the start view lands exactly at any speed. A sweep over four views, three travels and seven speeds from 0 to 1 lost no tiles. Where no offset makes LDtk's value a whole pixel (speed 0.33 is one), later camera positions can round one pixel away from the preview.
+- **A layer faster than the camera can run past the level's edge in LDtk.** LDtk draws nothing outside a level, and such a layer shows more than the level holds. The command warns when tiles are lost. After the fix above, the climb's speed 1.3 clouds stay inside.
 
-**A preview.** `parallax.py scroll` and `compose` already show a set moving. A `pixelkiln parallax preview` that writes the same animation would let a person judge a set before export.
+**Verdict.** Keep all three exports, and tell people to turn on Godot's pixel snapping. The LDtk editor itself was not opened, so its drawing code was read, not run, and the factor's direction comes from step 11's reading.
+
+## The `pixelkiln parallax` command
+
+Steps 1 to 22 led to a command. It is narrower than the proposal this note used to carry. It has no `palette`, `loop` or `haze` field, because finishing a layer still needs judgment (steps 2, 9 and 18), and the script does it.
+
+A manifest's `parallax` section names sets. A set has the `view`, how far the camera moves (`travel`, `climb`) and its layers, far to near. A layer is a generated `asset`, read from the lockfile, a finished `file`, or `sky` bands drawn by PixelKiln, with `speed` and optional `speedY`, `x`, `bottom`, `extend`, `repeat` and `repeatY`. The [manifest reference](./MANIFEST.md#parallax-sets) lists them.
+
+- `pixelkiln parallax preview <set>` writes a page that scrolls the set and a strip of frames. It measures each looping layer's join as step 1 does and warns above 2.
+- `pixelkiln parallax export <set>` writes all three formats, or one with `--format`. Tiled gets image layers with `parallaxx`, `parallaxy`, `repeatx` and `repeaty`, and the start folded into each offset. Godot gets a `Parallax2D` per layer. LDtk gets a Tiles layer per layer, factor 1 − speed, scaling off, as step 11 found it must.
+
+The sets checked in step 22 are in the manifests of [`benchmarks/parallax-refined/alpine`](../benchmarks/parallax-refined/alpine) and [`benchmarks/parallax-vertical/climb`](../benchmarks/parallax-vertical/climb).
 
 ## What other people are doing
 
@@ -524,11 +533,13 @@ Research only. Nothing here is built.
 - Generating a set again for a second time of day (step 20). It stays on the palette, but every peak moves, and "at night" drew a moon or stars into 7 of 9 pictures.
 - A palette swap onto a night palette's light colours (step 20). Pink-lit snow took the colours of the lit windows and turned orange.
 - Keying a dark layer off a dark sky (step 21). Retro Diffusion's environment ridges are as dark as the sky it drew behind them.
+- One tile grid for every LDtk layer (step 22). Layers of unrelated widths left only 1 px tiles and a 109 MB file.
+- A non-zero parallax origin in a Tiled map (step 22). Tiled 1.11 and later apply it with the opposite sign to the manual.
 
 ## What is next
 
-- **Build the proposal** above: the manifest shape, a preview, and Tiled, Godot and LDtk export. Open the LDtk result in the editor to check the factor's direction.
-- **Check the finished sets in an engine.** The previews in steps 18 and 19 come from the script. No set has been placed in Tiled, Godot or Phaser.
+- **Open the LDtk export in the LDtk editor.** Step 22 checked LDtk by its source, not by running it.
+- **Runs and finishing in the command.** Silhouette runs (step 12), a dithered foot and tier tints (step 18) are still script steps.
 - **A palette swap in the engine.** Step 20's table could run as a lookup in a shader, so one set covers a day cycle with no extra pictures.
 - **A time of day lit from another side**, such as midday. A palette swap cannot move the light, so this is where generating again might earn its cost.
 - **A full sideways Retro Diffusion set** from `rd_plus__default`, keyed by script and scrolled, with retries for candidates that come on a gradient.
@@ -536,6 +547,13 @@ Research only. Nothing here is built.
 ## Running the scripts
 
 They need numpy, pillow and scipy. `depth.py` also needs torch and transformers.
+
+`parallax-engines.ts` runs from a checkout with Node. It needs a Godot 4.3+ binary (set `GODOT`) and Tiled's `tmxrasterizer` (set `TMXRASTERIZER`). Godot's Movie Maker opens a window while it renders. `parallax-phaser.html` runs in a browser; its comment says what to put beside it.
+
+```bash
+# Render camera positions in Godot and Tiled and draw them as LDtk does; compare each with the preview.
+npx tsx research/scripts/parallax-engines.ts benchmarks/parallax-refined/alpine/pixelkiln.manifest.json alpine-dusk 0,0 2,0 50,0 480,0 --snap
+```
 
 ```bash
 # How badly each picture wraps.

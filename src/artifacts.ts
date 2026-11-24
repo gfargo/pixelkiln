@@ -37,7 +37,7 @@ export interface ArtifactSource {
 }
 
 export interface ArtifactProvenance {
-  kind: "pack" | "mount" | "tileset" | "refine"
+  kind: "pack" | "mount" | "tileset" | "refine" | "parallax"
   sources: ArtifactSource[]
   /** Every non-source input that can change the derived bytes. */
   options: unknown

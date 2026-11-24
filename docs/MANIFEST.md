@@ -36,6 +36,7 @@ Unknown properties are rejected at every level.
 | `history` | no | Replaced generations kept per asset in the lockfile, 0–100. Overrides the personal `PIXELKILN_HISTORY` default (5) for this project; `0` keeps none. See [`history`](CLI.md#history). |
 | `styles` | yes | Map of style id to inherited generation/output settings. |
 | `assets` | yes | Map of stable asset id to subject and per-asset overrides. |
+| `parallax` | no | Map of set id to a parallax background built from the assets. See [Parallax sets](#parallax-sets). |
 
 ```jsonc
 {
@@ -740,6 +741,51 @@ assuming array position. See [tiles](./TILES.md).
 A set keeps the same stem and adds the role: a character base `bot` in a
 style with `outDir: "art/cast"` lands as `art/cast/bot-south.png`,
 `bot-west.png`, and so on; a loop as `bot.walk-frame-00.png` onwards.
+
+## Parallax sets
+
+A `parallax` set names a background's layers, far to near, for `pixelkiln
+parallax preview` and `export`. It changes nothing about generation. The
+assets it names are planned, generated and locked as usual. A set id is
+letters, digits, `-` and `_`, since it names folders and a Godot node. The
+[parallax guide](./PARALLAX.md) walks through building one.
+
+| Set field | Required | Meaning |
+|---|---|---|
+| `view` | yes | The game's view in pixels, `[width, height]`. |
+| `travel` | no | How far the camera moves sideways across the level. Defaults to twice the view's width. |
+| `climb` | no | How far the camera climbs. Defaults to 0. |
+| `layers` | yes | 1 to 32 layers, far first. |
+
+| Layer field | Required | Meaning |
+|---|---|---|
+| `asset` / `file` / `sky` | one of them | A manifest asset, read from the lockfile once generated; a picture on disk, relative to the manifest; or flat colour bands, top to bottom, with a dithered step between neighbours. A one-colour `sky` is a flat fill. |
+| `style` | when the asset has several | Which style's generation an `asset` layer uses. |
+| `name` | no | The layer's name in exports. Defaults to the asset id, the file name, or `sky`. |
+| `speed` | yes | The fraction of the camera's sideways movement the layer moves, 0 to 4: 0 stays put, 1 moves with the level, above 1 is nearer than the level. |
+| `speedY` | no | The same for the climb. Defaults to `speed` when the set climbs and to 1 when it does not. |
+| `x` | no | The layer's left edge. The canvas starts at the view's top-left when the camera starts. |
+| `bottom` | no | The canvas row the layer's foot sits on. Defaults to the view's height. |
+| `extend` | no | Repeat the bottom row downward: `true` to the foot of the view, or a number of rows. |
+| `repeat` | no | Repeat sideways. Defaults to `true`. |
+| `repeatY` | no | Repeat vertically, for an endless climb. |
+
+```jsonc
+"parallax": {
+  "dusk": {
+    "view": [384, 216],
+    "travel": 480,
+    "layers": [
+      { "sky": ["#405e9c", "#a596b9", "#f9b59c"], "speed": 0 },
+      { "asset": "far-range", "bottom": 150, "speed": 0.125, "extend": true },
+      { "file": "finished/near.png", "bottom": 256, "speed": 1 }
+    ]
+  }
+}
+```
+
+The manifest refuses an `asset` it does not declare, a `style` the asset is
+not generated under, and a layer name used twice.
 
 ## Validation and editor setup
 
