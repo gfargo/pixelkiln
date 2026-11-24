@@ -1,0 +1,19 @@
+{
+  "view": [240, 256],
+  "sky": ["#040920", "#060e2c", "#142b60", "#203f7b", "#405e9c", "#60649f", "#a596b9", "#c38eb3", "#de889c", "#f9b59c"],
+  "sky_speed": 0,
+  "sky_speed_y": 0.3,
+  "stars": 80,
+  "climb": 480,
+  "frames": 160,
+  "seed": 7,
+  "layers": [
+    {"image": "../../website/public/research/parallax/refined/alpine/picked/far.png", "bottom": 200, "speed": 0.1, "extend": true},
+    {"image": "../../website/public/research/parallax/vertical/picked/massif.png", "repeat": false, "x": 60, "bottom": 262, "speed": 0.2, "extend": true},
+    {"scatter": ["../../website/public/research/parallax/vertical/picked/a-cloud-puff.far.png", "../../website/public/research/parallax/vertical/picked/b-cloud-puff.far.png", "../../website/public/research/parallax/vertical/picked/c-cloud-puff.far.png", "../../website/public/research/parallax/vertical/picked/a-cloud-bank.far.png"], "top": -520, "bottom": 60, "count": 7, "speed": 0.4},
+    {"fill": "#040920", "top": 236, "speed": 1.0},
+    {"image": "../../website/public/research/parallax/refined/alpine/picked/near.png", "bottom": 290, "speed": 1.0},
+    {"image": "../../website/public/research/parallax/vertical/picked/wall.png", "repeat": false, "x": -8, "bottom": 300, "speed": 1.0},
+    {"scatter": ["../../website/public/research/parallax/vertical/picked/a-cloud-puff.png", "../../website/public/research/parallax/vertical/picked/b-cloud-puff.png", "../../website/public/research/parallax/vertical/picked/c-cloud-puff.png"], "top": -720, "bottom": -120, "count": 5, "speed": 1.3}
+  ]
+}

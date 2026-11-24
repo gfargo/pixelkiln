@@ -4,7 +4,7 @@ A parallax background is a stack of layers that scroll at different speeds as
 the camera moves. PixelKiln has no parallax command yet, so this guide builds
 one from ordinary manifest assets and a free script. Everything below was run
 to make the pictures on this page: two biomes, 51 PixelLab generations in all,
-including the retries. The evidence behind each choice is in the
+including the retries, and a climb for a camera that scrolls up. The evidence behind each choice is in the
 [research note](./RESEARCH_PARALLAX.md).
 
 ![Volcanic dusk, built from separate silhouettes](../website/public/research/parallax/refined/volcanic/silhouettes.webp)
@@ -248,11 +248,97 @@ LDtk counts the other way: its factor is how much the layer follows the
 camera, so write 1 − speed. With `parallaxScaling` on it also shrinks a far
 layer off the pixel grid. PixelKiln's LDtk export writes factor 0 today.
 
+## 8. Scroll vertically
+
+A camera that climbs needs more than the sideways stack. The climb below uses
+the alpine palette, 14 PixelLab generations and one Retro Diffusion picture for
+the loop further down.
+
+![A climb: a wall stacked from a generated cliff, a massif drawn once, clouds at two speeds, and a sky that moves](../website/public/research/parallax/vertical/climb.webp)
+
+- **Draw layers tall, or place things at height.** The 400×100 strips above are
+  made for one height. Climbing past them, the near layer drops out early and
+  the far range's extension fills half the view. Give the camera something to
+  pass at every height: a tall landmark, clouds scattered up the climb, a wall.
+- **Give every layer headroom.** A layer has to be drawn the view's height plus
+  climb × its vertical speed above it. For a 480 px climb that is 48 rows at
+  1/10 and all 480 at full speed.
+- **Place the layers for the lowest view.** Then a climb only moves them down
+  the screen and never uncovers their feet.
+- **Move the sky.** A sky at speed 0 looks the same at every height. At 0.3 of
+  the climb its bands walk from dusk at the horizon to night at the top.
+- **Generate clouds as puffy sprites.** "a single puffy cumulus cloud, pink-lit
+  top and blue-violet shaded underside, simple shading, about two thirds as
+  wide as the picture, a lone cloud game sprite on a plain empty background,
+  nothing else in the picture: no sky, no sun, no moon, no mountains" came back
+  usable on three seeds of three. Thin streaks and flat banks did not, on four
+  tries.
+- **Build the wall from a pillar.** Asked for a cliff wall, pixflux draws a
+  pillar with a summit. `wall` keeps the summit and repeats the body below it
+  at the rows where it loops best. Pick the candidate whose ledges are far
+  apart, so the repeat is hard to spot.
+
+```bash
+# Stack a cliff into a wall 700 rows tall, keeping its top 100 rows as the summit.
+$P wall cliff.png wall.png 700 100
+
+# Vertical preview: the camera climbs and comes back.
+STILL=strip.png SCALE=2 $P climb climb.webp climb.json
+```
+
+A climb spec is the side-scrolling one with `climb` in place of `travel`,
+`speed_y` on any layer whose vertical speed differs, and two more layer kinds:
+
+```jsonc
+{
+  "view": [240, 256],
+  "sky": ["#040920", "#142b60", "#405e9c", "#a596b9", "#de889c", "#f9b59c"],
+  "sky_speed": 0,
+  "sky_speed_y": 0.3,
+  "stars": 80,
+  "climb": 480,
+  "layers": [
+    { "image": "far.png", "bottom": 200, "speed": 0.1, "extend": true },
+    { "image": "massif.png", "repeat": false, "x": 60, "bottom": 262, "speed": 0.2, "extend": true },
+    { "scatter": ["puff-a.far.png", "puff-b.far.png"], "top": -520, "bottom": 60, "count": 7, "speed": 0.4 },
+    { "image": "wall.png", "repeat": false, "x": -8, "bottom": 300, "speed": 1 },
+    { "scatter": ["puff-a.png", "puff-b.png"], "top": -720, "bottom": -120, "count": 5, "speed": 1.3 }
+  ]
+}
+```
+
+Rows count from the top of the view at the start of the climb, so negative
+rows are above it. `scatter` places one sprite per height band between `top`
+and `bottom`. An image with `"repeat_y": true` repeats upward instead of
+sideways.
+
+For a background that scrolls up forever, such as a vertical shooter's,
+generate it with Retro Diffusion's `tileY` on `rd_plus__default` and no
+background removal. It wraps vertically; pixflux has no seamless option. Keep
+the rest of the set on that picture's colours: snapped to a palette with few of
+its colours, the sky below kept 5 of its 47.
+
+![A vertical shooter's loop: a tile_y sky at half speed, clouds at full speed](../website/public/research/parallax/vertical/loop.webp)
+
+The same layer at a quarter of the camera's speed both ways:
+
+| Tool | Setting |
+|---|---|
+| Tiled | `parallaxx: 0.25`, `parallaxy: 0.25`; `repeaty` on an image layer that loops |
+| Godot 4 | `Parallax2D.scroll_scale = Vector2(0.25, 0.25)`; `repeat_size.y` for a loop |
+| Phaser 3 | `setScrollFactor(0.25, 0.25)` |
+| LDtk | `parallaxFactorX: 0.75`, `parallaxFactorY: 0.75` with `parallaxScaling: false` |
+
+The specs, manifests and build script are in
+[`benchmarks/parallax-vertical`](../benchmarks/parallax-vertical), and step 19
+of the [research note](./RESEARCH_PARALLAX.md) has the numbers.
+
 ## What this guide does not cover
 
 - Splitting a finished scene into layers. A depth model and inpainting can do
   it, at 10 to 25 PixelLab generations a layer for the fill; see steps 4, 13
   and 14 of the [research note](./RESEARCH_PARALLAX.md).
-- Retro Diffusion. Its environment style draws a whole scene whatever the
-  prompt says, so it is not a layer generator (step 15).
+- Retro Diffusion for sideways layers. Its environment style draws a whole
+  scene whatever the prompt says, so it is not a layer generator (step 15). It
+  appears above only for a vertical loop.
 - A `pixelkiln parallax` command. The research note sketches one.

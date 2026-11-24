@@ -1,0 +1,38 @@
+{
+  "$schema": "../../../schema/manifest.schema.json",
+  "name": "pixelkiln-parallax-vertical-retrodiffusion",
+  "provider": "retrodiffusion",
+  "styles": {
+    "tile-y": {
+      "generator": "map",
+      "seed": 4242,
+      "outDir": "../../../website/public/research/parallax/vertical/retrodiffusion",
+      "providerOptions": {
+        "retrodiffusion": {
+          "promptStyle": "rd_plus__default",
+          "numImages": 1,
+          "removeBg": false,
+          "tileY": true
+        }
+      }
+    }
+  },
+  "assets": {
+    "cliff-tile": {
+      "prompt": "a tall vertical cliff wall of dark blue-grey rock with narrow snowy ledges and a few tiny pine shrubs, seen from the side, the rock fills the whole picture, seamless vertical texture for a climbing game",
+      "width": 128,
+      "height": 384,
+      "styles": [
+        "tile-y"
+      ]
+    },
+    "sky-tile": {
+      "prompt": "a dusk sky full of scattered puffy pink and lilac clouds over deep blue, seen from below while flying upward, no ground, no mountains, seamless vertical background for a vertical scrolling game",
+      "width": 192,
+      "height": 384,
+      "styles": [
+        "tile-y"
+      ]
+    }
+  }
+}
