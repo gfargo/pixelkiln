@@ -69,6 +69,7 @@ Last updated 17 November 2026.
 | 59 | Shield motions | Our scripts | `shield.py`: the shield arm written as three directions (elbow, face, top), for a guard, a walk, a jog, the sword attack, a block, a held block and a bash | Keep. Seven motions on both bodies; nothing gets more than 1.7 cm inside the shield. Not seen in a game. |
 | 60 | Held things clear of the trunk | Our scripts | `wield.py` measures the trunk from the file's own meshes, armour included, and moves the grip and swings the elbows until the forearms and the item are out of it; worn items are written two-sided | Keep. The greatsword's second forearm lay through the armoured belly for 84 to 89% of its length and now does for 1 to 8%; the spear no longer runs through the hip. Skin still shows at the edges of the armour |
 | 61 | A lining, a cape that gives way, stock motions held in both hands | Our scripts | `liner.py` swaps the skin under each worn item for a dark lining inside the item's own mesh; `sway.py` keeps the cape out of the arms and what is held; `wield.py` `HOLD` re-solves the stock motions' arms | Keep. No skin shows through the visor or the sleeves; the spear idle's wrist bends 20 degrees, not 97. The cape still meets a level spear's butt, and the arm armour's ragged outline is unchanged |
+| 62 | Mended armour, a spear slid forward, items laid down in a fall | Our scripts | `liner.py` fills the small holes in each worn item and smooths its open edges; `wield.py SLIDE` moves a shaft through the hands so its butt stays out of a cape; held stock motions follow a quarter of the arm's own movement and lay the item down when the body tips over; `rig.py` runs `liner.py` itself | 51 to 64 holes filled an item on the painted models; cape contact 5.8% to 0% in `Spear_Jog`, 10.2% to 0% in the spear's `Walk_Loop`; the thrust's leading wrist bends 83 degrees, from 72 |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1772,6 +1773,53 @@ All five files validate with no errors, warnings or notes, and Godot 4.7.2 impor
 - The cape's top does not move, and a level spear's butt still goes through the cloth.
 - The stock motions held in both hands are a fixed carry. A death or a roll with the sword held upright before the chest is clear of the body, not well acted.
 - None of this is in `rig.py`: a new build needs `liner.py` run after it.
+
+Step 62 takes these up.
+
+## 62. Mended armour, a spear slid forward, items laid down in a fall
+
+Four things were left after step 61. The rig inputs are still gone, so this again works on shipped files. For the two-handed models it starts from the files as they were before step 61, which still have the stock motions' own arms.
+
+**The ragged armour.** The outline was not the problem. Counted with the texture's seams welded, the cuirass on the first body has 78 runs of open edges and only six of them are real openings (the neck, the hem, the cuffs and armholes). The rest are holes torn in the plate by the generator, up to 40 cm round, and the lining showed through each as a black patch. `liner.py` now mends an item before it lines it. A closed run of open edges no longer than `MEND` (0.6 m) is a hole unless the body passes through it: the middle of a cuff is inside the arm, the middle of a hole in a breastplate is outside the chest. A hole is filled with a fan of triangles from its middle, in the texture around it; where the hole crosses a seam in the texture the fan takes one colour from its edge. Filling one hole can close another, so it is repeated until nothing is filled. The runs left open are then smoothed along their length three times, which takes the saw teeth off a hem (the leg armour's longest edge went from 2.64 m to 1.72 m round without moving). Smoothing is done once and marked in the mesh's extras, since a second pass would shrink the edge again.
+
+| Model | Leg armour | Cuirass | Helm |
+|---|---|---|---|
+| First body (all four files) | 51 | 64 | 22 |
+| Second body | 51 | 62 | 21 |
+| Pixel-textured | 16 | 11 | 6 |
+
+Holes filled in each item. A second run fills none and writes a file of the same size.
+
+**The spear's butt.** Cloth cannot go round a shaft that passes through it, so no setting of `sway.py` could fix this. The cause was the hold: 49 cm of shaft stood behind the rear hand. `wield.py SLIDE` moves the item's mesh along its handle towards the point and leaves the hands where they are. How far matters twice over. The cape is clear from 31 cm (5.8% contact in `Spear_Jog` at 28 cm, 0% at 31). The thrust's leading wrist gets worse as the butt comes up to the hip, where the trunk's clearance pushes on it: 72 degrees with no slide, 42 at 28 cm, 83 at 31, over 100 from 33 on. The site's spear uses 31 cm.
+
+| Spear, motion | Before | After |
+|---|---|---|
+| `Spear_Jog` | 5.8% | 0% |
+| `Walk_Loop` | 10.2% | 0% |
+| `Jog_Fwd_Loop` | 5.8% | 0% |
+| `Death01` | 9.0% | 0% |
+| `Hit_Chest` | 11.2% | 9.5% |
+| `Sprint_Loop` | 0.9% | 5.8% |
+
+The share of moments and places within 2 cm of the cape's cloth, as in step 61.
+
+**Stiff held motions.** `HOLD` put the item in one pose for the whole of a stock motion. Two things were added. The first is `FOLLOW`: the stock arm's own movement is read before it is replaced (where the leading hand went and which way its forearm pointed, as the chest saw them), and the item is carried with a share of how far each strays from its usual place. Half was tried first and put the spear 18 cm into the trunk in the dance; a quarter leaves 0.8 cm and is the default. The second is for a body that has tipped over. From 35 degrees off upright to 75 the item is laid down: a sword along the spine, pointing past the head, and a shaft across the chest with a hand either side. A spear along the spine was tried and the arms could not reach it (pulled in 13 to 18 cm). The dead knight now lies with the sword on him or the spear across his chest, where before he held either straight up.
+
+The trunk measure reads high for the laid spear (21 cm in `Death01`, 14 in `Roll`) because the shaft rests on the chest and the forearms fold over it. In the renders it lies on the body, not through it. The greatsword's roll bends both wrists about 90 degrees for a moment.
+
+**`rig.py`.** When there are items it now ends by running `liner.py` on the file it wrote, and puts what was lined in its report. `LINE=0` leaves that out. This could not be run here: the rig inputs are gone, so the call is untested against a real build.
+
+![Before on the left, after on the right: the first body's armour, the spear jog from behind, the greatsword and spear at the end of the death](../website/public/research/3d/mended-slid-laid.png)
+
+All five files validate with no errors, warnings or notes, and Godot 4.7.2 imports each with no errors. The files grew 1% to 2%.
+
+**Not done.**
+
+- The spear thrust's leading wrist bends 83 degrees at its worst, from 72.
+- `Hit_Chest` and `Sprint_Loop` still bring the spear's rear hand and butt against the cape.
+- A cuff or hem is smoother but still follows the generator's edge; it is not cut straight.
+- The greatsword's `Roll` bends the wrists about 90 degrees, and the spear's `Dance_Loop` still ends 14 degrees from where it starts.
+- `rig.py`'s new last step has not been run on a real build.
 
 ## What has not worked, in one place
 

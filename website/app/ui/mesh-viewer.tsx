@@ -404,8 +404,9 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             down and both arms are solved to it, over the legs and trunk
             of a stock idle, walk and jog. Pick the great attack. The
             other motions are stock ones whose arms were solved again
-            the same way, so he carries the sword upright in both hands
-            through the roll, the jump and the rest.
+            the same way, so he carries the sword in both hands through
+            the jump and the rest, and it lies along him in the roll and
+            the death.
           </p>
         ) : subject === "spear" ? (
           <p className="spin-note">
@@ -420,7 +421,8 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             moves forward without leaving the stance. The other
             motions are stock ones whose arms were solved again the
             same way, so he carries the spear level in both hands
-            through them.
+            through them. The shaft sits forward in his hands, so its
+            butt ends at the rear hand and stays out of the cape.
           </p>
         ) : subject === "pixel" ? (
           <p className="spin-note">
