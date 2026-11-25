@@ -1,3 +1,10 @@
+# [0.141.0](https://github.com/gfargo/pixelkiln/compare/v0.140.0...v0.141.0) (2026-11-25)
+
+
+### Features
+
+* silhouette runs in pixelkiln parallax ([70b383b](https://github.com/gfargo/pixelkiln/commit/70b383bc84faa9121582bca241e5b04863e5de5b))
+
 # [0.140.0](https://github.com/gfargo/pixelkiln/compare/v0.139.3...v0.140.0) (2026-11-24)
 
 
