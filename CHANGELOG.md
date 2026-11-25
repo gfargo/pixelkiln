@@ -1,3 +1,10 @@
+## [0.144.1](https://github.com/gfargo/pixelkiln/compare/v0.144.0...v0.144.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* mended armour, spear slid clear of the cape, held items laid down in a fall ([d149203](https://github.com/gfargo/pixelkiln/commit/d149203af10c49490c01214bb663c07e66b1a376))
+
 # [0.144.0](https://github.com/gfargo/pixelkiln/compare/v0.143.0...v0.144.0) (2026-11-25)
 
 
