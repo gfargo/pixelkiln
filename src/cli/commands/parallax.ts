@@ -4,6 +4,7 @@ import {
   cameraPath,
   composeParallaxFrame,
   exportParallax,
+  layerFiles,
   PARALLAX_FORMATS,
   previewHtml,
   resolveParallaxSet,
@@ -38,9 +39,9 @@ export async function runParallax(args: Args): Promise<void> {
       await provenanceFile("$manifest", args.manifest),
       await provenanceFile("$lock", args.lock),
       ...(await Promise.all(
-        set.layers
-          .filter((layer) => layer.source.kind !== "sky")
-          .map((layer) => provenanceFile(`layer:${layer.name}`, (layer.source as { path: string }).path)),
+        set.layers.flatMap((layer) =>
+          layerFiles(layer).map((file, n, all) => provenanceFile(all.length > 1 || layer.source.kind === "run" ? `layer:${layer.name}:${n + 1}` : `layer:${layer.name}`, file)),
+        ),
       )),
     ]
     const describe = setOptions(set)
@@ -100,6 +101,7 @@ function setOptions(set: ResolvedParallaxSet): Record<string, unknown> {
       repeat: layer.repeat,
       repeatY: layer.repeatY,
       ...(layer.source.kind === "sky" ? { sky: layer.source.colors } : {}),
+      ...(layer.source.kind === "run" ? { run: { seed: layer.source.seed, sprites: layer.source.sprites.length, width: layer.png.width } } : {}),
     })),
   }
 }
