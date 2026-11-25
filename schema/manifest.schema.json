@@ -474,6 +474,10 @@
                     },
                     "default": []
                   },
+                  "paletteFile": {
+                    "type": "string",
+                    "minLength": 1
+                  },
                   "paletteName": {
                     "type": "string",
                     "minLength": 1,
@@ -1033,6 +1037,10 @@
                       "pattern": "^#?[0-9a-f]{6}$"
                     },
                     "default": []
+                  },
+                  "paletteFile": {
+                    "type": "string",
+                    "minLength": 1
                   },
                   "paletteName": {
                     "type": "string",

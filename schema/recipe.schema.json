@@ -549,6 +549,10 @@
               },
               "default": []
             },
+            "paletteFile": {
+              "type": "string",
+              "minLength": 1
+            },
             "paletteName": {
               "type": "string",
               "minLength": 1,

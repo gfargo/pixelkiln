@@ -2004,6 +2004,16 @@ const StyleObjectSchema = z
     palette: z
       .array(HexColorSchema)
       .default([]),
+    /**
+     * The palette as a file instead of inline colours, relative to the
+     * manifest: a Lospec `.hex`, a GIMP `.gpl`, or a Paint.NET `.txt`.
+     * `loadManifest` reads it into `palette` before validation, so a file
+     * palette hashes the same as the same colours written inline, and editing
+     * the file makes the style's assets stale. Not with `palette` on the same
+     * style; a child style's own `palette` or `paletteFile` replaces its
+     * parent's.
+     */
+    paletteFile: z.string().min(1).optional(),
     /** `target_palette.name` ("Game Boy", "PICO-8"), which PixelLab uses to help the look. Needs `palette`; generators in `TARGET_PALETTE_GENERATORS` only. */
     paletteName: z.string().min(1).max(100).optional(),
     /** `target_palette.max_colors`: at most this many colours in each image, 2 to 64 (drawn from `palette` when one is set). Generators in `TARGET_PALETTE_GENERATORS` only. */

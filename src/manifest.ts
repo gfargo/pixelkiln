@@ -5,6 +5,7 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import type { ZodIssue } from "zod"
 import { ProjectError, UsageError } from "./errors.ts"
+import { parsePaletteFile } from "./palette.ts"
 import {
   AssetSchema,
   ManifestInputSchema,
@@ -97,9 +98,20 @@ export async function loadManifest(manifestPath: string, opts: LoadManifestOptio
   if (expansion.issues.length) {
     throw new ProjectError(`Manifest at ${abs} is invalid:\n${expansion.issues.map((i) => `  ${i}`).join("\n")}`)
   }
-  if (!opts.lenient) return loadExpanded(abs, expansion)
+  const paletteIssues = await readPaletteFiles(expansion.raw, path.dirname(abs))
+  if (!opts.lenient) {
+    if (paletteIssues.length) {
+      throw new ProjectError(
+        `Manifest at ${abs} is invalid:\n${paletteIssues.flatMap((entry) => entry.issues).map((i) => `  ${i}`).join("\n")}`,
+      )
+    }
+    return loadExpanded(abs, expansion)
+  }
 
   const invalid: InvalidManifestEntry[] = []
+  for (const entry of paletteIssues) {
+    if (dropEntry(expansion.raw, entry)) invalid.push(entry)
+  }
   const raw = pruneInvalidEntries(expansion.raw, invalid)
   // Entries that validate alone can still fail together: a style whose parent
   // was dropped, an asset whose style or revision source was. Each round
@@ -115,6 +127,42 @@ export async function loadManifest(manifestPath: string, opts: LoadManifestOptio
       invalid.push(...fresh)
     }
   }
+}
+
+/**
+ * Reads each style's `paletteFile` into its `palette`, in place, before
+ * anything validates. Returns the styles whose file could not be used.
+ */
+async function readPaletteFiles(raw: unknown, manifestDir: string): Promise<InvalidManifestEntry[]> {
+  const styles = entryRecord(raw, "style")
+  if (!styles) return []
+  const issues: InvalidManifestEntry[] = []
+  for (const [id, value] of Object.entries(styles)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue
+    const style = value as Record<string, unknown>
+    const file = style.paletteFile
+    if (file === undefined) continue
+    const fail = (why: string) => issues.push({ kind: "style", id, issues: [`styles.${id}.paletteFile: ${why}`] })
+    if (typeof file !== "string" || !file) {
+      fail("expected a path to a .hex, .gpl, or .txt palette")
+      continue
+    }
+    if (style.palette !== undefined) {
+      fail("set palette or paletteFile, not both")
+      continue
+    }
+    const abs = path.resolve(manifestDir, file)
+    if (!existsSync(abs)) {
+      fail(`no file at ${file}`)
+      continue
+    }
+    try {
+      style.palette = parsePaletteFile(await readFile(abs, "utf8"), file)
+    } catch (error) {
+      fail(error instanceof Error ? error.message : String(error))
+    }
+  }
+  return issues
 }
 
 function entryRecord(raw: unknown, kind: "style" | "asset"): Record<string, unknown> | null {
