@@ -1,0 +1,98 @@
+[
+ {
+  "lane": "LWS-A",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "lora": "pixelkiln\\pxk-knight-w-s.safetensors",
+  "loraStrength": 0.8,
+  "seconds": 84.0,
+  "sha256": "b316064532fbd9dd5fe1fe24b546b2c98ab45a9d9309f19acba13e8b6efd68fe"
+ },
+ {
+  "lane": "LWS-A",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "lora": "pixelkiln\\pxk-knight-w-s.safetensors",
+  "loraStrength": 0.8,
+  "seconds": 30.7,
+  "sha256": "e31842415fa4ca4f1280b7fd137d474a3c94474a31d3f44bc3b984b79790dd86"
+ },
+ {
+  "lane": "LWS-A",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "lora": "pixelkiln\\pxk-knight-w-s.safetensors",
+  "loraStrength": 0.8,
+  "seconds": 31.5,
+  "sha256": "5d3c858fd966390856519570610079e161704b3d8e5a37edc65eeec56610f072"
+ },
+ {
+  "lane": "LWS-A",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "lora": "pixelkiln\\pxk-knight-w-s.safetensors",
+  "loraStrength": 0.8,
+  "seconds": 30.8,
+  "sha256": "51d2c9a0d320a2017365e0fd7affcdb76969c1e2d35ac52f9f92535e39c9486d"
+ },
+ {
+  "lane": "LWS-AP-0.8",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-00.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "lora": "pixelkiln\\pxk-knight-w-s.safetensors",
+  "loraStrength": 0.8,
+  "seconds": 72.5,
+  "sha256": "340af5ec36c1bf2536585c3e7048490cc9a205ebb42b727ce9ea82fa814770da"
+ },
+ {
+  "lane": "LWS-AP-0.8",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-01.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "lora": "pixelkiln\\pxk-knight-w-s.safetensors",
+  "loraStrength": 0.8,
+  "seconds": 90.3,
+  "sha256": "a5f87aeb4b768f3b61a2b015907c107cabd99e7f3552aa429576dccc29403ee6"
+ },
+ {
+  "lane": "LWS-AP-0.8",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-02.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "lora": "pixelkiln\\pxk-knight-w-s.safetensors",
+  "loraStrength": 0.8,
+  "seconds": 95.6,
+  "sha256": "b17825e598962fa268fb0d1d356d47f33de231a263c8d21d5cf5ff0ed241bf62"
+ },
+ {
+  "lane": "LWS-AP-0.8",
+  "character": "knight",
+  "motion": "attack",
+  "frame": "frame-03.png",
+  "seed": 31415,
+  "strength": 0.75,
+  "lora": "pixelkiln\\pxk-knight-w-s.safetensors",
+  "loraStrength": 0.8,
+  "seconds": 93.8,
+  "sha256": "9306c1347dd5ffdb64f2ed4205c00ebd7e0428af9a07755ff296494d71273002"
+ }
+]

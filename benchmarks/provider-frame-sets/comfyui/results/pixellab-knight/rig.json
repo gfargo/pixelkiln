@@ -1,0 +1,170 @@
+[
+ {
+  "name": "pelvis",
+  "side": "mid",
+  "parent": null,
+  "estimate": null
+ },
+ {
+  "name": "chest",
+  "side": "mid",
+  "parent": "pelvis",
+  "estimate": null
+ },
+ {
+  "name": "neck",
+  "side": "mid",
+  "parent": "chest",
+  "estimate": "NECK"
+ },
+ {
+  "name": "head",
+  "side": "mid",
+  "parent": "neck",
+  "estimate": null
+ },
+ {
+  "name": "plume_base",
+  "side": "mid",
+  "parent": "head",
+  "estimate": null
+ },
+ {
+  "name": "plume_tip",
+  "side": "mid",
+  "parent": "plume_base",
+  "estimate": null
+ },
+ {
+  "name": "cape_top",
+  "side": "mid",
+  "parent": "chest",
+  "estimate": null
+ },
+ {
+  "name": "cape_1",
+  "side": "mid",
+  "parent": "cape_top",
+  "estimate": null
+ },
+ {
+  "name": "cape_2",
+  "side": "mid",
+  "parent": "cape_1",
+  "estimate": null
+ },
+ {
+  "name": "cape_3",
+  "side": "mid",
+  "parent": "cape_2",
+  "estimate": null
+ },
+ {
+  "name": "cape_tip",
+  "side": "mid",
+  "parent": "cape_3",
+  "estimate": null
+ },
+ {
+  "name": "near_shoulder",
+  "side": "near",
+  "parent": "chest",
+  "estimate": "LEFT SHOULDER"
+ },
+ {
+  "name": "near_elbow",
+  "side": "near",
+  "parent": "near_shoulder",
+  "estimate": "LEFT ELBOW"
+ },
+ {
+  "name": "near_wrist",
+  "side": "near",
+  "parent": "near_elbow",
+  "estimate": "LEFT ARM"
+ },
+ {
+  "name": "sword_hilt",
+  "side": "near",
+  "parent": "near_wrist",
+  "estimate": null
+ },
+ {
+  "name": "sword_mid",
+  "side": "near",
+  "parent": "sword_hilt",
+  "estimate": null
+ },
+ {
+  "name": "sword_tip",
+  "side": "near",
+  "parent": "sword_mid",
+  "estimate": null
+ },
+ {
+  "name": "far_shoulder",
+  "side": "far",
+  "parent": "chest",
+  "estimate": "RIGHT SHOULDER"
+ },
+ {
+  "name": "far_elbow",
+  "side": "far",
+  "parent": "far_shoulder",
+  "estimate": "RIGHT ELBOW"
+ },
+ {
+  "name": "far_wrist",
+  "side": "far",
+  "parent": "far_elbow",
+  "estimate": "RIGHT ARM"
+ },
+ {
+  "name": "near_hip",
+  "side": "near",
+  "parent": "pelvis",
+  "estimate": "LEFT HIP"
+ },
+ {
+  "name": "near_knee",
+  "side": "near",
+  "parent": "near_hip",
+  "estimate": "LEFT KNEE"
+ },
+ {
+  "name": "near_ankle",
+  "side": "near",
+  "parent": "near_knee",
+  "estimate": "LEFT LEG"
+ },
+ {
+  "name": "near_toe",
+  "side": "near",
+  "parent": "near_ankle",
+  "estimate": null
+ },
+ {
+  "name": "far_hip",
+  "side": "far",
+  "parent": "pelvis",
+  "estimate": "RIGHT HIP"
+ },
+ {
+  "name": "far_knee",
+  "side": "far",
+  "parent": "far_hip",
+  "estimate": "RIGHT KNEE"
+ },
+ {
+  "name": "far_ankle",
+  "side": "far",
+  "parent": "far_knee",
+  "estimate": "RIGHT LEG"
+ },
+ {
+  "name": "far_toe",
+  "side": "far",
+  "parent": "far_ankle",
+  "estimate": null
+ }
+]

@@ -134,14 +134,20 @@ def idle(i, n=4):
 STRIDE, LIFT = 190, 55
 
 
-def walk_foot(phase):
+# walk-wide/: the same cycle exaggerated, because SDXL's OpenPose ControlNet drew the
+# walk above with the legs nearly together (runs 1-6). Longer stride, higher knee, more
+# arm swing and lean, and a bob: the hips drop on contact and rise when passing.
+WIDE_STRIDE, WIDE_LIFT, WIDE_ARM, WIDE_LEAN, WIDE_BOB = 330, 115, 55, 10, 30
+
+
+def walk_foot(phase, stride=STRIDE, lift=LIFT):
     """A foot through one cycle: planted and sliding back under the body for the first
     half, then lifted and carried forward in an arc."""
     phase %= 1.0
     if phase < 0.5:
-        return (STRIDE / 2 - STRIDE * phase / 0.5, 0)
+        return (stride / 2 - stride * phase / 0.5, 0)
     t = (phase - 0.5) / 0.5
-    return (-STRIDE / 2 + STRIDE * t, LIFT * math.sin(math.pi * t))
+    return (-stride / 2 + stride * t, lift * math.sin(math.pi * t))
 
 
 def walk(i, n=8):
@@ -150,6 +156,15 @@ def walk(i, n=8):
     t = 2 * math.pi * phase
     return body(lean=4, crouch=10, near_foot=walk_foot(phase), far_foot=walk_foot(phase + 0.5),
                 near_arm=(-26 * math.cos(t), 25), far_arm=(26 * math.cos(t), 25))
+
+
+def walk_wide(i, n=8):
+    """The walk above, exaggerated (see WIDE_*)."""
+    phase = i / n
+    t = 2 * math.pi * phase
+    return body(lean=WIDE_LEAN, crouch=10 + WIDE_BOB * (1 + math.cos(2 * t)) / 2,
+                near_foot=walk_foot(phase, WIDE_STRIDE, WIDE_LIFT), far_foot=walk_foot(phase + 0.5, WIDE_STRIDE, WIDE_LIFT),
+                near_arm=(-WIDE_ARM * math.cos(t), 30), far_arm=(WIDE_ARM * math.cos(t), 30))
 
 
 def attack(i):
@@ -167,9 +182,47 @@ def attack(i):
     return body(**poses[i])
 
 
+def attack_wide(i):
+    """The strike above, exaggerated like walk-wide: the sword arm straight up behind the head
+    on the wind-up and straight out in front on the strike, a longer lunge, and
+    more lean, because the ControlNet draws less motion than the map shows (run 8)."""
+    poses = [
+        dict(lean=-18, crouch=40, near_foot=(90, 0), far_foot=(-120, 0), near_arm=(-150, -40), far_arm=(40, 40), hip_shift=-40),
+        dict(lean=26, crouch=55, near_foot=(150, 0), far_foot=(-150, 0), near_arm=(95, 0), far_arm=(-50, 20), hip_shift=45),
+        dict(lean=32, crouch=60, near_foot=(145, 0), far_foot=(-155, 0), near_arm=(-25, 10), far_arm=(-60, 20), hip_shift=50),
+        dict(lean=2, crouch=30, near_foot=(80, 0), far_foot=(-80, 0), near_arm=(60, 80), far_arm=(-10, 40), hip_shift=5),
+    ]
+    return body(**poses[i])
+
+
+# The weapon for attack-wide, as a second control image: white strokes on black for a scribble
+# ControlNet, since the OpenPose map has no joint for a prop (run 9). One angle per frame, in
+# polar() degrees from the near wrist: up and back, forward, down and back, up in guard.
+PROP_ANGLES = [-160, 80, -40, 150]
+PROPS = {"knight": "sword", "goblin": "club"}
+
+
+def prop_image(points, angle, kind):
+    canvas = Image.new("RGB", (SIZE, SIZE), (0, 0, 0))
+    d = ImageDraw.Draw(canvas)
+    wrist = points[7]
+    if kind == "sword":
+        tip, pommel = polar(wrist, 220, angle), polar(wrist, -40, angle)
+        d.line((pommel, tip), fill=(255, 255, 255), width=14)
+        guard = polar(wrist, 18, angle)
+        a, b = polar(guard, 40, angle + 90), polar(guard, 40, angle - 90)
+        d.line((a, b), fill=(255, 255, 255), width=12)
+    else:
+        tip, butt = polar(wrist, 175, angle), polar(wrist, -30, angle)
+        d.line((butt, tip), fill=(255, 255, 255), width=16)
+        d.ellipse((tip[0] - 38, tip[1] - 38, tip[0] + 38, tip[1] + 38), outline=(255, 255, 255), width=12)
+    return canvas
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
-    motions = {"idle": [idle(i) for i in range(4)], "walk": [walk(i) for i in range(8)], "attack": [attack(i) for i in range(4)]}
+    motions = {"idle": [idle(i) for i in range(4)], "walk": [walk(i) for i in range(8)], "attack": [attack(i) for i in range(4)],
+               "walk-wide": [walk_wide(i) for i in range(8)], "attack-wide": [attack_wide(i) for i in range(4)]}
     rows = []
     for name, frames in motions.items():
         os.makedirs(os.path.join(here, name), exist_ok=True)
@@ -187,6 +240,11 @@ def main():
             sheet.paste(image.resize((cell, cell), Image.LANCZOS), (c * cell, r * cell))
         ImageDraw.Draw(sheet).line((0, r * cell + GROUND // 4, cell * 8, r * cell + GROUND // 4), fill=(80, 80, 80))
     sheet.save(os.path.join(here, "sheet.png"), optimize=True)
+    for character, kind in PROPS.items():
+        folder = os.path.join(here, f"attack-wide-prop-{character}")
+        os.makedirs(folder, exist_ok=True)
+        for i, angle in enumerate(PROP_ANGLES):
+            prop_image(attack_wide(i), angle, kind).save(os.path.join(folder, f"frame-{i:02d}.png"), optimize=True)
 
 
 if __name__ == "__main__":
