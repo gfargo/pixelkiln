@@ -591,7 +591,7 @@ for n, q in tracks.items():
 gltf = {"asset": {"version": "2.0", "generator": "pixelkiln research rig.py"}, "scene": 0, "scenes": [{"nodes": [0] + [len(BONES) + i for i in range(len(PARTS))]}], "nodes": nodes,
         "meshes": [{"name": p["name"], "primitives": [{"attributes": p["attributes"], "indices": p["indices"], "material": MATERIAL[i]}]} for i, p in enumerate(PARTS)],
         "skins": [{"joints": list(range(len(BONES))), "skeleton": 0, "inverseBindMatrices": a_ibm}],
-        "materials": [{"name": "Sprite" if i == 0 else p["name"], **({"extras": {"palette": PALETTE}} if PALETTE else {}), "pbrMetallicRoughness": {"baseColorTexture": {"index": p["image"]}, "metallicFactor": 0, "roughnessFactor": 1}, **({"normalTexture": {"index": p["relief_image"]}} if p.get("relief_image") is not None else {})} for i, p in enumerate(SKINS)],
+        "materials": [{"name": "Sprite" if i == 0 else p["name"], **({"doubleSided": True} if i > 0 else {}), **({"extras": {"palette": PALETTE}} if PALETTE else {}), "pbrMetallicRoughness": {"baseColorTexture": {"index": p["image"]}, "metallicFactor": 0, "roughnessFactor": 1}, **({"normalTexture": {"index": p["relief_image"]}} if p.get("relief_image") is not None else {})} for i, p in enumerate(SKINS)],
         "textures": [{"source": i, "sampler": 0} for i in range(len(IMAGES))], "images": IMAGES,
         "samplers": [{"magFilter": 9729 if relief is not None else 9728, "minFilter": 9987 if relief is not None else 9728, "wrapS": 33071, "wrapT": 33071}],
         "animations": [{"name": "Walk", "samplers": samplers, "channels": channels}],

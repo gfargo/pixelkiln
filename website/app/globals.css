@@ -784,6 +784,8 @@ a { color: inherit; text-decoration: none; }
 .mesh-canvas-smooth { image-rendering: auto; }
 .mesh-status { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--cream-muted); font-size: 16px; }
 @media (max-width: 980px) { .mesh-stage { min-height: 340px; height: 340px; } }
+/* The download line wraps to as many lines as it needs: it is a sentence with a link, not a readout of fixed height. */
+.mesh-readout { display: block; height: auto; overflow: visible; -webkit-line-clamp: none; line-clamp: none; }
 .spin-note { max-width: 520px; margin: 6px 0 0; color: var(--cream-muted); font-size: var(--text-body); line-height: 1.65; }
 @media (max-width: 980px) { .spin { grid-template-columns: minmax(0, 1fr); gap: 32px; } .spin-stage { min-height: 340px; } }
 .cast-visuals { display: grid; gap: 40px; min-width: 0; }

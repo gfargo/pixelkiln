@@ -206,7 +206,8 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             post.uniforms.count.value = list.length;
           }
           // A thinned model carries its lost relief as a normal map, and the tangents it was baked against.
-          mesh.material = new THREE.MeshToonMaterial({ map: source.map, gradientMap: ramp, normalMap: source.normalMap ?? null });
+          // What is worn is an open shell: its file marks it two-sided, so its inside is drawn and does not show as holes.
+          mesh.material = new THREE.MeshToonMaterial({ map: source.map, gradientMap: ramp, normalMap: source.normalMap ?? null, side: source.side });
           mesh.frustumCulled = false;
           // Every mesh but the body is something the character wears, on the same skeleton.
           const hiddenBy: unknown = mesh.userData?.hiddenBy;
@@ -333,7 +334,7 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             {spinning ? "Stop" : "Spin"}
           </button>
         </div>
-        <p className="builder-readout">
+        <p className="builder-readout mesh-readout">
           <span>.glb</span>
           <a className="text-link" href={`/models/${subject}.glb`} download>Download this model</a>, with its skeleton and {clips.length > 1 ? "animations" : "walk"}.
         </p>
