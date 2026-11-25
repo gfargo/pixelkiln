@@ -403,9 +403,9 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             named Great were made here: the path of the sword is written
             down and both arms are solved to it, over the legs and trunk
             of a stock idle, walk and jog. Pick the great attack. The
-            other motions are stock one-handed ones bent until the
-            second hand reaches the grip, and some of those bend a wrist
-            further than a wrist goes.
+            other motions are stock ones whose arms were solved again
+            the same way, so he carries the sword upright in both hands
+            through the roll, the jump and the rest.
           </p>
         ) : subject === "spear" ? (
           <p className="spin-note">
@@ -418,9 +418,9 @@ export function MeshViewer({ subjects, initial }: { subjects?: MeshSubject[]; in
             looking along the shaft. Pick the spear thrust, which steps
             out with the left foot, or the spear advance, which
             moves forward without leaving the stance. The other
-            motions are stock one-handed ones bent towards the shaft,
-            and in those the right hand is often a few centimetres off
-            it.
+            motions are stock ones whose arms were solved again the
+            same way, so he carries the spear level in both hands
+            through them.
           </p>
         ) : subject === "pixel" ? (
           <p className="spin-note">

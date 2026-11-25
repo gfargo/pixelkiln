@@ -9,9 +9,11 @@ same in any engine that plays the animation.
 
 For each animation, each chain is a string of points. The top one is pinned to the body. The rest
 fall under gravity, lag behind when the body moves, keep their distance from the point above, are
-pulled a little towards where they hang at rest, and are pushed out of the legs and the trunk,
-which are treated as capsules round the bones. The points are then turned back into a rotation for
-each link. A looping animation is run round several times and the last pass kept, so its end meets
+pulled a little towards where they hang at rest, and are pushed out of the legs, the trunk, the
+arms and anything held in a hand, which are treated as capsules. A chain is one line of points but
+the cloth on it is wide, so each point also carries a few places on the cloth's near face, taken from
+the item's mesh, and is pushed when any of them is inside a capsule. The points are then turned back
+into a rotation for each link. A looping animation is run round several times and the last pass kept, so its end meets
 its start.
 
 Environment:
@@ -20,6 +22,8 @@ Environment:
   DAMPING   the share of its speed a point keeps each step (default 0.92)
   STIFF     how strongly a point is pulled to where it hangs at rest, 0 to 1 a step (default 0.015)
   LEGS, TRUNK   capsule radii in metres (defaults 0.11 and 0.2)
+  ARMS      the arms' capsule radius (default 0.07; 0 leaves the arms out)
+  HELD      1 to keep the chains out of what the hands hold (default), 0 not to
   GAP       how far outside a capsule a point is kept (default 0.03)
   ROUNDS    how many times a loop is run before it is recorded (default 3)
 
@@ -32,7 +36,9 @@ source, out = sys.argv[1:3]
 env = os.environ.get
 FPS = float(env('FPS', '30')); GRAVITY = float(env('GRAVITY', '9.8')); DAMPING = float(env('DAMPING', '0.92')); STIFF = float(env('STIFF', '0.015'))
 LEGS, TRUNK, GAP, ROUNDS = float(env('LEGS', '0.11')), float(env('TRUNK', '0.2')), float(env('GAP', '0.03')), int(env('ROUNDS', '3'))
+ARMS = float(env('ARMS', '0.07')); HELD = env('HELD', '1') == '1'
 SUBSTEPS = 4
+KINDS = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}
 COMPONENTS = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4, 'MAT4': 16}
 
 
@@ -78,6 +84,13 @@ def read(index):
     a = doc['accessors'][index]; view = doc['bufferViews'][a['bufferView']]; width = COMPONENTS[a['type']]
     start = view.get('byteOffset', 0) + a.get('byteOffset', 0)
     return np.frombuffer(bytes(blob[start:start + a['count'] * width * 4]), np.float32).reshape(a['count'], width).astype(np.float64)
+
+
+def read_as(index):  # an accessor of any kind, as it is stored
+    a = doc['accessors'][index]; view = doc['bufferViews'][a['bufferView']]; width = COMPONENTS[a['type']]; kind = np.dtype(KINDS[a['componentType']])
+    start = view.get('byteOffset', 0) + a.get('byteOffset', 0); stride = view.get('byteStride', kind.itemsize * width)
+    if stride == kind.itemsize * width: return np.frombuffer(bytes(blob[start:start + a['count'] * width * kind.itemsize]), kind).reshape(a['count'], width)
+    return np.stack([np.frombuffer(bytes(blob[start + k * stride:start + k * stride + width * kind.itemsize]), kind) for k in range(a['count'])])
 
 
 def add(array, kind='SCALAR', limits=False):
@@ -130,20 +143,70 @@ for chain in chains:
     setup.append({'nodes': chain, 'anchor': anchor, 'local': np.array(local), 'length': [np.linalg.norm(joints[k + 1] - joints[k]) for k in range(len(chain))],
                   'rest_dir': [(joints[k + 1] - joints[k]) / (np.linalg.norm(joints[k + 1] - joints[k]) + 1e-12) for k in range(len(chain))]})
 CAPSULES = [(a, b, LEGS) for side in ('Left', 'Right') for a, b in ((f'{side}UpperLeg', f'{side}LowerLeg'), (f'{side}LowerLeg', f'{side}Foot'))] + [('Hips', 'Chest', TRUNK), ('Hips', 'Spine', TRUNK)]
-CAPSULES = [(named[a], named[b], r) for a, b, r in CAPSULES if a in named and b in named]
+if ARMS > 0: CAPSULES += [(a, b, ARMS) for side in ('Left', 'Right') for a, b in ((f'{side}UpperArm', f'{side}LowerArm'), (f'{side}LowerArm', f'{side}Hand'))]
+# each capsule runs between two places, each given as a bone and where it is as that bone sees it
+ZERO = np.zeros(3)
+CAPSULES = [(named[a], ZERO, named[b], ZERO, r) for a, b, r in CAPSULES if a in named and b in named]
+
+# ---- the meshes: what each chain's cloth is, and what the hands hold
+feel = [[[ZERO] for _ in chain['nodes']] for chain in setup]  # for each point below the pin, places on the cloth that ride with it
+held = []
+for node in nodes:
+    if 'mesh' not in node or 'skin' not in node: continue
+    joints = doc['skins'][node['skin']]['joints']
+    for p in doc['meshes'][node['mesh']]['primitives']:
+        if 'JOINTS_0' not in p['attributes']: continue
+        at = read_as(p['attributes']['POSITION']).astype(float); weight = read_as(p['attributes']['WEIGHTS_0']).astype(float)
+        owner = np.array(joints)[read_as(p['attributes']['JOINTS_0']).astype(int)[np.arange(len(at)), weight.argmax(1)]]
+        for c, chain in enumerate(setup):
+            for j, bone in enumerate(chain['nodes']):
+                mine = at[owner == bone]
+                if len(mine) < 12: continue
+                # the cloth on this link in three strips across; in each, the face nearest the body, at the link's lower end and half way up it
+                # the body is on the side of the cloth its bone is on: from the middle of the chains that hang from that bone, towards it
+                anchor = chain['anchor']; tops = np.mean([rest_place[other['nodes'][0]][0] for other in setup if other['anchor'] == anchor], 0)
+                inward = rest_place[anchor][0] - tops; inward[1] = 0; inward /= np.linalg.norm(inward) + 1e-12
+                across = np.cross([0, 1, 0], inward); lower = rest_place[bone][0] + chain['rest_dir'][j] * chain['length'][j]
+                side = (mine - lower) @ across; edges = np.quantile(side, [0, 1 / 3, 2 / 3, 1])
+                for lo, hi in zip(edges[:-1], edges[1:]):
+                    strip = mine[(side >= lo) & (side <= hi)]
+                    if len(strip) < 4: continue
+                    offset = across * np.median((strip - lower) @ across) + inward * np.quantile((strip - lower) @ inward, 0.9)
+                    feel[c][j].append(rest_turn[anchor][0].T @ offset)
+                    feel[c][j].append(rest_turn[anchor][0].T @ (offset - chain['rest_dir'][j] * chain['length'][j] / 2))  # and half way up the link
+        if not HELD: continue
+        bones, counts = np.unique(owner, return_counts=True); bone = int(bones[counts.argmax()]); name = nodes[bone].get('name', '')
+        if counts.max() < 0.5 * len(at) or not ('Hand' in name or 'Grip' in name): continue
+        local = (at - rest_place[bone][0]) @ rest_turn[bone][0]  # the item as its hand sees it
+        middle = local.mean(0); _, _, axes = np.linalg.svd(local - middle, full_matrices=False); along = (local - middle) @ axes[0]
+        radius = float(np.clip(np.quantile(np.linalg.norm((local - middle) - np.outer(along, axes[0]), axis=1), 0.5), 0.015, 0.08))  # as thick as its shaft or blade, not its guard or head
+        low, high = np.quantile(along, [0.02, 0.98])
+        held.append(node.get('name')); CAPSULES.append((bone, middle + axes[0] * low, bone, middle + axes[0] * high, radius))
 
 
-def keep_out(p, place, k):
-    for a, b, radius in CAPSULES:
-        pa, pb = place[a][k], place[b][k]; ab = pb - pa
-        t = np.clip((p - pa) @ ab / (ab @ ab + 1e-12), 0, 1); away = p - (pa + t * ab); d = np.linalg.norm(away)
-        if d < radius + GAP: p = pa + t * ab + away / (d + 1e-9) * (radius + GAP)
+def solids(turn, place):  # every capsule's two ends at every moment, and its radius
+    a = np.stack([place[i] + np.einsum('kij,j->ki', turn[i], at) for i, at, _, _, _ in CAPSULES], 1)
+    b = np.stack([place[i] + np.einsum('kij,j->ki', turn[i], at) for _, _, i, at, _ in CAPSULES], 1)
+    return a, b, np.array([c[4] for c in CAPSULES])
+
+
+def keep_out(p, riders, a, b, radius):
+    for _ in range(3):  # out of whichever capsule it, or cloth riding with it, is deepest in
+        q = p + riders; ab = b - a
+        t = np.clip(((q[:, None] - a[None]) * ab[None]).sum(-1) / ((ab * ab).sum(-1)[None] + 1e-12), 0, 1)
+        away = q[:, None] - (a[None] + t[..., None] * ab[None]); d = np.linalg.norm(away, axis=-1); deep = radius[None] + GAP - d
+        i = np.unravel_index(deep.argmax(), deep.shape)
+        if deep[i] <= 0: break
+        p = p + away[i] / (d[i] + 1e-9) * deep[i]
     return p
 
 
 report = []
 for clip in doc['animations']:
     clip['channels'] = [c for c in clip['channels'] if c['target'].get('node') not in chain_nodes]
+    kept_samplers = sorted({c['sampler'] for c in clip['channels']}); renumbered = {old: new for new, old in enumerate(kept_samplers)}  # an earlier run's keys go with its channels
+    clip['samplers'] = [clip['samplers'][i] for i in kept_samplers]
+    for c in clip['channels']: c['sampler'] = renumbered[c['sampler']]
     channels = {(c['target']['node'], c['target']['path']): (read(clip['samplers'][c['sampler']]['input'])[:, 0], read(clip['samplers'][c['sampler']]['output'])) for c in clip['channels']}
     length = max(times[-1] for times, _ in channels.values())
     moments = np.linspace(0, length, max(2, int(round(length * FPS)) + 1))
@@ -152,8 +215,10 @@ for clip in doc['animations']:
     first, last = np.concatenate([turn[i][0].ravel() for i in order]), np.concatenate([turn[i][-1].ravel() for i in order])
     loops = clip['name'].endswith('_Loop') or np.abs(first - last).max() < 0.05
     clock = add(moments, limits=True); dt = (moments[1] - moments[0]) / SUBSTEPS; swing = 0.0
-    for chain in setup:
+    ends_a, ends_b, radii = solids(turn, place)
+    for c, chain in enumerate(setup):
         anchor = chain['anchor']; count = len(chain['nodes'])
+        riders = [np.einsum('kij,nj->kni', turn[anchor], np.array(offsets)) for offsets in feel[c]]
         target = lambda k: place[anchor][k] + chain['local'] @ turn[anchor][k].T  # where the whole chain hangs at rest, at moment k
         points = target(0).copy(); before = points.copy(); kept = np.zeros((len(moments), count + 1, 3))
         frames = list(range(len(moments))) * (ROUNDS if loops else 1) if loops else [0] * 30 + list(range(len(moments)))
@@ -165,7 +230,7 @@ for clip in doc['animations']:
                 points += (goal - points) * STIFF
                 points[0] = goal[0]
                 for j in range(1, count + 1):
-                    points[j] = keep_out(points[j], place, k)
+                    points[j] = keep_out(points[j], riders[j - 1][k], ends_a[k], ends_b[k], radii)
                     link = points[j] - points[j - 1]; points[j] = points[j - 1] + link / (np.linalg.norm(link) + 1e-12) * chain['length'][j - 1]
             if step >= len(frames) - len(moments): kept[k] = points
         # back to a rotation for each link: turn it from where its parent would leave it to where the points say it is
@@ -187,4 +252,4 @@ text = json.dumps(doc, separators=(',', ':')).encode(); text += b' ' * ((4 - len
 with open(out, 'wb') as f:
     f.write(struct.pack('<4sII', b'glTF', 2, 12 + 8 + len(text) + 8 + len(blob)))
     f.write(struct.pack('<I4s', len(text), b'JSON') + text + struct.pack('<I4s', len(blob), b'BIN\x00') + bytes(blob))
-print(json.dumps({'out': out, 'chains': len(setup), 'links': sum(len(c['nodes']) for c in setup), 'animations': report, 'bytes': os.path.getsize(out)}))
+print(json.dumps({'out': out, 'keptOutOf': held, 'chains': len(setup), 'links': sum(len(c['nodes']) for c in setup), 'animations': report, 'bytes': os.path.getsize(out)}))

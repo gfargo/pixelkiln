@@ -46,8 +46,15 @@ A motion's footwork may also put the other foot back and lift it (a seventh and 
 turn that foot out (rear_foot, degrees) and keep the head looking where the base had it while the hips turn (look). A
 ninth number is how far the character has travelled; with it, the row's hips and feet are places over the ground.
 
+The animations a file already has were made for one hand: the item rides in it and the other arm swings free, so a
+long item goes through the legs and the trunk. HOLD rewrites those in place, under their own names: the body is left
+as it was and both arms carry the item (the upright guard for a sword, the jog's level shaft for a spear), kept clear of
+the trunk like the rest. DROP takes out the ones that make no sense with both hands on the item.
+
 Environment:
   SET     which motions to make: great or spear (default great)
+  HOLD    animations to rewrite with both hands on the item: names with commas, or all for every one this did not make
+  DROP    a pattern of animation names to take out of the file, such as ^Sword_
   SKIP    a pattern of motion names to leave out, such as _Fwd for a player that does not read root motion
   FPS     samples a second (default 30)
   ROLLS   how many rolls round the handle are tried at each moment (default 72)
@@ -116,7 +123,7 @@ GREAT.append({**GREAT[-1], 'name': 'Great_Attack_Fwd', 'front': True,
 # pose's handle is turned towards the leading side by as much as the hips are turned away, and the point stays ahead.
 # A walk is turned less and a jog less again. The thrust draws back, then squares the hips and drives the point out
 # with a step of the leading foot.
-STANCE = ((0.50, -0.42, 0.50), (0.77, 0.05, 0.64))
+STANCE = ((0.40, -0.42, 0.66), (0.77, 0.05, 0.64))  # the hands far enough out that the trunk does not push them: nearer in, clearing it bent the leading wrist 97 degrees
 STRIDE = ((0.25, -0.48, 0.62), (0.57, 0.10, 0.82))
 LEVEL = ((0.05, -0.50, 0.68), (0.42, 0.15, 0.90))
 REAR = (0.6, 0.4, 0.3)  # the rear arm's elbow goes out to its side, a little up and forward, so its forearm comes down to the shaft
@@ -153,8 +160,8 @@ SPEAR = [
     {'name': 'Spear_Thrust', 'base': 0, 'length': 1.2, 'sway': 0.0, 'step': 'lead', 'elbow': REAR, 'look': True, 'rear_foot': 40,
      'moments': [(0.00, *STANCE, 0),
                  (0.30, (0.44, -0.45, 0.36), (0.80, 0.04, 0.60), -3),   # drawn back
-                 (0.46, (0.20, -0.36, 0.90), (0.56, 0.02, 0.83), 14),   # driven out
-                 (0.58, (0.20, -0.36, 0.90), (0.56, 0.01, 0.83), 15),
+                 (0.46, (0.40, -0.36, 0.85), (0.56, 0.02, 0.83), 14),   # driven out
+                 (0.58, (0.40, -0.36, 0.85), (0.56, 0.01, 0.83), 15),
                  (1.00, *STANCE, 0)],
      'feet': [(0.00, *STOOD),
               (0.30, -0.05, 0.08, -52, 0.22, 0.00, 0.18),
@@ -174,6 +181,7 @@ for motion in SPEAR: motion['front'] = True  # every spear motion sets its feet 
 SETS = {'great': GREAT, 'spear': SPEAR}
 if env('SET', 'great') not in SETS: sys.exit(f"SET is one of {sorted(SETS)}")
 MOTIONS = [m for m in SETS[env('SET', 'great')] if not (env('SKIP') and re.search(env('SKIP'), m['name']))]
+HELD = {'great': {'sway': 0.0, 'moments': [(0, *GUARD, 0), (1, *GUARD, 0)]}, 'spear': {'sway': 0.0, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]}}[env('SET', 'great')]
 if env('SET') == 'spear' and not env('EDGE'): EDGE = 0.0  # a shaft has no edge to keep
 
 
@@ -368,13 +376,18 @@ def at_share(moments, share):
     return v[:3], unit(v[3:6]), v[6]
 
 
+if env('DROP'): doc['animations'] = [clip for clip in doc['animations'] if not re.search(env('DROP'), clip['name'])]
 clips = {clip['name']: clip for clip in doc['animations']}
+if env('HOLD'):
+    made = {m['name'] for m in SETS[env('SET', 'great')]}
+    for name in ([n for n in clips if n not in made] if env('HOLD') == 'all' else env('HOLD').split(',')):
+        MOTIONS.append({**HELD, 'name': name, 'base': name, 'length': None})
 report = []
 for motion in MOTIONS:
-    base_name = BASE[motion['base']]
+    base_name = motion['base'] if isinstance(motion['base'], str) else BASE[motion['base']]
     if base_name not in clips: sys.exit(f'the file has no animation named {base_name}')
-    if motion['name'] in clips: doc['animations'].remove(clips[motion['name']])
-    base = clips[base_name]
+    base = clips[base_name]; slot = None
+    if motion['name'] in clips and clips[motion['name']] in doc['animations']: slot = doc['animations'].index(clips[motion['name']]); doc['animations'].pop(slot)
     channels = {(c['target']['node'], c['target']['path']): (read(base['samplers'][c['sampler']]['input'])[:, 0], read(base['samplers'][c['sampler']]['output'])) for c in base['channels']}
     base_length = max(times[-1] for times, _ in channels.values()); length = motion['length'] or base_length
     moments = np.linspace(0, length, max(2, int(round(length * FPS)) + 1)); shares = moments / length
@@ -533,7 +546,7 @@ for motion in MOTIONS:
     for mine, theirs in FINGERS:  # the other hand's fingers do what the leading hand's do, mirrored left to right
         if (theirs, 'rotation') in moved: key(mine, 'rotation', moved[(theirs, 'rotation')] * np.array([1, -1, -1, 1]))
     for node, values in turns.items(): key(node, 'rotation', values)
-    doc['animations'].append(clip)
+    doc['animations'].insert(len(doc['animations']) if slot is None else slot, clip); clips[motion['name']] = clip
     seam = max(float(np.degrees(2 * np.arccos(min(1, abs(np.array(v[0]) @ np.array(v[-1])))))) for v in turns.values())
     report.append({'name': motion['name'], 'from': base_name, 'seconds': round(float(length), 2),
                    'furthestShortMetres': round(float(max(max(short[lead]), max(short[other]))), 3),

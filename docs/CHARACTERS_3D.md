@@ -24,8 +24,11 @@ machine with a 12 GB RTX 3060.
   to the same bones, so a game can dress the same body differently.
 - **Skin that hides.** The body is split by what covers it. Each piece lists
   the items that hide it in its node's `extras`, as `"hiddenBy": ["Cuirass"]`.
-  Hide a piece while any item in its list is worn. A rim of skin stays under
-  each item's edge and can show when a joint bends.
+  Hide a piece while any item in its list is worn.
+- **Lined items.** After `liner.py`, each worn item carries a dark lining: the
+  skin it covers, copied into the item's own mesh and pulled in under it. No
+  skin shows through a visor or a gap in a sleeve, and there is nothing new to
+  switch on or off.
 - **Two-sided items.** What is worn is an open shell, so its material is marked
   `doubleSided` and its inside is drawn. Godot reads that as culling off.
 - **A standard skeleton.** Twenty-one bones under the names Unity's and Godot's
@@ -209,7 +212,24 @@ python3 research/scripts/sway.py <animated.glb> <out.glb>
 
 With `CHAINS="Cape=3x4"` at the rig step, the cape hangs from three columns of
 four bones. This simulates them through every animation and stores the swing
-as keys, so the cape moves in any engine with no physics to set up.
+as keys, so the cape moves in any engine with no physics to set up. The cape
+is kept out of the legs, the trunk, the arms (`ARMS`, a radius in metres) and
+whatever a hand holds (`HELD=0` to leave that out). Run it again after any step
+that changes the arms.
+
+### 9b. Line what is worn
+
+```bash
+python3 research/scripts/liner.py <character.glb> <out.glb>
+```
+
+Run this last. `rig.py` hides the skin right under an item, but skin still
+shows through a visor's slits, through holes in a ragged sleeve and where the
+body pokes past a plate. This decides again what each worn item covers, closes
+over the holes, cuts the body's pieces to match, and gives each item a lining
+of one dark colour from its own texture, tucked under it. Held, strapped and
+hanging items get none. `ITEMS`, `NEAR`, `UNDER`, `CLOSE`, `TUCK` and `SHADE`
+are described at the top of the script. Running it again replaces the lining.
 
 ### 10. Dress another body
 
@@ -303,6 +323,12 @@ the file itself, with whatever is worn, and moves the grip out until the
 forearms and the item are clear of it by `CLEAR` metres (default 0.02). Its
 report gives how far each motion's grip moved (`gripPushedOutMetres`) and what
 is still inside (`leftInsideTrunkMetres`). A negative `CLEAR` turns this off.
+
+The stock motions were made for one hand, so with a long item they put it
+through the legs and trunk. `HOLD=all` rewrites each of them in place, under
+its own name, with both arms carrying the item (a sword upright, a spear
+level); `HOLD=Roll,Jump_Start` does only those. `DROP='^Sword_'` takes out the
+ones that make no sense with two hands on the item.
 
 A spear or staff has no guard and its hands go apart. Say where they go, give
 it to the hand that is forward, and ask for the spear motions:
