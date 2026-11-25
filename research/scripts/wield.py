@@ -54,6 +54,8 @@ Environment:
   SMOOTH  how much a change of roll from the moment before costs (default 1)
   EDGE    how much a blade turned flat to its swing costs, against a radian of wrist bend (default 2)
   REACH   the share of an arm's length it may be asked to reach (default 0.97)
+  CLEAR   how far the forearms and the item are kept from the trunk, in metres (default 0.02; a negative number
+          turns it off). The trunk is measured from the file's own meshes at rest, whatever is worn included
   BASE    the animations the bodies come from, as Idle,Walk,Jog (default Idle_Loop,Walk_Loop,Jog_Fwd_Loop)
   ITEM    the name of the item's mesh, for finding its edge (default: the mesh weighted to the grip's hand
           with the longest reach)
@@ -67,6 +69,7 @@ source, out = sys.argv[1:3]
 env = os.environ.get
 FPS = float(env('FPS', '30')); ROLLS = int(env('ROLLS', '72')); SMOOTH = float(env('SMOOTH', '1')); EDGE = float(env('EDGE', '2'))
 REACH = float(env('REACH', '0.97'))
+CLEAR = float(env('CLEAR', '0.02')); FOREARM = 0.045  # a forearm's thickness, from its middle
 BASE = env('BASE', 'Idle_Loop,Walk_Loop,Jog_Fwd_Loop').split(',')
 COMPONENTS = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4, 'MAT4': 16}
 
@@ -298,6 +301,47 @@ for node in nodes:
 if flat0 is None: flat0 = np.cross(handle0, palm0); item_name = None
 
 
+# The trunk, measured from the meshes at rest: every vertex that mostly follows the hips, spine or chest, of the body and
+# of whatever is worn, in slices up the spine. Each slice has a half width, a depth to the front and one to the back.
+# A point is inside when it is within the slice's ellipse; how far it must go forward to be out is what is returned.
+TRUNK_BONES = {named[b] for b in ('Hips', 'Spine', 'Chest') if b in named}; SLICES = 12
+low0 = rest_place[trunk[0]][0]; up0 = unit(rest_place[trunk[1]][0] - low0); front0 = rest_turn[trunk[1]][0] @ np.array([0, 0, 1.0]); front0 = unit(front0 - up0 * (front0 @ up0)); side0 = np.cross(up0, front0)
+cloud = []; item_points = None
+for node in nodes:
+    if 'mesh' not in node or 'skin' not in node: continue
+    joints = np.array(doc['skins'][node['skin']]['joints'])
+    for prim in doc['meshes'][node['mesh']]['primitives']:
+        a = doc['accessors'][prim['attributes']['JOINTS_0']]; kind = {5121: np.uint8, 5123: np.uint16}[a['componentType']]
+        j = read(prim['attributes']['JOINTS_0'], kind).astype(int); w = read(prim['attributes']['WEIGHTS_0']); points = read(prim['attributes']['POSITION'])
+        if node.get('name') == item_name: item_points = points; continue
+        if any(re.search(r'\d_\d+$', nodes[b].get('name') or '') for b in joints[np.unique(j[w > 0])]): continue  # a hanging item swings clear
+        owner = joints[j[np.arange(len(j)), w.argmax(1)]]; cloud.append(points[np.isin(owner, list(TRUNK_BONES))])
+cloud = np.concatenate(cloud) - low0 if cloud else np.zeros((0, 3))
+SHAPE = None
+if CLEAR >= 0 and len(cloud) > 100:
+    cx, cy, cz = cloud @ side0, cloud @ up0, cloud @ front0; y_low, y_high = float(cy.min()), float(cy.max()); rows = []
+    for n in range(SLICES):
+        k = (cy >= y_low + (y_high - y_low) * (n - 0.5) / SLICES) & (cy <= y_low + (y_high - y_low) * (n + 1.5) / SLICES)
+        rows.append([np.percentile(np.abs(cx[k]), 98), np.percentile(cz[k], 98), np.percentile(-cz[k], 98)] if k.sum() > 10 else [0.0, 0.0, 0.0])
+    SHAPE = (y_low, y_high, np.maximum(np.array(rows), 0.01))
+if item_points is not None:  # the item, from the leading grip: a few hundred of its points, those in the hands left out
+    rel = item_points - rest_place[named[lead + 'Grip']][0]; t = rel @ handle0
+    rel = rel[(t < min(0, along) - 0.08) | (t > max(0, along) + 0.08)]; item_points = rel[:: max(1, len(rel) // 240)]
+
+
+def inside(points, low, up, front, across, margin):
+    """How far each point must go forward to be clear of the trunk by margin; 0 for one that is clear."""
+    if SHAPE is None or not len(points): return np.zeros(len(points))
+    y_low, y_high, rows = SHAPE; d = points - low; y = d @ up; x = d @ across; z = d @ front
+    n = np.clip(((y - y_low) / (y_high - y_low) * SLICES).astype(int), 0, SLICES - 1); a = rows[n, 0] + margin; b = np.where(z >= 0, rows[n, 1], rows[n, 2]) + margin
+    need = (rows[n, 1] + margin) * np.sqrt(np.maximum(1 - (x / a) ** 2, 0))
+    return np.where((y > y_low) & (y < y_high) & ((x / a) ** 2 + (z / b) ** 2 < 1), need - z, 0.0)
+
+
+def swung(v, axis, angle):
+    return v * np.cos(angle) + np.cross(axis, v) * np.sin(angle) + axis * (axis @ v) * (1 - np.cos(angle))
+
+
 def bend(shoulder, wrist, was, a, b, reach=None):
     """An arm of two fixed lengths from shoulder to wrist: where its elbow goes, and where its wrist ends if it cannot reach."""
     far = np.linalg.norm(wrist - shoulder); span = float(np.clip(far, abs(a - b) + 1e-4, (reach or REACH) * (a + b))); way = (wrist - shoulder) / (far + 1e-12)
@@ -388,9 +432,17 @@ for motion in MOTIONS:
                 for m in local: q = np.array(quaternion(m)); values.append(-q if values and q @ values[-1] < 0 else q)
                 moved[(node, 'rotation')] = np.array(values)
     turn, place = world(len(moments), moved)
-    short = {lead: [], other: []}; bends = {lead: [], other: []}; flats = []; pulls = []; last = {lead: None, other: None}; before = None
-    for k in list(range(len(moments))) * 2:  # twice round, keeping the second: a loop then starts with the roll it ends on
-        if k == 0: turns = {node: [] for node in turns}; short = {lead: [], other: []}; bends = {lead: [], other: []}; flats = []; pulls = []; before = None
+    short = {lead: [], other: []}; bends = {lead: [], other: []}; flats = []; pulls = []; pushes = []; crowds = []; last = {lead: None, other: None}; last_swing = {lead: None, other: None}; before = None
+    shifts = np.zeros((len(moments), 3)); swings = {lead: np.zeros(len(moments)), other: np.zeros(len(moments))}; rounds = 0
+    for k in list(range(len(moments))) * 3:  # three times round, keeping the last: the first finds how far the grip must move to clear the trunk, the second settles the rolls, so a loop starts with the roll it ends on
+        if k == 0:
+            rounds += 1
+            if rounds == 2:  # even the moves and the elbows' swings out: each moment takes the mean of the third of a second round it
+                span = max(1, int(FPS / 6)); evened = lambda v: np.stack([np.concatenate([v[-span - 1:-1], v, v[1:span + 1]])[n:n + 2 * span + 1].mean(0) for n in range(len(v))])
+                shifts = evened(shifts); swings = {side: evened(v) for side, v in swings.items()}
+                if len({(tuple(m[1]), tuple(m[2])) for m in motion['moments']}) == 1:  # one pose held throughout: one move for all of it
+                    most = int(np.argmax(np.linalg.norm(shifts, axis=1))); shifts[:] = shifts[most]; swings = {side: np.full(len(moments), v[most]) for side, v in swings.items()}  # the moment that needed most
+        if k == 0: turns = {node: [] for node in turns}; short = {lead: [], other: []}; bends = {lead: [], other: []}; flats = []; pulls = []; pushes = []; crowds = []; before = None
         low = place[trunk[0]][k]; up = unit(place[trunk[1]][k] - low); front = turn[trunk[1]][k] @ np.array([0, 0, 1.0]); front = unit(front - up * (front @ up))
         to_lead = np.cross(up, front) * (1.0 if lead == 'Left' else -1.0)
         middle = (place[ARMS[lead]['upper']][k] + place[ARMS[other]['upper']][k]) / 2
@@ -406,28 +458,66 @@ for motion in MOTIONS:
         guess = unit(np.cross(handle, up) if abs(handle @ up) < 0.95 else np.cross(handle, front)); side_way = np.cross(handle, guess)
         # A body with a broad chest or short arms may not reach a grip written for another. The grip is then pulled, a few
         # times over, by what the arms fell short.
-        pulled = np.zeros(3)
-        for attempt in range(6):
-            found = {}
-            for side, where in ((lead, at + pulled), (other, at + pulled + handle * along)):
-                arm = ARMS[side]; shoulder = place[arm['upper']][k]; best = None
-                for n, angle in enumerate(angles):
-                    pointer = guess * np.cos(angle) + side_way * np.sin(angle)
-                    # The leading hand carries the item, so its turn is the item's: rest handle to handle, rolled. The other lays its own grip along the handle.
-                    R = frame(handle, pointer) @ (lead_rest.T if side == lead else arm['hand_rest'].T)
-                    wrist = where - R @ arm['reach']
-                    elbow, reached, miss = bend(shoulder, wrist, hang[side], arm['a'], arm['b'])
-                    bent = float(np.arccos(np.clip(unit(R @ unit(arm['two'])) @ unit(reached - elbow), -1, 1)))
-                    flat = 1 - abs(float((R @ flat0) @ across_swing)) if side == lead else 0.0
-                    step = 0 if last[side] is None else min(abs(n - last[side]), ROLLS - abs(n - last[side])) * 2 * np.pi / ROLLS
-                    cost = miss * 50 + bent * bent + EDGE * flat + SMOOTH * step
-                    if best is None or cost < best[0]: best = (cost, n, R, elbow, reached, miss, bent, flat, reached - wrist)
-                found[side] = best
-            if max(found[side][5] for side in found) < 0.002: break
-            pulled = pulled + sum(found[side][8] for side in found)
-        pulls.append(np.linalg.norm(pulled))
+        def crowd(elbow, reached, R=None, where=None):
+            # how far inside the trunk a forearm is, and with R the item too
+            pts = elbow + (reached - elbow) * np.array([0.5, 0.7, 0.85, 1.0])[:, None]; deep = inside(pts, low, up, front, to_lead, CLEAR + FOREARM).max()
+            if R is not None and item_points is not None: deep = max(deep, inside(where + item_points @ R.T, low, up, front, to_lead, CLEAR).max())
+            return float(deep)
+        def solve(grip_at):
+            pulled = np.zeros(3)
+            for attempt in range(6):
+                found = {}
+                for side, where in ((lead, grip_at + pulled), (other, grip_at + pulled + handle * along)):
+                    arm = ARMS[side]; shoulder = place[arm['upper']][k]; best = None
+                    for n, angle in enumerate(angles):
+                        pointer = guess * np.cos(angle) + side_way * np.sin(angle)
+                        # The leading hand carries the item, so its turn is the item's: rest handle to handle, rolled. The other lays its own grip along the handle.
+                        R = frame(handle, pointer) @ (lead_rest.T if side == lead else arm['hand_rest'].T)
+                        wrist = where - R @ arm['reach']
+                        elbow, reached, miss = bend(shoulder, wrist, hang[side], arm['a'], arm['b'])
+                        bent = float(np.arccos(np.clip(unit(R @ unit(arm['two'])) @ unit(reached - elbow), -1, 1)))
+                        flat = 1 - abs(float((R @ flat0) @ across_swing)) if side == lead else 0.0
+                        step = 0 if last[side] is None else min(abs(n - last[side]), ROLLS - abs(n - last[side])) * 2 * np.pi / ROLLS
+                        cost = miss * 50 + bent * bent + EDGE * flat + SMOOTH * step
+                        if side == lead and SHAPE is not None and item_points is not None: cost += 40 * inside(where + item_points @ R.T, low, up, front, to_lead, CLEAR).max()
+                        if best is None or cost < best[0]: best = (cost, n, R, elbow, reached, miss, bent, flat, reached - wrist, wrist, 0.0)
+                    if SHAPE is not None:  # the elbow may swing round the line from shoulder to wrist, as little as takes the forearm out of the trunk
+                        _, n, R, elbow, reached, miss, bent, flat, off, wrist, _ = best; way = unit(wrist - shoulder); least = None
+                        for swing in (np.radians([0, 15, -15, 30, -30, 45, -45, 60, -60, 80, -80]) if rounds == 1 else [swings[side][k]]):
+                            e, r, m = bend(shoulder, wrist, swung(hang[side], way, swing), arm['a'], arm['b']); c = 30 * crowd(e, r) + (swing / 1.5) ** 2 + (0 if last_swing[side] is None else 0.6 * (swing - last_swing[side]) ** 2)
+                            if least is None or c < least[0]: least = (c, swing, e, r)
+                        best = (best[0], n, R, least[2], least[3], miss, bent, flat, off, wrist, least[1])
+                    found[side] = best
+                if max(found[side][5] for side in found) < 0.002: break
+                pulled = pulled + sum(found[side][8] for side in found)
+            deep = max(crowd(found[s_][3], found[s_][4], found[s_][2] if s_ == lead else None, grip_at + pulled) for s_ in found) if SHAPE is not None else 0.0
+            return found, deep, pulled
+        # A grip written for a bare body may put a forearm or the item through a broad or armoured trunk. On the first time
+        # round the grip is moved, a few centimetres at a time, whichever way of forward and to either side clears most;
+        # the moves are then evened out over time and the second time round uses them as they are.
+        if rounds == 1 and SHAPE is not None:
+            shift = np.zeros(3); found, deep, pulled = solve(at)
+            for attempt in range(10):
+                if deep < 0.004: break
+                tries = []
+                for way_out in (front, to_lead, -to_lead):
+                    step_out = shift + way_out * min(max(deep, 0.02), 0.04)
+                    if np.linalg.norm(step_out) > 0.5 * ARM: continue
+                    f_, d_, p_ = solve(at + step_out); tries.append((d_ + 2 * max(f_[s_][5] for s_ in f_) + 0.1 * np.linalg.norm(p_), step_out, f_, d_, p_))
+                if not tries: break
+                _, step_out, f_, d_, p_ = min(tries, key=lambda t: t[0])
+                if d_ >= deep: break
+                shift, found, deep, pulled = step_out, f_, d_, p_
+            shifts[k] = np.array([shift @ to_lead, shift @ up, shift @ front])
+        else:
+            found, deep, pulled = solve(at + to_lead * shifts[k][0] + up * shifts[k][1] + front * shifts[k][2])
+        pulls.append(np.linalg.norm(pulled)); pushes.append(float(np.linalg.norm(shifts[k]))); crowds.append(deep)
+        if SHAPE is not None:
+            for s_ in found:
+                last_swing[s_] = found[s_][10]
+                if rounds == 1: swings[s_][k] = found[s_][10]
         for side in (lead, other):
-            arm = ARMS[side]; _, last[side], R, elbow, reached, miss, bent, flat, _ = found[side]; short[side].append(miss); bends[side].append(bent)
+            arm = ARMS[side]; _, last[side], R, elbow, reached, miss, bent, flat = found[side][:8]; short[side].append(miss); bends[side].append(bent)
             if side == lead: flats.append(np.degrees(np.arccos(np.clip(1 - flat, -1, 1))))
             u, f, h = arm['upper'], arm['fore'], arm['hand']; root = place[u][k]; above = turn[parent[u]][k]; as_was = turn[u][k]
             new_upper = between(as_was @ arm['one'], elbow - root) @ as_was
@@ -447,7 +537,7 @@ for motion in MOTIONS:
     seam = max(float(np.degrees(2 * np.arccos(min(1, abs(np.array(v[0]) @ np.array(v[-1])))))) for v in turns.values())
     report.append({'name': motion['name'], 'from': base_name, 'seconds': round(float(length), 2),
                    'furthestShortMetres': round(float(max(max(short[lead]), max(short[other]))), 3),
-                   'gripPulledMetres': round(float(max(pulls)), 3), 'footShortMetres': round(float(foot_short), 3), 'wristBendDegrees': {lead: round(float(np.degrees(max(bends[lead])))), other: round(float(np.degrees(max(bends[other]))))},
+                   'gripPulledMetres': round(float(max(pulls)), 3), 'gripPushedOutMetres': round(float(max(pushes)), 3), 'leftInsideTrunkMetres': round(float(max(crowds)), 3), 'footShortMetres': round(float(foot_short), 3), 'wristBendDegrees': {lead: round(float(np.degrees(max(bends[lead])))), other: round(float(np.degrees(max(bends[other]))))},
                    'wristWorstAtShare': round(float(shares[int(np.argmax(np.maximum(bends[lead], bends[other])))]), 2), 'bladeOffItsEdgeDegrees': {'typical': round(float(np.median(flats))), 'most': round(float(max(flats)))}, 'firstToLastDegrees': round(seam), **({('groundMetresALoop' if motion.get('advance') else 'travelMetres'): round(float(ground), 3)} if ground else {})})
 
 doc['buffers'][0]['byteLength'] = len(blob)

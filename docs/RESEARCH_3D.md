@@ -67,6 +67,7 @@ Last updated 17 November 2026.
 | 57 | Root motion | Our scripts | A `Root` bone under the hips, keyed forward at the pace the planted foot goes back, for every walk, run and the advance | Keep for walks and the advance: Godot moves the character by the measured distance to the millimetre. The jog's and sprint's speeds are rough. |
 | 58 | An attack and a thrust that carry forward | Our scripts | `Great_Attack_Fwd` and `Spear_Thrust_Fwd`: the stepping foot stays where it lands and the other follows, with the travel written as root motion | Keep. The measured travel is within 5 mm of what was written and a planted foot moves 8 mm at most. |
 | 59 | Shield motions | Our scripts | `shield.py`: the shield arm written as three directions (elbow, face, top), for a guard, a walk, a jog, the sword attack, a block, a held block and a bash | Keep. Seven motions on both bodies; nothing gets more than 1.7 cm inside the shield. Not seen in a game. |
+| 60 | Held things clear of the trunk | Our scripts | `wield.py` measures the trunk from the file's own meshes, armour included, and moves the grip and swings the elbows until the forearms and the item are out of it; worn items are written two-sided | Keep. The greatsword's second forearm lay through the armoured belly for 84 to 89% of its length and now does for 1 to 8%; the spear no longer runs through the hip. Skin still shows at the edges of the armour |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1683,6 +1684,49 @@ On guard, walking, jogging, the sword attack, the block held, and the bash, on t
 - **Not seen moving.** The poses were looked at as stills, and the measure is of the meshes; nothing was watched in a running game or in the site's viewer.
 
 **Verdict.** Keep. A character with a sword and shield has motions of its own.
+
+## 60. Held things clear of the trunk
+
+**Question.** Seen in the site's viewer on a phone, the two-handed models clipped badly: the greatsword's guard sat in the cuirass, the second forearm disappeared into the belly, the spear ran through the hip, and the armour had holes in it. Which of these come from the motions, which from the meshes, and which from how they are drawn?
+
+**What was found.**
+
+- *The grips were written for a bare body.* `wield.py` places the grip in arm lengths from the shoulders and knew nothing of the trunk. The cuirass sits 3.6 cm above the skin (median) and the trunk with it on is 37 cm wide and 31 cm deep, on arms 48 cm long. In `Great_Idle`, `Great_Walk` and `Great_Jog` 84 to 89% of the second forearm was inside the body or within 3 cm of it, 8 to 9 cm deep at worst. In the spear motions the rear forearm was 3 to 5 cm inside, and the shaft passed through the side of the trunk.
+- *What is worn is an open shell.* The cuirass has 539 open edges, the leg armour 346, the helm 186, the cape 166. Their materials were one-sided, so wherever the inside of a shell faced the camera nothing was drawn, and it read as black holes in the armour.
+- *Skin at the edges.* `rig.py` keeps a rim of skin under each item's edge so no gap shows there. When a joint bends, that rim and the item over it move a little differently and skin shows through. This is not fixed here.
+
+**Setup.**
+
+- *The trunk, measured.* `wield.py` now reads every mesh in the file. The vertices that mostly follow the hips, spine or chest, of the body and of whatever is worn, are cut into twelve slices up the spine; each slice has a half width, a depth to the front and a depth to the back. Hanging items (a cape on chain bones) are left out. A point is inside when it is within its slice's ellipse.
+- *The grip moves.* On a first pass, at each moment, the grip is moved a few centimetres at a time, forward or to either side, whichever clears most, until the forearms (from half way down to the wrist) and the item are out by `CLEAR` (2 cm), or it has moved half an arm length. The elbow may also swing round the line from shoulder to wrist, up to 80 degrees.
+- *Evened out.* The moves and swings are then averaged over a third of a second each way. A motion that holds one pose throughout (an idle, a walk, a jog) takes one move for all of it: that of the moment that needed most. A last pass solves the arms with the moves fixed, so nothing jumps and a loop still meets itself.
+- *Two-sided.* `rig.py` marks every worn item's material `doubleSided`. The site's viewer now passes that on to the material it draws with. The five models on the site were marked in place.
+- *The site's models.* The inputs for rigging them again were gone, so the greatsword and spear files were given their motions again by `wield.py` and their cape by `sway.py`, from the files already on the site. Meshes, textures and the stock motions are as they were.
+
+**Result.**
+
+![The greatsword walk and the spear walk, before above and after below, each from two sides](../website/public/research/3d/trunk-clear.png)
+
+| Motion | Grip moved | Left inside the measured trunk | Second forearm inside or within 3 cm of the body, before | After |
+|---|---|---|---|---|
+| `Great_Idle` | 23.7 cm | 1.2 cm | 84% | 8% |
+| `Great_Walk` | 23.4 cm | 1.1 cm | 87% | 1% |
+| `Great_Jog` | 23.2 cm | 1.0 cm | 89% | 1% |
+| `Great_Attack` | 17.8 cm | 4.8 cm | 35% | 3% |
+| `Spear_Walk` | 9.3 cm | 0.0 cm | 7% | 0% |
+| `Spear_Jog` | 4.0 cm | 2.2 cm | 7% | 1% |
+| `Spear_Thrust` | 22.5 cm | 4.7 cm | 35% | 2% |
+
+"Left inside" is against the measured trunk with its 2 cm margin, and a further 4.5 cm for a forearm's thickness, so 1 cm there is a forearm that brushes the armour. `Spear_Idle` moved 22.4 cm and `Spear_Advance` 18.2 cm, and both came out clear. The last two columns count the hands meeting on the grip as well, so they do not reach zero.
+
+Loops still meet: the first and last poses differ by 0 to 3 degrees, 9 in `Spear_Thrust`. The spear's leading wrist had bent 89 to 100 degrees in every motion. It now bends 4 to 18 in the advance, walk and jog and 78 in the thrust; in `Spear_Idle` it still bends 97. All five files validate with no errors or warnings, and Godot 4.7.2 imports the three checked (greatsword, spear, sword and shield) with no errors and reads the worn items as two-sided.
+
+**Not done.**
+
+- Skin still shows at the edges of the armour when joints bend, and at the visor. That needs the bodies rigged again with more skin hidden, or the rim drawn in under the item.
+- The spear's butt and the greatsword on the back swing pass through the cape. `sway.py` keeps the cape out of the legs and trunk, not out of what is held.
+- The stock one-handed motions on the two-handed models (`Idle`, `Walk`, `Sword_Attack`) are untouched and still clip; they were never written for these items.
+- The sword and shield models were only marked two-sided. Their ragged arm armour is the item's own mesh.
 
 ## What has not worked, in one place
 

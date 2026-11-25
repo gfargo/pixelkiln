@@ -24,7 +24,10 @@ machine with a 12 GB RTX 3060.
   to the same bones, so a game can dress the same body differently.
 - **Skin that hides.** The body is split by what covers it. Each piece lists
   the items that hide it in its node's `extras`, as `"hiddenBy": ["Cuirass"]`.
-  Hide a piece while any item in its list is worn, and nothing shows through.
+  Hide a piece while any item in its list is worn. A rim of skin stays under
+  each item's edge and can show when a joint bends.
+- **Two-sided items.** What is worn is an open shell, so its material is marked
+  `doubleSided` and its inside is drawn. Godot reads that as culling off.
 - **A standard skeleton.** Twenty-one bones under the names Unity's and Godot's
   humanoid profiles use. Godot 4.7's `SkeletonProfileHumanoid` finds every bone
   it requires, by name.
@@ -294,6 +297,12 @@ legs and trunk come from the stock idle, walk and jog. It prints how far each
 wrist bends, how far the blade is off its edge and whether a hand fell short.
 To add a motion, add an entry to `MOTIONS` at the top of the script. An entry's
 `feet` list moves and turns the hips and steps a foot, as the attack does.
+
+The grips are written for a bare body, so `wield.py` measures the trunk from
+the file itself, with whatever is worn, and moves the grip out until the
+forearms and the item are clear of it by `CLEAR` metres (default 0.02). Its
+report gives how far each motion's grip moved (`gripPushedOutMetres`) and what
+is still inside (`leftInsideTrunkMetres`). A negative `CLEAR` turns this off.
 
 A spear or staff has no guard and its hands go apart. Say where they go, give
 it to the hand that is forward, and ask for the spear motions:
