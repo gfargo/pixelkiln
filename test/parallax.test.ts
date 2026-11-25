@@ -13,6 +13,7 @@ import {
   extendDown,
   finishPicture,
   layRun,
+  loopPicture,
   resolveParallaxSet,
   seamRatio,
   skyBands,
@@ -164,6 +165,47 @@ describe("parallax layers", () => {
     expect(ParallaxLayerSchema.safeParse({ file: "b.png", foot: 0, speed: 0.25 }).success).toBe(false)
     expect(ParallaxLayerSchema.safeParse({ file: "b.png", tint: { color: "#7f4776", amount: 1.5 }, speed: 0.25 }).success).toBe(false)
     expect(ParallaxLayerSchema.safeParse({ file: "b.png", foot: 0.3, extend: true, speed: 0.25 }).success).toBe(false)
+  })
+
+  it("takes loop on a picture that repeats, not on sky, a run or a layer that does not repeat", () => {
+    for (const loop of ["cut", "crossfade", "mirror"]) expect(ParallaxLayerSchema.safeParse({ file: "b.png", loop, speed: 0.25 }).success).toBe(true)
+    expect(ParallaxLayerSchema.safeParse({ asset: "far", loop: "cut", tint: { color: "#7f4776", amount: 1 }, extend: true, speed: 0.25 }).success).toBe(true)
+    expect(ParallaxLayerSchema.safeParse({ file: "b.png", loop: "wrap", speed: 0.25 }).success).toBe(false)
+    const refused = (extra: object) => ParallaxLayerSchema.safeParse({ speed: 0.25, loop: "cut", ...extra }).error?.issues[0]?.message
+    expect(refused({ sky: ["#000000"] })).toMatch(/sky layer/)
+    expect(refused({ run: [{ file: "b.png" }] })).toMatch(/laid as a loop already/)
+    expect(refused({ file: "b.png", repeat: false })).toMatch(/does not repeat/)
+  })
+
+  it("loops a picture at the two columns that best continue into each other", () => {
+    // Every column differs except 29, a copy of 2, so the best cut keeps columns 2 to 29.
+    const png = striped(40, 6, 3)
+    for (let y = 0; y < 6; y++) png.pixels.copy(png.pixels, (y * 40 + 29) * 4, (y * 40 + 2) * 4, (y * 40 + 3) * 4)
+    const cut = loopPicture(png, "cut")
+    expect(cut.loop).toEqual({ method: "cut", from: 40, columns: [2, 30] })
+    expect(cut.png.width).toBe(28)
+    expect(seamRatio(cut.png)).toBe(0)
+    expect(seamRatio(png)).toBeGreaterThan(1)
+  })
+
+  it("crossfades the last eighth into the first and mirrors, adding no colours", () => {
+    const png = striped(40, 6, 4, (x, y) => x === 1 && y === 2)
+    const colour = (p: DecodedPng, at: number) => [...p.pixels.subarray(at * 4, at * 4 + 3)].join()
+    const source = new Set(Array.from({ length: 240 }, (_, p) => colour(png, p)))
+    const fade = loopPicture(png, "crossfade")
+    expect([fade.png.width, fade.loop]).toEqual([35, { method: "crossfade", from: 40 }])
+    for (let p = 0; p < 35 * 6; p++) expect(source.has(colour(fade.png, p))).toBe(true)
+    // Past the blended columns the picture is untouched, and alpha is the first columns'.
+    expect(fade.png.pixels.subarray(5 * 4, 35 * 4)).toEqual(png.pixels.subarray(5 * 4, 35 * 4))
+    expect(fade.png.pixels[(2 * 35 + 1) * 4 + 3]).toBe(0)
+
+    const mirror = loopPicture(png, "mirror")
+    expect(mirror.png.width).toBe(80)
+    for (let x = 0; x < 40; x++) {
+      expect(mirror.png.pixels.subarray((3 * 80 + 40 + x) * 4, (3 * 80 + 41 + x) * 4)).toEqual(png.pixels.subarray((3 * 40 + 39 - x) * 4, (3 * 40 + 40 - x) * 4))
+    }
+    expect(seamRatio(mirror.png)).toBe(0)
+    expect(() => loopPicture(striped(6, 4, 1), "cut", "far")).toThrow(/far: 6 px wide is too narrow to loop/)
   })
 
   it("trims a picture and thins its foot out with an ordered dither", () => {
@@ -469,6 +511,39 @@ describe("pixelkiln parallax", () => {
     await expect(loadManifest(manifestPath)).rejects.toThrow(/parallax\.dusk\.palette: style "bare" has no palette/)
     await writeFile(manifestPath, JSON.stringify({ name: "p", styles, assets: {}, parallax: parallax("nope") }))
     await expect(loadManifest(manifestPath)).rejects.toThrow(/parallax\.dusk\.palette: unknown style "nope"/)
+  })
+
+  it("loops a whole picture before finishing it, and records the columns it kept", async () => {
+    // Column 29 copies column 2, so the cut keeps columns 2 to 29; the last 12 columns are clear.
+    const far = striped(40, 10, 5, (x) => x >= 30)
+    for (let y = 0; y < 10; y++) far.pixels.copy(far.pixels, (y * 40 + 29) * 4, (y * 40 + 2) * 4, (y * 40 + 3) * 4)
+    await writeFile(path.join(dir, "far.png"), encodeRgbaPng(40, 10, far.pixels))
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const write = (extra: object) =>
+      writeFile(manifestPath, JSON.stringify({
+        name: "p",
+        styles: { s: { palette: ["#000000", "#936090", "#ffffff"], outDir: "out" } },
+        assets: {},
+        parallax: { dusk: { view: [64, 48], travel: 96, palette: "s", layers: [{ name: "far", file: "far.png", bottom: 30, speed: 0.25, ...extra }] } },
+      }))
+    await writeFile(lockPath, JSON.stringify({ version: 2, entries: {} }))
+    const resolve = async () => resolveParallaxSet((await loadManifest(manifestPath)).manifest, dir, { version: 2, entries: {} } as unknown as Lock, "dusk")
+
+    await write({})
+    const rough = await resolve()
+    expect(rough.warnings.join()).toMatch(/far: its sideways join is .* set "loop": "cut" to smooth it/)
+
+    await write({ loop: "cut", tint: { color: "#936090", amount: 1 } })
+    const looped = await resolve()
+    const layer = looped.layers[0]!
+    expect([layer.png.width, layer.seamRatio, looped.warnings]).toEqual([28, 0, []])
+    // Tinted after the cut: every pixel the cut kept is the tint colour.
+    for (let p = 0; p < 28 * 10; p++) expect([...layer.png.pixels.subarray(p * 4, p * 4 + 4)]).toEqual([0x93, 0x60, 0x90, 255])
+
+    await main(["parallax", "export", "dusk", "--format", "tiled", "--manifest", manifestPath, "--lock", lockPath])
+    const record = JSON.parse(await readFile(path.join(dir, "parallax", "dusk", "tiled", "dusk.pixelkiln.json"), "utf8"))
+    expect(record.options.layers[0]).toMatchObject({ loop: { method: "cut", from: 40, columns: [2, 30] }, tint: { color: "#936090", amount: 1 } })
   })
 
   it("rejects a run sprite whose asset is not in the manifest", async () => {

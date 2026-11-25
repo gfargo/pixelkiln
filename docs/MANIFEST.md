@@ -775,6 +775,7 @@ letters, digits, `-` and `_`, since it names folders and a Godot node. The
 | `gap` | no | Up to this many more pixels between run sprites, at random. Defaults to 16. |
 | `jitter` | no | Moves each run sprite's foot up or down by up to this many pixels. Defaults to 0. |
 | `width` | no | A run's length. Defaults to everything the camera sees of the layer. A repeating run is laid as a loop of this width. |
+| `loop` | no | Make a picture that repeats sideways join smoothly, before `foot` and `tint`: `cut` crops it to the two columns, at least 60% of the width apart, that best continue into each other; `crossfade` blends its last eighth into its first and snaps the blend to the picture's colours; `mirror` adds a flipped copy beside it. Not on `sky`, a `run` or a layer with `"repeat": false`. |
 | `foot` | no | Trim the picture to its opaque box, then thin out this fraction of it from the bottom with a 4×4 ordered dither, above 0 up to 1. A layer that repeats sideways keeps its width. In a run, each sprite is finished before it is laid. |
 | `tint` | no | `{ "color": "#7f4776", "amount": 0.55 }`: mix the picture `amount` of the way to `color`, then snap it to the set's `palette`. Applied after `foot`, to each sprite of a run. |
 
@@ -786,7 +787,7 @@ letters, digits, `-` and `_`, since it names folders and a Godot node. The
     "palette": "silhouette",
     "layers": [
       { "sky": ["#405e9c", "#a596b9", "#f9b59c"], "speed": 0 },
-      { "asset": "far-range", "bottom": 150, "speed": 0.125, "extend": true },
+      { "asset": "far-range", "loop": "cut", "bottom": 150, "speed": 0.125, "extend": true },
       { "run": [{ "asset": "cone" }, { "asset": "mesa" }], "bottom": 176, "speed": 0.5, "jitter": 4,
         "foot": 0.3, "tint": { "color": "#403a61", "amount": 0.4 } },
       { "file": "finished/near.png", "bottom": 256, "speed": 1 }
@@ -798,7 +799,8 @@ letters, digits, `-` and `_`, since it names folders and a Godot node. The
 The manifest refuses an `asset` it does not declare, in a layer or a run, a
 `style` the asset is not generated under, a layer name used twice, the run
 fields on a layer that is not a run, `foot` or `tint` on a `sky` layer, `foot`
-with `extend`, and a `palette` style that does not exist or has no palette.
+with `extend`, `loop` on a `sky` layer, a run or a layer that does not repeat,
+and a `palette` style that does not exist or has no palette.
 
 ## Validation and editor setup
 

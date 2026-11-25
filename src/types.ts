@@ -2579,6 +2579,10 @@ export const ParallaxTintSchema = z
   })
   .strict()
 
+/** How a whole picture is made to join smoothly when it repeats sideways. */
+export const PARALLAX_LOOPS = ["cut", "crossfade", "mirror"] as const
+export type ParallaxLoop = (typeof PARALLAX_LOOPS)[number]
+
 export const ParallaxLayerSchema = z
   .object({
     /** Names the layer in exports; defaults to the asset id, the file name, or "sky". */
@@ -2633,6 +2637,13 @@ export const ParallaxLayerSchema = z
     foot: z.number().gt(0).max(1).optional(),
     /** Pull the picture (each sprite of a run) toward a colour and snap it to the set's palette. Applied after `foot`. */
     tint: ParallaxTintSchema.optional(),
+    /**
+     * Make a picture that repeats sideways join smoothly, before `foot` and
+     * `tint`: `cut` crops it to the two columns that best continue into each
+     * other, `crossfade` blends its last eighth into its first and snaps the
+     * blend to the picture's colours, `mirror` adds a flipped copy beside it.
+     */
+    loop: z.enum(PARALLAX_LOOPS).optional(),
   })
   .strict()
   .superRefine((layer, ctx) => {
@@ -2652,6 +2663,10 @@ export const ParallaxLayerSchema = z
       for (const key of ["foot", "tint"] as const) {
         if (layer[key] !== undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} does not apply to a sky layer` })
       }
+    }
+    if (layer.loop !== undefined) {
+      const why = layer.sky !== undefined ? "a sky layer is drawn to the view's width" : layer.run !== undefined ? "a run is laid as a loop already" : layer.repeat === false ? "the layer does not repeat" : undefined
+      if (why) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["loop"], message: `loop does not apply: ${why}` })
     }
     if (layer.foot !== undefined && layer.extend !== undefined) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["extend"], message: "extend repeats the bottom row, which foot thins out; use one or the other" })

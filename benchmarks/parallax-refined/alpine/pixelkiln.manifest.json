@@ -382,6 +382,7 @@
         216
       ],
       "travel": 480,
+      "palette": "layer-a",
       "layers": [
         {
           "name": "sky",
@@ -397,14 +398,20 @@
         },
         {
           "name": "far",
-          "file": "../../../website/public/research/parallax/refined/alpine/picked/far.png",
+          "file": "../../../website/public/research/parallax/refined/alpine/a/layer-far.png",
+          "loop": "cut",
+          "tint": {
+            "color": "#9499b9",
+            "amount": 1
+          },
           "bottom": 150,
           "speed": 0.125,
           "extend": true
         },
         {
           "name": "mid",
-          "file": "../../../website/public/research/parallax/refined/alpine/picked/mid.png",
+          "file": "../../../website/public/research/parallax/refined/alpine/a/layer-mid.png",
+          "loop": "cut",
           "bottom": 204,
           "speed": 0.25
         },
@@ -418,7 +425,8 @@
         },
         {
           "name": "near",
-          "file": "../../../website/public/research/parallax/refined/alpine/picked/near.png",
+          "file": "../../../website/public/research/parallax/refined/alpine/a/layer-near.png",
+          "loop": "cut",
           "bottom": 256,
           "speed": 1
         }

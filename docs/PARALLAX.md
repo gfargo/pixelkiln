@@ -149,27 +149,31 @@ pillow and scipy.
 
 ## 5. Finish the pieces
 
-All of these are free and keep every pixel on the palette. The dithered foot
-and the tints are layer fields, `foot` and `tint`, which the command applies as
-it reads each picture (step 6). Looping a whole layer is still a script step:
+All of these are free and keep every pixel on the palette. They are layer
+fields, `loop`, `foot` and `tint`, which the command applies as it reads each
+picture (step 6), in that order.
+
+The script gives the same pixels as the fields, for a picture you want
+finished on disk:
 
 ```bash
 P="python3 research/scripts/parallax.py"
-
-# Whole layers: loop at the best matching columns.
 $P loop layer-far.png far.png cut
-$P loop layer-near.png near.png cut
-```
-
-The script's `foot` and `tint` give the same pixels as the fields, for a
-picture you want finished on disk:
-
-```bash
 $P foot cone.png cone.foot.png 0.3
 $P tint cone.foot.png cone.far.png "#7f4776" 0.55 pixelkiln.manifest.json
 ```
 
 ![One landform: as generated, with the dithered foot, then the far-tier and near-tier copies](../website/public/research/parallax/refined/foot-and-tiers.png)
+
+**A whole layer that loops.** A generated range seldom joins smoothly when it
+repeats. `"loop": "cut"` crops it to the two columns, at least 60% of the width
+apart, that best continue into each other, and adds no pixels. It is the one to
+use: on seven generated layers from the research it left every join at 0.4 of
+the picture's own column step or smoother. `crossfade` blends the last eighth
+into the first and snaps the blend to the picture's colours; on the same seven
+layers it left five joins rougher than before. `mirror` puts a flipped copy beside the picture, which joins
+perfectly and doubles its width, but a range that faces both ways reads as
+mirrored.
 
 **The dithered foot.** Background removal leaves every pixel fully on or off,
 so a silhouette cannot fade by alpha. Thinning its bottom rows with a 4×4
@@ -202,12 +206,14 @@ This is the alpine set from the pictures above:
   "alpine-dusk": {
     "view": [384, 216],          // the game's view in pixels
     "travel": 480,               // how far the camera moves across the level
+    "palette": "parallax-a",     // tints snap to this style's palette
     "layers": [
       { "name": "sky", "sky": ["#405e9c", "#60649f", "#a596b9", "#c38eb3", "#de889c", "#f9b59c"], "speed": 0 },
-      { "name": "far", "file": "picked/far.png", "bottom": 150, "speed": 0.125, "extend": true },
-      { "name": "mid", "file": "picked/mid.png", "bottom": 204, "speed": 0.25 },
+      { "name": "far", "asset": "layer-far", "style": "parallax-a", "loop": "cut",
+        "tint": { "color": "#9499b9", "amount": 1 }, "bottom": 150, "speed": 0.125, "extend": true },
+      { "name": "mid", "asset": "layer-mid", "style": "parallax-a", "loop": "cut", "bottom": 204, "speed": 0.25 },
       { "name": "ground", "sky": ["#040920"], "bottom": 422, "speed": 1 },
-      { "name": "near", "file": "picked/near.png", "bottom": 256, "speed": 1 }
+      { "name": "near", "asset": "layer-near", "style": "parallax-a", "loop": "cut", "bottom": 256, "speed": 1 }
     ]
   }
 }
@@ -226,7 +232,7 @@ nothing.
   top-left of the view. `x` moves a layer sideways.
 - Layers repeat sideways unless `"repeat": false`. For one that repeats, the
   command measures the join and warns when it is more than twice as rough as
-  the rest of the picture, so loop it first.
+  the rest of the picture. `"loop": "cut"` smooths it (step 5).
 - `extend: true` repeats a layer's bottom row down to the foot of the view, so
   the layers in front dissolve into distant land, not into sky.
 - `asset` reads the generated picture from the lockfile. Add `style` when the
@@ -242,16 +248,17 @@ generated, each finished by the command:
 "volcanic-dusk": {
   "view": [384, 216],
   "travel": 480,
-  "palette": "silhouette",       // tints snap to this style's palette
+  "palette": "parallax-a",       // tints snap to this style's palette
   "layers": [
     { "name": "sky", "sky": ["#2e3253", "#503e68", "#7b5f94", "#ad628e", "#d66283", "#f96076"], "speed": 0 },
-    { "name": "far", "file": "picked/far.png", "bottom": 150, "speed": 0.125, "extend": true },
+    { "name": "far", "asset": "layer-far", "style": "parallax-b", "loop": "cut",
+      "tint": { "color": "#936090", "amount": 1 }, "bottom": 150, "speed": 0.125, "extend": true },
     { "name": "cones_far", "run": [{ "asset": "cone" }, { "asset": "rim" }, { "asset": "mesa" }], "bottom": 158, "speed": 0.25, "jitter": 4, "seed": 7,
       "foot": 0.3, "tint": { "color": "#7f4776", "amount": 0.55 } },
     { "name": "cones_near", "run": [{ "asset": "cone" }, { "asset": "rim" }, { "asset": "mesa" }], "bottom": 176, "speed": 0.5, "jitter": 4, "seed": 8,
       "foot": 0.3, "tint": { "color": "#403a61", "amount": 0.4 } },
     { "name": "ground", "sky": ["#0e0c20"], "bottom": 422, "speed": 1 },
-    { "name": "near", "file": "picked/near.png", "bottom": 246, "speed": 1 }
+    { "name": "near", "asset": "layer-near", "style": "parallax-a", "loop": "cut", "bottom": 246, "speed": 1 }
   ]
 }
 ```
@@ -490,5 +497,3 @@ another side needs new pictures. The manifests and build script are in
   background removal breaks the seam. The default style drew a flat background
   on 2 of 3 tries, and its colours are its own, so the rest of the set has to
   follow them (step 21).
-- Looping a whole picture inside `pixelkiln parallax`. Loop it with
-  `parallax.py loop` and name the result as a `file` layer.

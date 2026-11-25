@@ -2679,6 +2679,14 @@
                         "amount"
                       ],
                       "additionalProperties": false
+                    },
+                    "loop": {
+                      "type": "string",
+                      "enum": [
+                        "cut",
+                        "crossfade",
+                        "mirror"
+                      ]
                     }
                   },
                   "required": [

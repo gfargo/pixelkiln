@@ -500,7 +500,7 @@ The silhouette route behaves the same way. Step 18's runs recoloured keep their 
 
 ## The `pixelkiln parallax` command
 
-Steps 1 to 22 led to a command. It is narrower than the proposal this note used to carry. It has no `loop` field: choosing where a whole layer joins still needs judgment (steps 1 and 2), and the script does it. Step 18's finishing is in the command as `foot` and `tint`, snapped to a set's `palette`.
+Steps 1 to 22 led to a command. It is narrower than the proposal this note used to carry. Step 2's loop is in the command as `loop`, and step 18's finishing as `foot` and `tint`, snapped to a set's `palette`.
 
 A manifest's `parallax` section names sets. A set has the `view`, how far the camera moves (`travel`, `climb`) and its layers, far to near. A layer is a generated `asset`, read from the lockfile, a finished `file`, `sky` bands drawn by PixelKiln, or a `run` of silhouettes laid by seed as step 12 lays them, with `speed` and optional `speedY`, `x`, `bottom`, `extend`, `repeat`, `repeatY`, `foot` and `tint`. The [manifest reference](./MANIFEST.md#parallax-sets) lists them.
 
@@ -512,6 +512,8 @@ The sets checked in step 22 are in the manifests of [`benchmarks/parallax-refine
 A run is baked into one picture before export, so the engines take it like any other layer. The volcanic set in [`benchmarks/parallax-refined/volcanic`](../benchmarks/parallax-refined/volcanic) has two looping runs of the same four landforms. Godot 4.7 with snapping, Tiled's renderer and the LDtk drawing code each matched its preview at camera 0, 137, 240, 333 and 480, with no pixel different.
 
 The runs now name the landforms as generated, with `"foot": 0.3` and each tier's tint. The command's foot and tint follow the script's rounding and its choice between equally near palette colours. All 12 finished sprites, four landforms with a foot alone and with each tier's tint, matched the script's files pixel for pixel, the set's frames were unchanged, and the three engines again matched with no pixel different.
+
+The whole layers of both refined sets now name the pictures as generated, with `"loop": "cut"`, and the far ranges with a `tint` of amount 1. The command's loop makes the same choices as the script, the same first-found pair for the cut and the same rounding and palette snap for the crossfade. On seven generated layers with each of the three methods, all 21 results matched the script's pixel for pixel. Both sets' preview frames and LDtk files were unchanged. Their Tiled and Godot pictures differ only in the colour stored under fully transparent pixels, which the script's tint recolours and the command leaves alone. On those seven layers the cut left every join at a seam ratio of 0.4 or less, and the crossfade left five of the seven rougher than before, so the guide recommends the cut.
 
 ## What other people are doing
 
@@ -543,7 +545,6 @@ The runs now name the landforms as generated, with `"foot": 0.3` and each tier's
 ## What is next
 
 - **Open the LDtk export in the LDtk editor.** Step 22 checked LDtk by its source, not by running it.
-- **Looping a whole picture in the command.** Runs loop on their own, and step 18's foot and tints are layer fields. A whole layer is still looped by `parallax.py loop`.
 - **A palette swap in the engine.** Step 20's table could run as a lookup in a shader, so one set covers a day cycle with no extra pictures.
 - **A time of day lit from another side**, such as midday. A palette swap cannot move the light, so this is where generating again might earn its cost.
 - **A full sideways Retro Diffusion set** from `rd_plus__default`, keyed by script and scrolled, with retries for candidates that come on a gradient.
