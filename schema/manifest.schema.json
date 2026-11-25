@@ -2523,6 +2523,23 @@
                 "minimum": 0,
                 "maximum": 100000
               },
+              "palette": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^#?[0-9a-f]{6}$"
+                    },
+                    "minItems": 2,
+                    "maxItems": 256
+                  }
+                ]
+              },
               "layers": {
                 "type": "array",
                 "items": {
@@ -2638,6 +2655,30 @@
                     },
                     "repeatY": {
                       "type": "boolean"
+                    },
+                    "foot": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    },
+                    "tint": {
+                      "type": "object",
+                      "properties": {
+                        "color": {
+                          "type": "string",
+                          "pattern": "^#?[0-9a-f]{6}$"
+                        },
+                        "amount": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "color",
+                        "amount"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [

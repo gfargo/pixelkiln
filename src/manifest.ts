@@ -286,6 +286,11 @@ async function loadExpanded(abs: string, expansion: Expansion): Promise<LoadedMa
   for (const assetId of Object.keys(parsed.data.assets)) visitConnections(assetId)
   for (const [setId, set] of Object.entries(parsed.data.parallax ?? {})) {
     const names = new Set<string>()
+    if (typeof set.palette === "string") {
+      const style = parsed.data.styles[set.palette]
+      if (!style) unknownReferences.push(`parallax.${setId}.palette: unknown style "${set.palette}"`)
+      else if (style.palette.length < 2) unknownReferences.push(`parallax.${setId}.palette: style "${set.palette}" has no palette`)
+    }
     set.layers.forEach((layer, index) => {
       const at = `parallax.${setId}.layers.${index}`
       const checkAsset = (where: string, ref: { asset?: string; style?: string }) => {

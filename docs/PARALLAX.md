@@ -149,22 +149,24 @@ pillow and scipy.
 
 ## 5. Finish the pieces
 
-All of these are free and keep every pixel on the palette.
+All of these are free and keep every pixel on the palette. The dithered foot
+and the tints are layer fields, `foot` and `tint`, which the command applies as
+it reads each picture (step 6). Looping a whole layer is still a script step:
 
 ```bash
 P="python3 research/scripts/parallax.py"
 
-# Silhouettes: trim, then thin out the bottom 30% with an ordered dither.
-$P foot cone.png cone.foot.png 0.3
-
-# One copy a tier, each pulled toward its own colour and snapped to the palette.
-$P tint cone.foot.png cone.far.png  "#7f4776" 0.55 pixelkiln.manifest.json
-$P tint cone.foot.png cone.near.png "#403a61" 0.4  pixelkiln.manifest.json
-
-# Whole layers: loop at the best matching columns. Recolour the flat far range.
+# Whole layers: loop at the best matching columns.
 $P loop layer-far.png far.png cut
-$P tint far.png far.png "#936090" 1 pixelkiln.manifest.json
 $P loop layer-near.png near.png cut
+```
+
+The script's `foot` and `tint` give the same pixels as the fields, for a
+picture you want finished on disk:
+
+```bash
+$P foot cone.png cone.foot.png 0.3
+$P tint cone.foot.png cone.far.png "#7f4776" 0.55 pixelkiln.manifest.json
 ```
 
 ![One landform: as generated, with the dithered foot, then the far-tier and near-tier copies](../website/public/research/parallax/refined/foot-and-tiers.png)
@@ -172,6 +174,11 @@ $P loop layer-near.png near.png cut
 **The dithered foot.** Background removal leaves every pixel fully on or off,
 so a silhouette cannot fade by alpha. Thinning its bottom rows with a 4×4
 pattern makes it dissolve into whatever is behind it and keeps it pixel art.
+`"foot": 0.3` trims the picture to its opaque box and thins the bottom 30%.
+
+**One tint a tier.** `"tint": { "color": "#7f4776", "amount": 0.55 }` mixes
+each pixel 55% of the way to the colour and snaps it to the set's `palette`.
+Two `run` layers of the same sprites with different tints make the two tiers.
 
 **Depth order.** The farther a layer, the closer to the sky's colour and the
 lower its contrast. Check the order from back to front: the far range lightest,
@@ -181,7 +188,8 @@ it. Tinting every tier toward one light haze colour gets the order backwards:
 the near tier ends up lighter than the range behind it.
 
 **The far range.** Pick a palette colour that sits between the sky bands behind
-it, darker than the horizon and lighter than the tiers.
+it, darker than the horizon and lighter than the tiers. A `tint` with
+`"amount": 1` recolours the whole range to it.
 
 ## 6. Preview the stack
 
@@ -227,17 +235,21 @@ nothing.
   under the treeline.
 
 A `run` layer lays isolated silhouettes in an overlapping row. This is the
-volcanic set from the pictures above, two tiers of the same landforms:
+volcanic set from the pictures above, two tiers of the same landforms as
+generated, each finished by the command:
 
 ```jsonc
 "volcanic-dusk": {
   "view": [384, 216],
   "travel": 480,
+  "palette": "silhouette",       // tints snap to this style's palette
   "layers": [
     { "name": "sky", "sky": ["#2e3253", "#503e68", "#7b5f94", "#ad628e", "#d66283", "#f96076"], "speed": 0 },
     { "name": "far", "file": "picked/far.png", "bottom": 150, "speed": 0.125, "extend": true },
-    { "name": "cones_far", "run": [{ "file": "picked/cone.far.png" }, { "file": "picked/rim.far.png" }, { "file": "picked/mesa.far.png" }], "bottom": 158, "speed": 0.25, "jitter": 4, "seed": 7 },
-    { "name": "cones_near", "run": [{ "file": "picked/cone.near.png" }, { "file": "picked/rim.near.png" }, { "file": "picked/mesa.near.png" }], "bottom": 176, "speed": 0.5, "jitter": 4, "seed": 8 },
+    { "name": "cones_far", "run": [{ "asset": "cone" }, { "asset": "rim" }, { "asset": "mesa" }], "bottom": 158, "speed": 0.25, "jitter": 4, "seed": 7,
+      "foot": 0.3, "tint": { "color": "#7f4776", "amount": 0.55 } },
+    { "name": "cones_near", "run": [{ "asset": "cone" }, { "asset": "rim" }, { "asset": "mesa" }], "bottom": 176, "speed": 0.5, "jitter": 4, "seed": 8,
+      "foot": 0.3, "tint": { "color": "#403a61", "amount": 0.4 } },
     { "name": "ground", "sky": ["#0e0c20"], "bottom": 422, "speed": 1 },
     { "name": "near", "file": "picked/near.png", "bottom": 246, "speed": 1 }
   ]
@@ -256,9 +268,11 @@ volcanic set from the pictures above, two tiers of the same landforms:
   sees. `width` sets the run's length either way.
 - The command bakes each run into one picture, so every engine export takes it
   like any other layer.
+- `foot` and `tint` apply to each sprite before it is laid, so every sprite
+  stands on its trimmed foot. `palette` is a style id or a list of colours;
+  without one, a tint snaps to the colours already in each picture and adds
+  none, which is the script's `haze`.
 
-Haze, tier tints and dithered feet are still script steps. Finish those
-sprites with `research/scripts/parallax.py` and name the results in the run.
 The script's own preview (`parallax.py skyline`) and the build script for both
 biomes are in [`benchmarks/parallax-refined`](../benchmarks/parallax-refined).
 
@@ -476,6 +490,5 @@ another side needs new pictures. The manifests and build script are in
   background removal breaks the seam. The default style drew a flat background
   on 2 of 3 tries, and its colours are its own, so the rest of the set has to
   follow them (step 21).
-- Haze, dithered feet and looping a whole picture inside `pixelkiln
-  parallax`. Finish those pieces with `parallax.py` and name the results as
-  `file` layers or run sprites.
+- Looping a whole picture inside `pixelkiln parallax`. Loop it with
+  `parallax.py loop` and name the result as a `file` layer.

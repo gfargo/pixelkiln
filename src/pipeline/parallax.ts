@@ -17,7 +17,7 @@ import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { decodePng, encodeRgbaPng, parseHex, type DecodedPng } from "../png.ts"
-import { lockKey, type Lock, type Manifest, type ParallaxLayer, type ParallaxRunSprite, type ParallaxSet } from "../types.ts"
+import { lockKey, type Lock, type Manifest, type ParallaxLayer, type ParallaxRunSprite, type ParallaxSet, type ParallaxTint } from "../types.ts"
 import { LDTK_JSON_VERSION } from "./ldtk-export.ts"
 
 export const PARALLAX_FORMATS = ["tiled", "godot", "ldtk"] as const
@@ -42,6 +42,8 @@ export interface ParallaxLayerImage {
   seamRatio?: number
   /** The same for the vertical join, for a layer that repeats vertically. */
   seamRatioY?: number
+  /** The finishing applied to the picture, or to each sprite of a run. */
+  finish?: { foot?: number; tint?: ParallaxTint }
 }
 
 export type PictureSource = { kind: "asset"; style: string; asset: string; path: string } | { kind: "file"; path: string }
@@ -58,6 +60,8 @@ export interface ResolvedParallaxSet {
   view: [number, number]
   travel: number
   climb: number
+  /** What tints snapped to, when the set names a palette. */
+  palette?: string[]
   layers: ParallaxLayerImage[]
   warnings: string[]
 }
@@ -161,11 +165,16 @@ export async function resolveParallaxSet(
   const warnings: string[] = []
   const layers: ParallaxLayerImage[] = []
   const taken = new Set<string>()
+  const palette = typeof set.palette === "string" ? manifest.styles[set.palette]?.palette : set.palette
+  if (set.palette !== undefined && !palette?.length) throw new Error(`parallax ${setId}: style "${set.palette}" has no palette`)
   for (const [index, layer] of set.layers.entries()) {
     let name = layerName(layer, index)
     for (let n = 2; taken.has(name); n++) name = `${layerName(layer, index)}_${n}`
     taken.add(name)
     const speedY = layer.speedY ?? (climb > 0 ? layer.speed : 1)
+    const repeat = layer.repeat ?? true
+    const finish = (picture: DecodedPng, keepWidth: boolean) =>
+      finishPicture(picture, { foot: layer.foot, tint: layer.tint, palette, keepWidth }, `parallax ${setId}: ${name}`)
     let png: DecodedPng
     let source: ParallaxLayerImage["source"]
     if (layer.sky) {
@@ -178,14 +187,13 @@ export async function resolveParallaxSet(
       const loop = layer.repeat ?? true
       // Unrepeated, the run reaches from the layer's left edge past everything the camera shows of it.
       const width = layer.width ?? Math.max(1, viewW + Math.ceil(travel * layer.speed) - (loop ? 0 : (layer.x ?? 0)))
-      png = layRun(sprites.map((sprite) => sprite.png), width, { seed, step: layer.step, gap: layer.gap, jitter: layer.jitter, loop })
+      png = layRun(sprites.map((sprite) => finish(sprite.png, false)), width, { seed, step: layer.step, gap: layer.gap, jitter: layer.jitter, loop })
       source = { kind: "run", seed, sprites: sprites.map((sprite) => sprite.source) }
     } else {
       const picture = await readPicture(manifest, manifestDir, lock, setId, name, layer, warnings)
-      png = picture.png
+      png = finish(picture.png, repeat)
       source = picture.source
     }
-    const repeat = layer.repeat ?? true
     // A run's picture leaves room for its feet to move by up to `jitter` either way.
     let bottom = (layer.bottom ?? viewH) + (layer.run ? (layer.jitter ?? 0) : 0)
     if (layer.extend) {
@@ -204,6 +212,7 @@ export async function resolveParallaxSet(
       repeatY: layer.repeatY ?? false,
       source,
     }
+    if (layer.foot !== undefined || layer.tint) image.finish = { foot: layer.foot, tint: layer.tint }
     // A run is laid as a loop, so its join is as smooth as anywhere else in it.
     if (repeat && source.kind !== "sky" && source.kind !== "run") {
       image.seamRatio = seamRatio(png)
@@ -236,7 +245,133 @@ export async function resolveParallaxSet(
     }
     layers.push(image)
   }
-  return { id: setId, view: [viewW, viewH], travel, climb, layers, warnings }
+  return { id: setId, view: [viewW, viewH], travel, climb, ...(palette ? { palette } : {}), layers, warnings }
+}
+
+export interface FinishOptions {
+  foot?: number
+  tint?: ParallaxTint
+  /** What a tint snaps to; the picture's own opaque colours when absent. */
+  palette?: string[]
+  /** Trim only rows, for a layer whose width is its loop. */
+  keepWidth?: boolean
+}
+
+/**
+ * The finishing steps of research/scripts/parallax.py, in the same order and
+ * with the same rounding, so a picture finished here matches one finished by
+ * the script pixel for pixel: `foot` (trim, then dither the bottom out) and
+ * `tint` (mix toward a colour, snap to a palette).
+ */
+export function finishPicture(png: DecodedPng, options: FinishOptions, where = "picture"): DecodedPng {
+  let out = png
+  if (options.foot !== undefined) out = ditherFoot(trimOpaque(out, options.keepWidth ?? false, where), options.foot)
+  if (options.tint) out = tintPicture(out, options.tint, options.palette)
+  return out
+}
+
+/** The picture cut to the rows, and unless `keepWidth` the columns, that hold an opaque pixel. */
+export function trimOpaque(png: DecodedPng, keepWidth: boolean, where = "picture"): DecodedPng {
+  let top = png.height
+  let bottom = -1
+  let left = png.width
+  let right = -1
+  for (let y = 0; y < png.height; y++) {
+    for (let x = 0; x < png.width; x++) {
+      if (png.pixels[(y * png.width + x) * 4 + 3] === 0) continue
+      top = Math.min(top, y)
+      bottom = Math.max(bottom, y)
+      left = Math.min(left, x)
+      right = Math.max(right, x)
+    }
+  }
+  if (bottom < 0) throw new Error(`${where}: the picture has no opaque pixel`)
+  if (keepWidth) {
+    left = 0
+    right = png.width - 1
+  }
+  const width = right - left + 1
+  const height = bottom - top + 1
+  const pixels = Buffer.alloc(width * height * 4)
+  for (let y = 0; y < height; y++) {
+    png.pixels.copy(pixels, y * width * 4, ((top + y) * png.width + left) * 4, ((top + y) * png.width + right + 1) * 4)
+  }
+  return { width, height, pixels }
+}
+
+/**
+ * Thins out the bottom `fraction` of the picture with a 4x4 ordered dither:
+ * row by row the share of pixels kept falls from just under all to just over
+ * none. Alpha stays 0 or 255, so it is still pixel art.
+ */
+export function ditherFoot(png: DecodedPng, fraction: number): DecodedPng {
+  const { width, height } = png
+  const pixels = Buffer.from(png.pixels)
+  const band = Math.max(1, roundHalfEven(height * fraction))
+  for (let y = Math.max(0, height - band); y < height; y++) {
+    const keep = 1 - (y - (height - band) + 1) / (band + 1)
+    for (let x = 0; x < width; x++) {
+      if (BAYER4[y % 4]![x % 4]! >= keep * 16) pixels[(y * width + x) * 4 + 3] = 0
+    }
+  }
+  return { width, height, pixels }
+}
+
+/** Mixes every opaque pixel `amount` of the way to `color`, then snaps it to the nearest palette colour. */
+export function tintPicture(png: DecodedPng, tint: ParallaxTint, palette?: string[]): DecodedPng {
+  const target = parseHex(tint.color)
+  const t = tint.amount
+  const pixels = Buffer.from(png.pixels)
+  let colours: Array<[number, number, number]>
+  if (palette) {
+    colours = palette.map((hex) => {
+      const { r, g, b } = parseHex(hex)
+      return [r, g, b] as [number, number, number]
+    })
+  } else {
+    const seen = new Map<number, [number, number, number]>()
+    for (let p = 0; p < pixels.length; p += 4) {
+      if (pixels[p + 3] !== 0) seen.set((pixels[p]! << 16) | (pixels[p + 1]! << 8) | pixels[p + 2]!, [pixels[p]!, pixels[p + 1]!, pixels[p + 2]!])
+    }
+    colours = [...seen.values()]
+  }
+  // Sorted, so a tie goes to the same colour the script picks.
+  colours.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
+  const snapped = new Map<number, [number, number, number]>()
+  for (let p = 0; p < pixels.length; p += 4) {
+    if (pixels[p + 3] === 0) continue
+    const mixed = [
+      roundHalfEven(pixels[p]! * (1 - t) + target.r * t),
+      roundHalfEven(pixels[p + 1]! * (1 - t) + target.g * t),
+      roundHalfEven(pixels[p + 2]! * (1 - t) + target.b * t),
+    ] as const
+    const key = (mixed[0] << 16) | (mixed[1] << 8) | mixed[2]
+    let best = snapped.get(key)
+    if (!best) {
+      let bestDistance = Infinity
+      for (const colour of colours) {
+        const d = (mixed[0] - colour[0]) ** 2 + (mixed[1] - colour[1]) ** 2 + (mixed[2] - colour[2]) ** 2
+        if (d < bestDistance) {
+          bestDistance = d
+          best = colour
+        }
+      }
+      snapped.set(key, best!)
+    }
+    pixels[p] = best![0]
+    pixels[p + 1] = best![1]
+    pixels[p + 2] = best![2]
+  }
+  return { width: png.width, height: png.height, pixels }
+}
+
+/** Rounds a half to the even neighbour, as Python and numpy do. */
+function roundHalfEven(value: number): number {
+  const floor = Math.floor(value)
+  const rest = value - floor
+  if (rest > 0.5) return floor + 1
+  if (rest < 0.5) return floor
+  return floor % 2 === 0 ? floor : floor + 1
 }
 
 async function readPicture(
