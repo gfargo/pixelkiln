@@ -1,3 +1,10 @@
+# [0.143.0](https://github.com/gfargo/pixelkiln/compare/v0.142.2...v0.143.0) (2026-11-25)
+
+
+### Features
+
+* read a style's palette from a Lospec, GIMP, or Paint.NET file ([153f98e](https://github.com/gfargo/pixelkiln/commit/153f98e5e0f3e35b06d8958da6f1cb42711a9c8e))
+
 ## [0.142.2](https://github.com/gfargo/pixelkiln/compare/v0.142.1...v0.142.2) (2026-11-25)
 
 ## [0.142.1](https://github.com/gfargo/pixelkiln/compare/v0.142.0...v0.142.1) (2026-11-25)
