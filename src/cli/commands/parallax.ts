@@ -102,6 +102,7 @@ function setOptions(set: ResolvedParallaxSet): Record<string, unknown> {
       repeatY: layer.repeatY,
       ...(layer.source.kind === "sky" ? { sky: layer.source.colors } : {}),
       ...(layer.source.kind === "run" ? { run: { seed: layer.source.seed, sprites: layer.source.sprites.length, width: layer.png.width } } : {}),
+      ...(layer.loop ? { loop: layer.loop } : {}),
       ...(layer.finish ?? {}),
     })),
     ...(set.palette ? { palette: set.palette } : {}),

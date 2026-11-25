@@ -17,7 +17,7 @@ import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { decodePng, encodeRgbaPng, parseHex, type DecodedPng } from "../png.ts"
-import { lockKey, type Lock, type Manifest, type ParallaxLayer, type ParallaxRunSprite, type ParallaxSet, type ParallaxTint } from "../types.ts"
+import { lockKey, type Lock, type Manifest, type ParallaxLayer, type ParallaxLoop, type ParallaxRunSprite, type ParallaxSet, type ParallaxTint } from "../types.ts"
 import { LDTK_JSON_VERSION } from "./ldtk-export.ts"
 
 export const PARALLAX_FORMATS = ["tiled", "godot", "ldtk"] as const
@@ -44,6 +44,8 @@ export interface ParallaxLayerImage {
   seamRatioY?: number
   /** The finishing applied to the picture, or to each sprite of a run. */
   finish?: { foot?: number; tint?: ParallaxTint }
+  /** How the picture was made to join smoothly, before it was finished. */
+  loop?: LoopResult
 }
 
 export type PictureSource = { kind: "asset"; style: string; asset: string; path: string } | { kind: "file"; path: string }
@@ -177,6 +179,7 @@ export async function resolveParallaxSet(
       finishPicture(picture, { foot: layer.foot, tint: layer.tint, palette, keepWidth }, `parallax ${setId}: ${name}`)
     let png: DecodedPng
     let source: ParallaxLayerImage["source"]
+    let loop: LoopResult | undefined
     if (layer.sky) {
       // Tall enough to cover the climb at its speed; the bands scroll with it.
       png = skyBands(viewW, viewH + Math.ceil(climb * speedY), layer.sky)
@@ -191,7 +194,13 @@ export async function resolveParallaxSet(
       source = { kind: "run", seed, sprites: sprites.map((sprite) => sprite.source) }
     } else {
       const picture = await readPicture(manifest, manifestDir, lock, setId, name, layer, warnings)
-      png = finish(picture.png, repeat)
+      png = picture.png
+      if (layer.loop) {
+        const looped = loopPicture(png, layer.loop, `parallax ${setId}: ${name}`)
+        png = looped.png
+        loop = looped.loop
+      }
+      png = finish(png, repeat)
       source = picture.source
     }
     // A run's picture leaves room for its feet to move by up to `jitter` either way.
@@ -213,13 +222,14 @@ export async function resolveParallaxSet(
       source,
     }
     if (layer.foot !== undefined || layer.tint) image.finish = { foot: layer.foot, tint: layer.tint }
+    if (loop) image.loop = loop
     // A run is laid as a loop, so its join is as smooth as anywhere else in it.
     if (repeat && source.kind !== "sky" && source.kind !== "run") {
       image.seamRatio = seamRatio(png)
       if (travel * layer.speed > 0 && image.seamRatio > SEAM_WARN_RATIO) {
         warnings.push(
           `${name}: its sideways join is ${image.seamRatio.toFixed(1)} times rougher than the picture's own steps; ` +
-            "loop it first (research/scripts/parallax.py loop) or set repeat: false",
+            (layer.loop ? `the ${layer.loop} loop did not smooth it; try another, or set repeat: false` : 'set "loop": "cut" to smooth it, or set repeat: false'),
         )
       }
     }
@@ -372,6 +382,113 @@ function roundHalfEven(value: number): number {
   if (rest > 0.5) return floor + 1
   if (rest < 0.5) return floor
   return floor % 2 === 0 ? floor : floor + 1
+}
+
+/** What `loop` did to a picture, for the provenance record. */
+export interface LoopResult {
+  method: ParallaxLoop
+  /** The picture's width before the loop. */
+  from: number
+  /** For `cut`: the columns kept, first included and last excluded. */
+  columns?: [number, number]
+}
+
+/**
+ * The `loop` step of research/scripts/parallax.py, which makes a picture's
+ * sideways join smooth, with the same choices and rounding, so the two give
+ * the same pixels:
+ *
+ * - `cut` crops to columns [i, j), at least 60% of the width apart, where
+ *   column j-1 best continues into column i. It adds no pixels.
+ * - `crossfade` blends the last eighth of the columns into the first, drops
+ *   them, and snaps the blend to the colours already in the picture.
+ * - `mirror` puts a flipped copy beside the picture, doubling its width.
+ */
+export function loopPicture(png: DecodedPng, method: ParallaxLoop, where = "picture"): { png: DecodedPng; loop: LoopResult } {
+  const { width: w, height: h } = png
+  if (w < 8) throw new Error(`${where}: ${w} px wide is too narrow to loop; loop needs at least 8 columns`)
+  const columns = (left: number, right: number): DecodedPng => {
+    const out = Buffer.alloc((right - left) * h * 4)
+    for (let y = 0; y < h; y++) png.pixels.copy(out, y * (right - left) * 4, (y * w + left) * 4, (y * w + right) * 4)
+    return { width: right - left, height: h, pixels: out }
+  }
+  if (method === "cut") {
+    // Each column as alpha-weighted RGB plus alpha, so comparing two is a sum of differences.
+    const pre = new Int32Array(w * h * 4)
+    for (let x = 0; x < w; x++) {
+      for (let y = 0; y < h; y++) {
+        const p = (y * w + x) * 4
+        const q = (x * h + y) * 4
+        const alpha = png.pixels[p + 3]!
+        for (let c = 0; c < 3; c++) pre[q + c] = Math.floor((png.pixels[p + c]! * alpha) / 255)
+        pre[q + 3] = alpha
+      }
+    }
+    const span = h * 4
+    const diff = (a: number, b: number): number => {
+      let sum = 0
+      for (let k = 0; k < span; k++) sum += Math.abs(pre[a * span + k]! - pre[b * span + k]!)
+      return sum
+    }
+    // Every pair compares sums over the same number of values, so the sum orders them as the
+    // script's mean does, and the first of equal pairs wins in the script's order.
+    let best = Infinity
+    let cut: [number, number] = [0, w]
+    const apart = Math.floor(w * 0.6)
+    for (let i = 0; i < w; i++) {
+      for (let j = i + apart; j <= w; j++) {
+        const d = diff(j - 1, i)
+        if (d < best) {
+          best = d
+          cut = [i, j]
+        }
+      }
+    }
+    return { png: columns(cut[0], cut[1]), loop: { method, from: w, columns: cut } }
+  }
+  if (method === "crossfade") {
+    const k = Math.floor(w / 8)
+    const out = columns(0, w - k)
+    // The script snaps to the colours of every pixel, transparent ones included.
+    const seen = new Map<number, [number, number, number]>()
+    for (let p = 0; p < png.pixels.length; p += 4) {
+      seen.set((png.pixels[p]! << 16) | (png.pixels[p + 1]! << 8) | png.pixels[p + 2]!, [png.pixels[p]!, png.pixels[p + 1]!, png.pixels[p + 2]!])
+    }
+    const colours = [...seen.values()].sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
+    const nearest = new Map<number, [number, number, number]>()
+    for (let x = 0; x < k; x++) {
+      const t = (x + 0.5) / k // 0 at the join, 1 inside the picture
+      for (let y = 0; y < h; y++) {
+        const head = (y * w + x) * 4
+        const tail = (y * w + w - k + x) * 4
+        const mixed = [0, 1, 2].map((c) => roundHalfEven(png.pixels[tail + c]! * (1 - t) + png.pixels[head + c]! * t))
+        const key = (mixed[0]! << 16) | (mixed[1]! << 8) | mixed[2]!
+        let snapped = nearest.get(key)
+        if (!snapped) {
+          let bestDistance = Infinity
+          for (const colour of colours) {
+            const d = (mixed[0]! - colour[0]) ** 2 + (mixed[1]! - colour[1]) ** 2 + (mixed[2]! - colour[2]) ** 2
+            if (d < bestDistance) {
+              bestDistance = d
+              snapped = colour
+            }
+          }
+          nearest.set(key, snapped!)
+        }
+        const o = (y * out.width + x) * 4
+        out.pixels[o] = snapped![0]
+        out.pixels[o + 1] = snapped![1]
+        out.pixels[o + 2] = snapped![2]
+      }
+    }
+    return { png: out, loop: { method, from: w } }
+  }
+  const pixels = Buffer.alloc(w * 2 * h * 4)
+  for (let y = 0; y < h; y++) {
+    png.pixels.copy(pixels, y * w * 2 * 4, y * w * 4, (y + 1) * w * 4)
+    for (let x = 0; x < w; x++) png.pixels.copy(pixels, (y * w * 2 + w + x) * 4, (y * w + w - 1 - x) * 4, (y * w + w - x) * 4)
+  }
+  return { png: { width: w * 2, height: h, pixels }, loop: { method, from: w } }
 }
 
 async function readPicture(

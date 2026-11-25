@@ -1306,7 +1306,7 @@ See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
 
 Preview or export a set from the manifest's `parallax` section: layers far to
 near, each a generated asset, a finished file, sky bands, or a run of
-silhouettes laid by seed, with an optional dithered foot and tint. Offline;
+silhouettes laid by seed, with an optional loop, dithered foot and tint. Offline;
 spends nothing.
 
 ```bash
