@@ -1,3 +1,10 @@
+# [0.144.0](https://github.com/gfargo/pixelkiln/compare/v0.143.0...v0.144.0) (2026-11-25)
+
+
+### Features
+
+* loop whole pictures in pixelkiln parallax ([20ea079](https://github.com/gfargo/pixelkiln/commit/20ea079501c90b161c63fbb065397a2d0fba886c))
+
 # [0.143.0](https://github.com/gfargo/pixelkiln/compare/v0.142.2...v0.143.0) (2026-11-25)
 
 
