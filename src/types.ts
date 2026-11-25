@@ -2570,6 +2570,15 @@ export const ParallaxRunSpriteSchema = z
 
 const RUN_ONLY = ["seed", "step", "gap", "jitter", "width"] as const
 
+/** Mixes a layer's colours toward one colour, then snaps them to the set's palette. */
+export const ParallaxTintSchema = z
+  .object({
+    color: HexColorSchema,
+    /** 0 leaves the picture as it is; 1 makes every pixel the colour, snapped. */
+    amount: z.number().min(0).max(1),
+  })
+  .strict()
+
 export const ParallaxLayerSchema = z
   .object({
     /** Names the layer in exports; defaults to the asset id, the file name, or "sky". */
@@ -2615,6 +2624,15 @@ export const ParallaxLayerSchema = z
     repeat: z.boolean().optional(),
     /** Repeat vertically, for an endless climb. */
     repeatY: z.boolean().optional(),
+    /**
+     * Trim the picture to its opaque box, then thin out this fraction of it
+     * from the bottom with a 4x4 ordered dither, so its foot dissolves into
+     * what is behind it. A layer that repeats sideways keeps its width. In a
+     * run, each sprite is trimmed and thinned before it is laid.
+     */
+    foot: z.number().gt(0).max(1).optional(),
+    /** Pull the picture (each sprite of a run) toward a colour and snap it to the set's palette. Applied after `foot`. */
+    tint: ParallaxTintSchema.optional(),
   })
   .strict()
   .superRefine((layer, ctx) => {
@@ -2630,6 +2648,14 @@ export const ParallaxLayerSchema = z
     if (layer.style !== undefined && layer.asset === undefined) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["style"], message: "style only applies to an asset layer" })
     }
+    if (layer.sky !== undefined) {
+      for (const key of ["foot", "tint"] as const) {
+        if (layer[key] !== undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} does not apply to a sky layer` })
+      }
+    }
+    if (layer.foot !== undefined && layer.extend !== undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["extend"], message: "extend repeats the bottom row, which foot thins out; use one or the other" })
+    }
   })
 
 /** A parallax background: layers far to near over one view, and how far the camera travels. */
@@ -2641,6 +2667,12 @@ export const ParallaxSetSchema = z
     travel: z.number().int().min(0).max(100_000).optional(),
     /** How far the camera climbs, in pixels. */
     climb: z.number().int().min(0).max(100_000).optional(),
+    /**
+     * What a layer's `tint` snaps to: a style id, for that style's palette, or
+     * a list of colours. Without one, a tint snaps to the colours already in
+     * the picture, so it adds none.
+     */
+    palette: z.union([z.string().min(1), z.array(HexColorSchema).min(2).max(256)]).optional(),
     layers: z.array(ParallaxLayerSchema).min(1).max(32),
   })
   .strict()
@@ -2650,6 +2682,7 @@ export const ParallaxSetIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0
 
 export type ParallaxLayer = z.infer<typeof ParallaxLayerSchema>
 export type ParallaxRunSprite = z.infer<typeof ParallaxRunSpriteSchema>
+export type ParallaxTint = z.infer<typeof ParallaxTintSchema>
 export type ParallaxSet = z.infer<typeof ParallaxSetSchema>
 
 export const ManifestSchema = z

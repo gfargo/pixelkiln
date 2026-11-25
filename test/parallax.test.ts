@@ -11,6 +11,7 @@ import {
   exportLdtk,
   exportTiled,
   extendDown,
+  finishPicture,
   layRun,
   resolveParallaxSet,
   seamRatio,
@@ -154,6 +155,43 @@ describe("parallax layers", () => {
     const first = red(0)
     for (let x = 0; x < 27; x++) expect(red(x), `column ${x}`).toBe(Math.floor(x / 10) === 1 ? 255 - first! : first)
     expect(() => layRun([solid(255, 0)], 8, { seed: 1, loop: true })).toThrow(/at least as wide/)
+  })
+
+  it("takes foot and tint on a picture or a run, not on sky bands", () => {
+    expect(ParallaxLayerSchema.safeParse({ file: "b.png", foot: 0.3, tint: { color: "#7f4776", amount: 0.55 }, speed: 0.25 }).success).toBe(true)
+    expect(ParallaxLayerSchema.safeParse({ run: [{ file: "b.png" }], foot: 0.3, speed: 0.25 }).success).toBe(true)
+    expect(ParallaxLayerSchema.safeParse({ sky: ["#000000"], tint: { color: "#7f4776", amount: 0.5 }, speed: 0 }).success).toBe(false)
+    expect(ParallaxLayerSchema.safeParse({ file: "b.png", foot: 0, speed: 0.25 }).success).toBe(false)
+    expect(ParallaxLayerSchema.safeParse({ file: "b.png", tint: { color: "#7f4776", amount: 1.5 }, speed: 0.25 }).success).toBe(false)
+    expect(ParallaxLayerSchema.safeParse({ file: "b.png", foot: 0.3, extend: true, speed: 0.25 }).success).toBe(false)
+  })
+
+  it("trims a picture and thins its foot out with an ordered dither", () => {
+    // An 8 x 20 block in a 16 x 24 picture with clear margins.
+    const png = striped(16, 24, 1, (x, y) => x < 3 || x >= 11 || y < 2 || y >= 22)
+    const foot = finishPicture(png, { foot: 0.5 })
+    expect([foot.width, foot.height]).toEqual([8, 20])
+    const opaque = (y: number) => Array.from({ length: foot.width }, (_, x) => foot.pixels[(y * foot.width + x) * 4 + 3]).filter((a) => a === 255).length
+    // The top half is untouched; the bottom 10 rows thin out, and alpha stays 0 or 255.
+    for (let y = 0; y < 10; y++) expect(opaque(y)).toBe(8)
+    expect(opaque(10)).toBeGreaterThan(opaque(19))
+    expect(opaque(19)).toBe(0)
+    expect([...foot.pixels.filter((_, i) => i % 4 === 3)].every((a) => a === 0 || a === 255)).toBe(true)
+    // A layer that loops keeps its width; only rows are trimmed.
+    expect(finishPicture(png, { foot: 0.5, keepWidth: true }).width).toBe(16)
+    expect(() => finishPicture(striped(4, 4, 1, () => true), { foot: 0.3 })).toThrow(/no opaque pixel/)
+  })
+
+  it("tints toward a colour and snaps to the palette, rounding halves to even", () => {
+    const png: DecodedPng = { width: 3, height: 1, pixels: Buffer.from([1, 1, 1, 255, 3, 3, 3, 255, 200, 10, 10, 0]) }
+    // 0.5 rounds to 0 and 1.5 to 2, as the script's numpy does; a clear pixel is left alone.
+    const half = finishPicture(png, { tint: { color: "#000000", amount: 0.5 }, palette: ["#000000", "#010101", "#020202", "#030303"] })
+    expect([...half.pixels]).toEqual([0, 0, 0, 255, 2, 2, 2, 255, 200, 10, 10, 0])
+    // Without a palette, a tint snaps to the picture's own opaque colours, so it adds none.
+    const own = finishPicture(png, { tint: { color: "#ffffff", amount: 0.4 } })
+    expect([...own.pixels.subarray(0, 8)]).toEqual([3, 3, 3, 255, 3, 3, 3, 255])
+    const flat = finishPicture(striped(6, 6, 2), { tint: { color: "#7f4776", amount: 1 }, palette: ["#000000", "#7f4777", "#ffffff"] })
+    for (let p = 0; p < 36; p++) expect([...flat.pixels.subarray(p * 4, p * 4 + 3)]).toEqual([0x7f, 0x47, 0x77])
   })
 
   it("draws sky bands top to bottom with a dithered step", () => {
@@ -391,6 +429,46 @@ describe("pixelkiln parallax", () => {
     const map = JSON.parse(await readFile(path.join(dir, "parallax", "dusk", "tiled", "dusk.tmj"), "utf8"))
     expect(map.layers.find((l: { name: string }) => l.name === "hills").repeatx).toBe(false)
     expect(map.layers.find((l: { name: string }) => l.name === "looped").repeatx).toBe(true)
+  })
+
+  it("finishes each sprite of a run before laying it, and records how", async () => {
+    // A sprite with clear margins and a two-colour body.
+    await writeFile(path.join(dir, "cone.png"), encodeRgbaPng(20, 16, striped(20, 16, 1, (x, y) => x < 2 || x > 17 || y < 4 || y > 13).pixels))
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const parallax = (palette: unknown, extra = {}) => ({
+      dusk: {
+        view: [64, 48],
+        travel: 96,
+        palette,
+        layers: [{ name: "cones", run: [{ file: "cone.png" }], bottom: 40, speed: 0.5, foot: 0.25, tint: { color: "#7f4776", amount: 1 }, ...extra }],
+      },
+    })
+    const styles = { s: { palette: ["#000000", "#7f4776", "#ffffff"], outDir: "out" }, bare: { outDir: "out" } }
+    await writeFile(manifestPath, JSON.stringify({ name: "p", styles, assets: {}, parallax: parallax("s") }))
+    await writeFile(lockPath, JSON.stringify({ version: 2, entries: {} }))
+    const loaded = await loadManifest(manifestPath)
+    const resolved = await resolveParallaxSet(loaded.manifest, dir, { version: 2, entries: {} } as unknown as Lock, "dusk")
+    const cones = resolved.layers[0]!
+    // Trimmed to the 16 x 10 body before it is laid; every pixel left is the tint colour.
+    expect(cones.png.height).toBe(10)
+    expect(cones.y).toBe(30)
+    for (let p = 0; p < cones.png.width * cones.png.height; p++) {
+      if (cones.png.pixels[p * 4 + 3]) expect([...cones.png.pixels.subarray(p * 4, p * 4 + 3)]).toEqual([0x7f, 0x47, 0x76])
+    }
+    // The bottom row of the body is thinned.
+    const lastRow = Array.from({ length: cones.png.width }, (_, x) => cones.png.pixels[(9 * cones.png.width + x) * 4 + 3])
+    expect(lastRow.filter((a) => a === 255).length).toBeLessThan(cones.png.width / 2)
+
+    await main(["parallax", "export", "dusk", "--format", "tiled", "--manifest", manifestPath, "--lock", lockPath])
+    const record = JSON.parse(await readFile(path.join(dir, "parallax", "dusk", "tiled", "dusk.pixelkiln.json"), "utf8"))
+    expect(record.options.layers[0]).toMatchObject({ foot: 0.25, tint: { color: "#7f4776", amount: 1 } })
+    expect(record.options.palette).toEqual(["#000000", "#7f4776", "#ffffff"])
+
+    await writeFile(manifestPath, JSON.stringify({ name: "p", styles, assets: {}, parallax: parallax("bare") }))
+    await expect(loadManifest(manifestPath)).rejects.toThrow(/parallax\.dusk\.palette: style "bare" has no palette/)
+    await writeFile(manifestPath, JSON.stringify({ name: "p", styles, assets: {}, parallax: parallax("nope") }))
+    await expect(loadManifest(manifestPath)).rejects.toThrow(/parallax\.dusk\.palette: unknown style "nope"/)
   })
 
   it("rejects a run sprite whose asset is not in the manifest", async () => {

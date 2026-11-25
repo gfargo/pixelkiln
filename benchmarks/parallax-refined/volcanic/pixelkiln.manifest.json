@@ -421,6 +421,7 @@
         216
       ],
       "travel": 480,
+      "palette": "silhouette-b",
       "layers": [
         {
           "name": "sky",
@@ -445,43 +446,53 @@
           "name": "cones_far",
           "run": [
             {
-              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-cone.far.png"
+              "file": "../../../website/public/research/parallax/refined/volcanic/b/landform-cone.png"
             },
             {
-              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-rim.far.png"
+              "file": "../../../website/public/research/parallax/refined/volcanic/b/landform-rim.png"
             },
             {
-              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-mesa.far.png"
+              "file": "../../../website/public/research/parallax/refined/volcanic/b/landform-mesa.png"
             },
             {
-              "file": "../../../website/public/research/parallax/refined/volcanic/picked/c-landform-cone.far.png"
+              "file": "../../../website/public/research/parallax/refined/volcanic/c/landform-cone.png"
             }
           ],
           "bottom": 158,
           "speed": 0.25,
           "jitter": 4,
-          "seed": 7
+          "seed": 7,
+          "foot": 0.3,
+          "tint": {
+            "color": "#7f4776",
+            "amount": 0.55
+          }
         },
         {
           "name": "cones_near",
           "run": [
             {
-              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-cone.near.png"
+              "file": "../../../website/public/research/parallax/refined/volcanic/b/landform-cone.png"
             },
             {
-              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-rim.near.png"
+              "file": "../../../website/public/research/parallax/refined/volcanic/b/landform-rim.png"
             },
             {
-              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-mesa.near.png"
+              "file": "../../../website/public/research/parallax/refined/volcanic/b/landform-mesa.png"
             },
             {
-              "file": "../../../website/public/research/parallax/refined/volcanic/picked/c-landform-cone.near.png"
+              "file": "../../../website/public/research/parallax/refined/volcanic/c/landform-cone.png"
             }
           ],
           "bottom": 176,
           "speed": 0.5,
           "jitter": 4,
-          "seed": 8
+          "seed": 8,
+          "foot": 0.3,
+          "tint": {
+            "color": "#403a61",
+            "amount": 0.4
+          }
         },
         {
           "name": "ground",
