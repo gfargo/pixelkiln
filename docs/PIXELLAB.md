@@ -264,8 +264,9 @@ three rules translate directly into a manifest.
    towers over every platform, so the 16px world gets a smaller hero.
    Generate the hero first and pick `terrainTileSize` from its height.
 3. **One palette for everything.** Every asset in the video uses the same
-   46-colour palette. Put it in each style's `palette`, and PixelKiln sends
-   it to every PixelLab tool that accepts one (see
+   46-colour palette, Apollo from Lospec. Download it as a `.hex` file and
+   point each style's `paletteFile` at it, and PixelKiln sends it to every
+   PixelLab tool that accepts one (see
    [Target palette](./GENERATORS.md#target-palette)).
 
 The rest of the video, mapped to PixelKiln:

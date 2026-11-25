@@ -802,6 +802,21 @@ styles of `imagePro`, `imageProFlash`, `objectPro`, `1dir`, `character`,
 set. PixelLab's `smart` flag is not sent (beta, "single images only"). The
 full endpoint list is in [ENDPOINTS.md](./ENDPOINTS.md#target-palette-target_palette).
 
+A long palette is easier to keep in a file. Download one from
+[Lospec](https://lospec.com/palette-list) as a `.hex` file (or `.gpl` or
+Paint.NET `.txt`), commit it, and point the style at it:
+
+```json
+"styles": {
+  "world": { "generator": "imagePro", "outDir": "art/world", "paletteFile": "palettes/apollo.hex", "paletteName": "Apollo" }
+}
+```
+
+PixelKiln reads the file when it loads the manifest. The colours hash the same
+as if they were written into `palette`, and editing the file makes every asset
+in the style stale. A style takes `palette` or `paletteFile`, not both; a
+child style's own one replaces its parent's.
+
 What goes out per asset shape:
 
 | Shape | Sent | Not sent, and why |

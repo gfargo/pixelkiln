@@ -241,7 +241,9 @@ several candidates to pick from by the same size tiering as `1dir` (up to
 generic background-job endpoint the same way a `revision` is. The style's
 `palette` goes out as the beta `target_palette` (PixelLab 0.4.130): every
 pixel of every candidate lands on those 2–256 colours, at no extra cost.
-`paletteName` (needs `palette`) names it, and `maxColors` (2–64) caps each
+`paletteFile` reads the colours from a Lospec `.hex`, GIMP `.gpl`, or
+Paint.NET `.txt` file instead, relative to the manifest; it hashes the same as
+the inline colours. `paletteName` (needs `palette`) names it, and `maxColors` (2–64) caps each
 candidate's colours, with or without a palette. The same `target_palette`
 now also goes out for `imageProFlash`, `objectPro` (bases, states, `pro`
 animations), `1dir`, `tiles`, `uiAsset`, `uiElement`, Pro and Pro Flash

@@ -103,3 +103,50 @@ export function quantize(png: DecodedPng, palette: string[]): QuantizeResult {
 export function quantizeToPalette(png: DecodedPng, palette: string[]): DecodedPng {
   return quantize(png, palette).png
 }
+
+/**
+ * Reads a palette file into `#rrggbb` values, in file order. The formats are
+ * the ones Lospec offers for download:
+ *
+ * - `.hex`: one `rrggbb` per line, `#` optional.
+ * - `.gpl`: a GIMP palette. A `GIMP Palette` header, `Name:`/`Columns:` lines,
+ *   `#` comments, then `R G B` decimal triples with an optional colour name.
+ * - `.txt`: a Paint.NET palette. `;` comments, then `aarrggbb` per line; the
+ *   alpha byte is dropped.
+ *
+ * Throws with the file name and line on anything it cannot read. Range and
+ * duplicate checks stay with the manifest schema, so a file palette fails the
+ * same way an inline one does.
+ */
+export function parsePaletteFile(text: string, fileName: string): string[] {
+  const ext = fileName.toLowerCase().split(".").pop()
+  const lines = text.replace(/^﻿/, "").split(/\r?\n/)
+  const colors: string[] = []
+  const fail = (line: number, why: string): never => {
+    throw new Error(`${fileName}:${line}: ${why}`)
+  }
+  if (ext === "gpl") {
+    if (!/^GIMP Palette\s*$/.test(lines[0]?.trim() ?? "")) fail(1, 'a .gpl palette starts with "GIMP Palette"')
+    lines.slice(1).forEach((raw, index) => {
+      const line = raw.trim()
+      if (!line || line.startsWith("#") || /^(Name|Columns):/i.test(line)) return
+      const match = /^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})(\s|$)/.exec(line)
+      if (!match) return fail(index + 2, `expected "R G B", got "${line}"`)
+      const channels = match.slice(1, 4).map(Number)
+      if (channels.some((value) => value > 255)) fail(index + 2, `channel above 255 in "${line}"`)
+      colors.push(`#${channels.map((value) => value.toString(16).padStart(2, "0")).join("")}`)
+    })
+  } else if (ext === "hex" || ext === "txt") {
+    lines.forEach((raw, index) => {
+      const line = raw.trim()
+      if (!line || (ext === "txt" && line.startsWith(";"))) return
+      const match = ext === "hex" ? /^#?([0-9a-f]{6})$/i.exec(line) : /^[0-9a-f]{2}([0-9a-f]{6})$/i.exec(line)
+      if (!match) fail(index + 1, `expected ${ext === "hex" ? "rrggbb" : "aarrggbb"}, got "${line}"`)
+      colors.push(`#${match![1]!.toLowerCase()}`)
+    })
+  } else {
+    throw new Error(`${fileName}: palette files are .hex, .gpl, or .txt (Paint.NET)`)
+  }
+  if (!colors.length) throw new Error(`${fileName}: no colours found`)
+  return colors
+}
