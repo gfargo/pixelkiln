@@ -68,6 +68,7 @@ Last updated 17 November 2026.
 | 58 | An attack and a thrust that carry forward | Our scripts | `Great_Attack_Fwd` and `Spear_Thrust_Fwd`: the stepping foot stays where it lands and the other follows, with the travel written as root motion | Keep. The measured travel is within 5 mm of what was written and a planted foot moves 8 mm at most. |
 | 59 | Shield motions | Our scripts | `shield.py`: the shield arm written as three directions (elbow, face, top), for a guard, a walk, a jog, the sword attack, a block, a held block and a bash | Keep. Seven motions on both bodies; nothing gets more than 1.7 cm inside the shield. Not seen in a game. |
 | 60 | Held things clear of the trunk | Our scripts | `wield.py` measures the trunk from the file's own meshes, armour included, and moves the grip and swings the elbows until the forearms and the item are out of it; worn items are written two-sided | Keep. The greatsword's second forearm lay through the armoured belly for 84 to 89% of its length and now does for 1 to 8%; the spear no longer runs through the hip. Skin still shows at the edges of the armour |
+| 61 | A lining, a cape that gives way, stock motions held in both hands | Our scripts | `liner.py` swaps the skin under each worn item for a dark lining inside the item's own mesh; `sway.py` keeps the cape out of the arms and what is held; `wield.py` `HOLD` re-solves the stock motions' arms | Keep. No skin shows through the visor or the sleeves; the spear idle's wrist bends 20 degrees, not 97. The cape still meets a level spear's butt, and the arm armour's ragged outline is unchanged |
 
 **How the percentages are measured.** The model is projected back to each of the eight camera positions and its outline is compared with the sprite's outline. The score is the area the two share divided by the area either covers, averaged over the views. 100% means the model casts exactly the sprite's shadow from every side. It measures shape only, not colour. It also favours carving, which is built from those same outlines.
 
@@ -1727,6 +1728,50 @@ Loops still meet: the first and last poses differ by 0 to 3 degrees, 9 in `Spear
 - The spear's butt and the greatsword on the back swing pass through the cape. `sway.py` keeps the cape out of the legs and trunk, not out of what is held.
 - The stock one-handed motions on the two-handed models (`Idle`, `Walk`, `Sword_Attack`) are untouched and still clip; they were never written for these items.
 - The sword and shield models were only marked two-sided. Their ragged arm armour is the item's own mesh.
+
+Step 61 takes these up.
+
+## 61. A lining, a cape that gives way, stock motions held in both hands
+
+Step 60 left four things. This takes each, again by working on the shipped files: the rig inputs are gone.
+
+**Skin through the armour.** `rig.py` hides a triangle of skin only when the item's surface is within 1.2 sprite pixels of all of it and of its neighbours. A helm stands off the head, so only 35 of the head's triangles were hidden and the face showed through the visor's slits and the vents at the back. The cuirass's sleeves are ragged bands with holes, and skin showed through every hole. `liner.py` decides again what is covered. A place on the body is under an item when the item is within 2 cm of it, or when a line out of the skin meets the inside of the item within 12 cm. Holes in that are closed over, three rings of neighbours out and three back, which fills a slit or a tear and leaves the item's outer edge where it was. On the first body the hidden triangles went from 3315 of 5999 to 5254.
+
+Hiding skin leaves a hole where the gap in the armour was, so each item also gets a lining: the triangles it covers, copied into the item's own mesh on the body's bones, pulled in until they sit 6 mm under the item (never moved more than 3 cm), and all one dark colour found in the item's own texture. Since the lining is part of the item, it comes and goes with it and neither the viewer nor a game needs to know. It reads as dark cloth under the plate. The elbows between the sleeve and the bracer count as a closed hole and are lined too.
+
+**The cape.** `sway.py` kept the cape's chains out of the legs and trunk only. It now also keeps them out of the arms and out of anything most of whose weight is on a hand or a grip, as a capsule along the item's length. A chain is a line and the cloth on it is 30 cm wide, so each point also carries six places on the cloth's near face, measured from the cape's mesh, and is pushed when any of them is inside a capsule. The first try measured the near face towards the chest bone, which for the side columns is sideways; it has to be towards the front of the body. The first try also made the held capsule as thick as the spear's head and the cape flew 57 cm aside in the spear idle; the capsule is now as thick as the shaft.
+
+The share of moments and places (along both forearms and hands, and on what is held) within 2 cm of the cloth:
+
+| Model, motion | Before | After |
+|---|---|---|
+| Sword and shield, `Shield_Idle` | 6.6% | 0% |
+| Sword and shield, `Shield_Walk` | 3.2% | 0% |
+| Sword and shield, `Shield_Jog` | 3.1% | 4.4% |
+| Second body, `Shield_Idle` | 11.2% | 0% |
+| Second body, `Jog_Fwd_Loop` | 11.3% | 3.2% |
+| Second body, `Sprint_Loop` | 9.2% | 5.2% |
+| Greatsword, `Jump_Start` | 6.0% | 0.4% |
+| Spear, `Spear_Idle` | 1.8% | 0% |
+| Spear, `Spear_Jog` | 0.9% | 5.8% |
+
+The cape's top is skinned to the chest and cannot give way, and three columns of bones cannot wrap round a shaft, so a spear carried level still puts its butt through the cloth in the jog and in some stock motions (10% in `Walk_Loop`).
+
+**Stock motions on the two-handed models.** In them the item rode in one hand and went through the legs and trunk. `wield.py HOLD=all` rewrites each in place: the body is kept and both arms are solved to a fixed carry, the upright guard for the greatsword and the level shaft for the spear, with the same clearing of the trunk. The jog's lower carry was tried first for the greatsword and left more inside the trunk (5.9 cm in the walk against 1.1). `Sword_Attack` and `Sword_Idle` are dropped from those two files. What is left inside the trunk at the worst moment is 0 to 3 cm in the idles, walks, jogs and sprints, and up to 7 cm in the dance, the death, the jump and the hit. The spear's `Dance_Loop` does not quite meet itself: its first and last arm poses differ by 16 degrees.
+
+**The spear idle's wrist.** The stance held the hands 0.50 arm lengths in front of the chest, the trunk's clearance pushed them out 22 cm, and the leading wrist paid with a 97 degree bend. Twelve stances were tried. With the hands at 0.66 in front and 0.40 to the side the grip is moved 9 cm and the wrists bend 20 and 16 degrees. The thrust's far pose was moved to match (leading wrist 72 degrees, from 78; 2.5 cm left inside the trunk, from 4.7).
+
+![Before on the left, after on the right: the visor and sleeves, the stock walk with a greatsword, the cape behind the second body, the spear idle](../website/public/research/3d/lining-cape-hold.png)
+
+All five files validate with no errors, warnings or notes, and Godot 4.7.2 imports each with no errors. They load and play in the site's viewer. The files changed size by -2% to +13%.
+
+**Not done.**
+
+- The arm armour's outline is still ragged. The lining hides the skin behind it, not the shape of the item.
+- A lining follows the body's bones and the item follows its own, so in a deep bend a lining can still show at an item's edge. It is dark, not skin.
+- The cape's top does not move, and a level spear's butt still goes through the cloth.
+- The stock motions held in both hands are a fixed carry. A death or a roll with the sword held upright before the chest is clear of the body, not well acted.
+- None of this is in `rig.py`: a new build needs `liner.py` run after it.
 
 ## What has not worked, in one place
 
