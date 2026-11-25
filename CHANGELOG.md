@@ -1,3 +1,15 @@
+# [0.142.0](https://github.com/gfargo/pixelkiln/compare/v0.141.0...v0.142.0) (2026-11-25)
+
+
+### Bug Fixes
+
+* held items clear of the trunk, two-sided armour, download line on phones ([2e05992](https://github.com/gfargo/pixelkiln/commit/2e059920db6fdb0f68ad4958482353a89d1b405c))
+
+
+### Features
+
+* dithered foot and tints in pixelkiln parallax ([fd13709](https://github.com/gfargo/pixelkiln/commit/fd1370913c371c1e29a1d16700aa24f6a71b9592))
+
 # [0.141.0](https://github.com/gfargo/pixelkiln/compare/v0.140.0...v0.141.0) (2026-11-25)
 
 
