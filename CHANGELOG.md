@@ -1,3 +1,10 @@
+## [0.142.1](https://github.com/gfargo/pixelkiln/compare/v0.142.0...v0.142.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* lining under worn items, cape clear of arms and weapons, stock motions held in both hands ([1785918](https://github.com/gfargo/pixelkiln/commit/17859181e2158366f2bd5488f188e1ddcfc81232))
+
 # [0.142.0](https://github.com/gfargo/pixelkiln/compare/v0.141.0...v0.142.0) (2026-11-25)
 
 
