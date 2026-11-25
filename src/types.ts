@@ -2550,6 +2550,26 @@ const HistoryLimitSchema = z.number().int().min(0).max(100)
  * `speed` is the fraction of the camera's movement the layer moves, the
  * convention of Tiled, Godot and Phaser; LDtk's factor is written as 1 - speed.
  */
+/** One sprite of a silhouette run: a generated asset or a picture on disk. */
+export const ParallaxRunSpriteSchema = z
+  .object({
+    asset: z.string().min(1).optional(),
+    /** The style the asset was generated under, when it was generated under more than one. */
+    style: z.string().min(1).optional(),
+    file: z.string().min(1).optional(),
+  })
+  .strict()
+  .superRefine((sprite, ctx) => {
+    if ((sprite.asset === undefined) === (sprite.file === undefined)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "a run sprite needs exactly one of asset or file" })
+    }
+    if (sprite.style !== undefined && sprite.asset === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["style"], message: "style only applies to an asset sprite" })
+    }
+  })
+
+const RUN_ONLY = ["seed", "step", "gap", "jitter", "width"] as const
+
 export const ParallaxLayerSchema = z
   .object({
     /** Names the layer in exports; defaults to the asset id, the file name, or "sky". */
@@ -2562,6 +2582,22 @@ export const ParallaxLayerSchema = z
     file: z.string().min(1).optional(),
     /** Flat colour bands, top to bottom, with a dithered step between neighbours. */
     sky: z.array(HexColorSchema).min(1).max(64).optional(),
+    /**
+     * Isolated silhouettes laid left to right in an overlapping run, each
+     * flipped at random and never the same one twice in a row, so a long
+     * level never shows the same stretch twice.
+     */
+    run: z.array(ParallaxRunSpriteSchema).min(1).max(32).optional(),
+    /** Seeds a run's layout; the same seed lays the same run. Defaults to one taken from the layer's name. */
+    seed: z.number().int().min(0).max(2 ** 32 - 1).optional(),
+    /** How far across one sprite the next starts, as a fraction of its width; 0.72 by default. */
+    step: z.number().min(0.1).max(2).optional(),
+    /** Up to this many more pixels between sprites, at random; 16 by default. */
+    gap: z.number().int().min(0).max(4096).optional(),
+    /** Moves each sprite's foot up or down by up to this many pixels; 0 by default. */
+    jitter: z.number().int().min(0).max(256).optional(),
+    /** The run's length in pixels; by default as much as the camera sees of the layer. */
+    width: z.number().int().min(1).max(100_000).optional(),
     speed: z.number().min(0).max(4),
     /** Vertical speed; 1, moving with the level, when the set does not climb. */
     speedY: z.number().min(0).max(4).optional(),
@@ -2582,9 +2618,14 @@ export const ParallaxLayerSchema = z
   })
   .strict()
   .superRefine((layer, ctx) => {
-    const sources = [layer.asset, layer.file, layer.sky].filter((value) => value !== undefined).length
+    const sources = [layer.asset, layer.file, layer.sky, layer.run].filter((value) => value !== undefined).length
     if (sources !== 1) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "a layer needs exactly one of asset, file, or sky" })
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "a layer needs exactly one of asset, file, sky, or run" })
+    }
+    if (layer.run === undefined) {
+      for (const key of RUN_ONLY) {
+        if (layer[key] !== undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} only applies to a run layer` })
+      }
     }
     if (layer.style !== undefined && layer.asset === undefined) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["style"], message: "style only applies to an asset layer" })
@@ -2608,6 +2649,7 @@ export const ParallaxSetSchema = z
 export const ParallaxSetIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/, "a set id is letters, digits, - and _, starting with a letter or digit")
 
 export type ParallaxLayer = z.infer<typeof ParallaxLayerSchema>
+export type ParallaxRunSprite = z.infer<typeof ParallaxRunSpriteSchema>
 export type ParallaxSet = z.infer<typeof ParallaxSetSchema>
 
 export const ManifestSchema = z

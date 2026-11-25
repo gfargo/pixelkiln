@@ -11,6 +11,7 @@ import {
   exportLdtk,
   exportTiled,
   extendDown,
+  layRun,
   resolveParallaxSet,
   seamRatio,
   skyBands,
@@ -121,6 +122,38 @@ describe("parallax layers", () => {
     expect(ParallaxLayerSchema.safeParse({ speed: 0.5 }).success).toBe(false)
     expect(ParallaxLayerSchema.safeParse({ asset: "a", file: "b.png", speed: 0.5 }).success).toBe(false)
     expect(ParallaxLayerSchema.safeParse({ file: "b.png", style: "s", speed: 0.5 }).success).toBe(false)
+  })
+
+  it("takes a run of sprites, and run settings only on a run", () => {
+    expect(ParallaxLayerSchema.safeParse({ run: [{ asset: "a" }, { file: "b.png" }], seed: 3, jitter: 4, speed: 0.25 }).success).toBe(true)
+    expect(ParallaxLayerSchema.safeParse({ run: [{ asset: "a", file: "b.png" }], speed: 0.25 }).success).toBe(false)
+    expect(ParallaxLayerSchema.safeParse({ run: [{ file: "b.png", style: "s" }], speed: 0.25 }).success).toBe(false)
+    expect(ParallaxLayerSchema.safeParse({ run: [{ file: "b.png" }], file: "c.png", speed: 0.25 }).success).toBe(false)
+    expect(ParallaxLayerSchema.safeParse({ file: "b.png", seed: 3, speed: 0.25 }).success).toBe(false)
+  })
+
+  it("lays a run the same way for the same seed, and differently for another", () => {
+    const sprites = [striped(30, 12, 1, (x) => x < 4 || x > 25), striped(24, 16, 2, (x) => x < 3), striped(36, 10, 3)]
+    const a = layRun(sprites, 200, { seed: 5 })
+    expect(differing(a, layRun(sprites, 200, { seed: 5 }))).toBe(0)
+    expect(differing(a, layRun(sprites, 200, { seed: 6 }))).toBeGreaterThan(0)
+    expect(a.height).toBe(16)
+    // Jitter leaves room for every foot to move either way.
+    expect(layRun(sprites, 200, { seed: 5, jitter: 3 }).height).toBe(22)
+  })
+
+  it("lays a looping run so each sprite crosses the edge under the next", () => {
+    const solid = (r: number, b: number): DecodedPng => {
+      const png = striped(10, 4, 0)
+      for (let p = 0; p < 40; p++) png.pixels.set([r, 0, b, 255], p * 4)
+      return png
+    }
+    // Two sprites alternate, a full width apart: they start at 0, 10 and 20, and the third runs 3 px past the edge.
+    const run = layRun([solid(255, 0), solid(0, 255)], 27, { seed: 1, step: 1, gap: 0, loop: true })
+    const red = (x: number) => run.pixels[x * 4]
+    const first = red(0)
+    for (let x = 0; x < 27; x++) expect(red(x), `column ${x}`).toBe(Math.floor(x / 10) === 1 ? 255 - first! : first)
+    expect(() => layRun([solid(255, 0)], 8, { seed: 1, loop: true })).toThrow(/at least as wide/)
   })
 
   it("draws sky bands top to bottom with a dithered step", () => {
@@ -315,6 +348,60 @@ describe("pixelkiln parallax", () => {
     expect(decodePng(await readFile(path.join(out, "dusk.preview.png"))).width).toBe(64 * 3)
     expect(await readFile(path.join(out, "dusk.preview.html"), "utf8")).toContain("image-rendering: pixelated")
     expect(await readFile(path.join(out, "godot", "dusk.tscn"), "utf8")).toContain('type="Parallax2D"')
+  })
+
+  it("lays a run of silhouettes across everything the camera sees of it", async () => {
+    await writeFile(path.join(dir, "cone.png"), encodeRgbaPng(30, 12, striped(30, 12, 1, (x, y) => Math.abs(x - 15) > y + 2).pixels))
+    await writeFile(path.join(dir, "mesa.png"), encodeRgbaPng(40, 9, striped(40, 9, 2, (x, y) => y < 3 && (x < 6 || x > 33)).pixels))
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "p",
+      styles: { s: { palette: ["#000000", "#ffffff"], outDir: "out" } },
+      assets: {},
+      parallax: {
+        dusk: {
+          view: [64, 48],
+          travel: 96,
+          layers: [
+            { name: "sky", sky: ["#102030"], speed: 0 },
+            { name: "hills", run: [{ file: "cone.png" }, { file: "mesa.png" }], bottom: 40, speed: 0.5, jitter: 2, repeat: false, x: -8 },
+            { name: "looped", run: [{ file: "cone.png" }, { file: "mesa.png" }], bottom: 44, speed: 1 },
+          ],
+        },
+      },
+    }))
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    await writeFile(lockPath, JSON.stringify({ version: 2, entries: {} }))
+    const loaded = await loadManifest(manifestPath)
+    const resolved = await resolveParallaxSet(loaded.manifest, dir, { version: 2, entries: {} } as unknown as Lock, "dusk")
+    const [, hills, looped] = resolved.layers
+    // From x = -8 to the view's width plus half the travel.
+    expect(hills!.png.width).toBe(8 + 64 + 48)
+    expect(hills!.y).toBe(40 + 2 - (12 + 4))
+    expect(looped!.png.width).toBe(64 + 96)
+    expect(resolved.warnings).toEqual([])
+    // Two layers of the same sprites take different seeds from their names.
+    expect(hills!.source).toMatchObject({ kind: "run" })
+    expect((hills!.source as { seed: number }).seed).not.toBe((looped!.source as { seed: number }).seed)
+
+    const args = ["--manifest", manifestPath, "--lock", lockPath]
+    await main(["parallax", "export", "dusk", "--format", "tiled", ...args])
+    const record = JSON.parse(await readFile(path.join(dir, "parallax", "dusk", "tiled", "dusk.pixelkiln.json"), "utf8"))
+    expect(JSON.stringify(record)).toContain("layer:hills:2")
+    const map = JSON.parse(await readFile(path.join(dir, "parallax", "dusk", "tiled", "dusk.tmj"), "utf8"))
+    expect(map.layers.find((l: { name: string }) => l.name === "hills").repeatx).toBe(false)
+    expect(map.layers.find((l: { name: string }) => l.name === "looped").repeatx).toBe(true)
+  })
+
+  it("rejects a run sprite whose asset is not in the manifest", async () => {
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    await writeFile(manifestPath, JSON.stringify({
+      name: "p",
+      styles: { s: { palette: ["#000000", "#ffffff"], outDir: "out" } },
+      assets: {},
+      parallax: { dusk: { view: [64, 48], layers: [{ run: [{ file: "a.png" }, { asset: "missing" }], speed: 0.5 }] } },
+    }))
+    await expect(loadManifest(manifestPath)).rejects.toThrow(/parallax\.dusk\.layers\.0\.run\.1\.asset: unknown asset "missing"/)
   })
 
   it("rejects a set id that is not safe for a folder or a node name", async () => {

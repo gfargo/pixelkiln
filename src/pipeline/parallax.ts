@@ -17,7 +17,7 @@ import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { decodePng, encodeRgbaPng, parseHex, type DecodedPng } from "../png.ts"
-import { lockKey, type Lock, type Manifest, type ParallaxLayer, type ParallaxSet } from "../types.ts"
+import { lockKey, type Lock, type Manifest, type ParallaxLayer, type ParallaxRunSprite, type ParallaxSet } from "../types.ts"
 import { LDTK_JSON_VERSION } from "./ldtk-export.ts"
 
 export const PARALLAX_FORMATS = ["tiled", "godot", "ldtk"] as const
@@ -36,12 +36,21 @@ export interface ParallaxLayerImage {
   y: number
   repeat: boolean
   repeatY: boolean
-  /** Where the picture came from: a lock output, a file, or drawn sky bands. */
-  source: { kind: "asset"; style: string; asset: string; path: string } | { kind: "file"; path: string } | { kind: "sky"; colors: string[] }
+  /** Where the picture came from: a lock output, a file, drawn sky bands, or a run of sprites laid by seed. */
+  source: PictureSource | { kind: "sky"; colors: string[] } | { kind: "run"; seed: number; sprites: PictureSource[] }
   /** Wrap seam over the median inner column step, for a layer that repeats sideways. */
   seamRatio?: number
   /** The same for the vertical join, for a layer that repeats vertically. */
   seamRatioY?: number
+}
+
+export type PictureSource = { kind: "asset"; style: string; asset: string; path: string } | { kind: "file"; path: string }
+
+/** The files a layer's picture was made from. */
+export function layerFiles(layer: Pick<ParallaxLayerImage, "source">): string[] {
+  if (layer.source.kind === "sky") return []
+  if (layer.source.kind === "run") return layer.source.sprites.map((sprite) => sprite.path)
+  return [layer.source.path]
 }
 
 export interface ResolvedParallaxSet {
@@ -129,7 +138,7 @@ export function seamRatio(png: DecodedPng): number {
 
 function layerName(layer: ParallaxLayer, index: number): string {
   if (layer.name) return layer.name
-  const base = layer.asset ?? (layer.file ? path.basename(layer.file, path.extname(layer.file)) : "sky")
+  const base = layer.asset ?? (layer.file ? path.basename(layer.file, path.extname(layer.file)) : layer.run ? "run" : "sky")
   const slug = base.replace(/[^A-Za-z0-9_-]+/g, "_").replace(/^[^A-Za-z]+/, "")
   return slug || `layer${index + 1}`
 }
@@ -163,24 +172,22 @@ export async function resolveParallaxSet(
       // Tall enough to cover the climb at its speed; the bands scroll with it.
       png = skyBands(viewW, viewH + Math.ceil(climb * speedY), layer.sky)
       source = { kind: "sky", colors: layer.sky }
-    } else if (layer.file) {
-      const file = path.resolve(manifestDir, layer.file)
-      png = decodePng(await readFile(file))
-      source = { kind: "file", path: file }
+    } else if (layer.run) {
+      const sprites = await Promise.all(layer.run.map((sprite) => readPicture(manifest, manifestDir, lock, setId, name, sprite, warnings)))
+      const seed = layer.seed ?? seedFromName(name)
+      const loop = layer.repeat ?? true
+      // Unrepeated, the run reaches from the layer's left edge past everything the camera shows of it.
+      const width = layer.width ?? Math.max(1, viewW + Math.ceil(travel * layer.speed) - (loop ? 0 : (layer.x ?? 0)))
+      png = layRun(sprites.map((sprite) => sprite.png), width, { seed, step: layer.step, gap: layer.gap, jitter: layer.jitter, loop })
+      source = { kind: "run", seed, sprites: sprites.map((sprite) => sprite.source) }
     } else {
-      const assetId = layer.asset!
-      const style = layer.style ?? manifest.assets[assetId]!.styles[0]!
-      const entry = lock.entries[lockKey(style, assetId)]
-      if (!entry) throw new Error(`parallax ${setId}: ${style}/${assetId} has not been generated; run gen first`)
-      const output = entry.outputs.find((candidate) => /\.png$/i.test(candidate.path)) ?? entry.outputs[0]
-      if (!output) throw new Error(`parallax ${setId}: ${style}/${assetId} has no output in the lockfile`)
-      const file = path.resolve(manifestDir, output.path)
-      png = decodePng(await readFile(file))
-      source = { kind: "asset", style, asset: assetId, path: file }
-      if (entry.outputs.length > 1) warnings.push(`${name}: ${style}/${assetId} has ${entry.outputs.length} outputs; using ${output.path}`)
+      const picture = await readPicture(manifest, manifestDir, lock, setId, name, layer, warnings)
+      png = picture.png
+      source = picture.source
     }
     const repeat = layer.repeat ?? true
-    let bottom = layer.bottom ?? viewH
+    // A run's picture leaves room for its feet to move by up to `jitter` either way.
+    let bottom = (layer.bottom ?? viewH) + (layer.run ? (layer.jitter ?? 0) : 0)
     if (layer.extend) {
       const rows = layer.extend === true ? Math.max(0, viewH - bottom) : layer.extend
       png = extendDown(png, rows)
@@ -197,7 +204,8 @@ export async function resolveParallaxSet(
       repeatY: layer.repeatY ?? false,
       source,
     }
-    if (repeat && source.kind !== "sky") {
+    // A run is laid as a loop, so its join is as smooth as anywhere else in it.
+    if (repeat && source.kind !== "sky" && source.kind !== "run") {
       image.seamRatio = seamRatio(png)
       if (travel * layer.speed > 0 && image.seamRatio > SEAM_WARN_RATIO) {
         warnings.push(
@@ -229,6 +237,114 @@ export async function resolveParallaxSet(
     layers.push(image)
   }
   return { id: setId, view: [viewW, viewH], travel, climb, layers, warnings }
+}
+
+async function readPicture(
+  manifest: Manifest,
+  manifestDir: string,
+  lock: Lock,
+  setId: string,
+  name: string,
+  ref: Pick<ParallaxRunSprite, "asset" | "style" | "file">,
+  warnings: string[],
+): Promise<{ png: DecodedPng; source: PictureSource }> {
+  if (ref.file) {
+    const file = path.resolve(manifestDir, ref.file)
+    return { png: decodePng(await readFile(file)), source: { kind: "file", path: file } }
+  }
+  const assetId = ref.asset!
+  const style = ref.style ?? manifest.assets[assetId]!.styles[0]!
+  const entry = lock.entries[lockKey(style, assetId)]
+  if (!entry) throw new Error(`parallax ${setId}: ${style}/${assetId} has not been generated; run gen first`)
+  const output = entry.outputs.find((candidate) => /\.png$/i.test(candidate.path)) ?? entry.outputs[0]
+  if (!output) throw new Error(`parallax ${setId}: ${style}/${assetId} has no output in the lockfile`)
+  const file = path.resolve(manifestDir, output.path)
+  if (entry.outputs.length > 1) warnings.push(`${name}: ${style}/${assetId} has ${entry.outputs.length} outputs; using ${output.path}`)
+  return { png: decodePng(await readFile(file)), source: { kind: "asset", style, asset: assetId, path: file } }
+}
+
+/** A run's default seed, so two runs of the same sprites in one set are laid differently. */
+export function seedFromName(name: string): number {
+  return createHash("sha256").update(name).digest().readUInt32BE(0)
+}
+
+/** mulberry32: a small seeded generator, so a seed lays the same run on every machine. */
+function seededRandom(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+export interface RunOptions {
+  seed: number
+  /** How far across one sprite the next starts, as a fraction of its width. */
+  step?: number
+  /** Up to this many more pixels between sprites. */
+  gap?: number
+  /** Moves each foot up or down by up to this many pixels. */
+  jitter?: number
+  /** Lay the run as a seamless loop `width` wide instead of once. */
+  loop?: boolean
+}
+
+/**
+ * Lays sprites left to right in an overlapping run, the way
+ * research/scripts/parallax.py skyline does: each starts `step` of the way
+ * across the last plus up to `gap` px, is flipped at random, and is never the
+ * sprite just used. Sprites stand on the picture's bottom row, moved up to
+ * `jitter` px either way, and the picture is as tall as the tallest sprite
+ * plus twice the jitter. Each sprite is drawn over the one to its left. As a
+ * loop, sprites crossing the right edge carry on at the left, so the picture
+ * repeats without a join.
+ */
+export function layRun(sprites: DecodedPng[], width: number, options: RunOptions): DecodedPng {
+  const step = options.step ?? 0.72
+  const gap = options.gap ?? 16
+  const jitter = options.jitter ?? 0
+  const random = seededRandom(options.seed)
+  const tallest = Math.max(...sprites.map((sprite) => sprite.height))
+  const height = tallest + 2 * jitter
+  if (options.loop) {
+    const widest = Math.max(...sprites.map((sprite) => sprite.width))
+    if (width < widest) throw new Error(`a looping run must be at least as wide as its widest sprite (${widest} px); it is ${width}`)
+  }
+  const placed: { sprite: number; flip: boolean; x: number; y: number }[] = []
+  let x = options.loop ? 0 : -Math.floor(random() * 32)
+  let last = -1
+  while (x < width) {
+    let pick = Math.floor(random() * sprites.length)
+    if (sprites.length > 1 && pick === last) pick = (pick + 1) % sprites.length
+    last = pick
+    const sprite = sprites[pick]!
+    const flip = random() < 0.5
+    const shift = jitter ? Math.floor(random() * (2 * jitter + 1)) - jitter : 0
+    placed.push({ sprite: pick, flip, x, y: height - jitter - sprite.height + shift })
+    x += Math.max(1, Math.floor(sprite.width * step + random() * gap))
+  }
+  // A loop draws each sprite again one width to either side, all in order from left to right.
+  const copies = options.loop ? [-width, 0, width] : [0]
+  const stamps = placed.flatMap((p) => copies.map((dx) => ({ ...p, x: p.x + dx }))).sort((a, b) => a.x - b.x)
+  const pixels = Buffer.alloc(width * height * 4)
+  for (const p of stamps) {
+    const sprite = sprites[p.sprite]!
+    for (let sy = 0; sy < sprite.height; sy++) {
+      const y = p.y + sy
+      if (y < 0 || y >= height) continue
+      for (let sx = 0; sx < sprite.width; sx++) {
+        const tx = p.x + sx
+        if (tx < 0 || tx >= width) continue
+        const from = (sy * sprite.width + (p.flip ? sprite.width - 1 - sx : sx)) * 4
+        if (sprite.pixels[from + 3] === 0) continue
+        sprite.pixels.copy(pixels, (y * width + tx) * 4, from, from + 4)
+      }
+    }
+  }
+  return { width, height, pixels }
 }
 
 /** The picture with its bottom row repeated `rows` more times, column by column. */

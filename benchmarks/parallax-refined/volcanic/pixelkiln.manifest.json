@@ -413,5 +413,91 @@
         "silhouette-c"
       ]
     }
+  },
+  "parallax": {
+    "volcanic-dusk": {
+      "view": [
+        384,
+        216
+      ],
+      "travel": 480,
+      "layers": [
+        {
+          "name": "sky",
+          "sky": [
+            "#2e3253",
+            "#503e68",
+            "#7b5f94",
+            "#ad628e",
+            "#d66283",
+            "#f96076"
+          ],
+          "speed": 0
+        },
+        {
+          "name": "far",
+          "file": "../../../website/public/research/parallax/refined/volcanic/picked/far.png",
+          "bottom": 150,
+          "speed": 0.125,
+          "extend": true
+        },
+        {
+          "name": "cones_far",
+          "run": [
+            {
+              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-cone.far.png"
+            },
+            {
+              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-rim.far.png"
+            },
+            {
+              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-mesa.far.png"
+            },
+            {
+              "file": "../../../website/public/research/parallax/refined/volcanic/picked/c-landform-cone.far.png"
+            }
+          ],
+          "bottom": 158,
+          "speed": 0.25,
+          "jitter": 4,
+          "seed": 7
+        },
+        {
+          "name": "cones_near",
+          "run": [
+            {
+              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-cone.near.png"
+            },
+            {
+              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-rim.near.png"
+            },
+            {
+              "file": "../../../website/public/research/parallax/refined/volcanic/picked/b-landform-mesa.near.png"
+            },
+            {
+              "file": "../../../website/public/research/parallax/refined/volcanic/picked/c-landform-cone.near.png"
+            }
+          ],
+          "bottom": 176,
+          "speed": 0.5,
+          "jitter": 4,
+          "seed": 8
+        },
+        {
+          "name": "ground",
+          "sky": [
+            "#0e0c20"
+          ],
+          "bottom": 422,
+          "speed": 1
+        },
+        {
+          "name": "near",
+          "file": "../../../website/public/research/parallax/refined/volcanic/picked/near.png",
+          "bottom": 246,
+          "speed": 1
+        }
+      ]
+    }
   }
 }

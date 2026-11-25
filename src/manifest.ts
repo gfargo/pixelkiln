@@ -288,15 +288,18 @@ async function loadExpanded(abs: string, expansion: Expansion): Promise<LoadedMa
     const names = new Set<string>()
     set.layers.forEach((layer, index) => {
       const at = `parallax.${setId}.layers.${index}`
-      if (layer.asset !== undefined) {
-        const asset = parsed.data.assets[layer.asset]
-        if (!asset) unknownReferences.push(`${at}.asset: unknown asset "${layer.asset}"`)
-        else if (layer.style !== undefined && !asset.styles.includes(layer.style)) {
-          unknownReferences.push(`${at}.style: asset "${layer.asset}" is not generated under style "${layer.style}"`)
-        } else if (layer.style === undefined && asset.styles.length > 1) {
-          unknownReferences.push(`${at}.style: asset "${layer.asset}" has ${asset.styles.length} styles; name one`)
+      const checkAsset = (where: string, ref: { asset?: string; style?: string }) => {
+        if (ref.asset === undefined) return
+        const asset = parsed.data.assets[ref.asset]
+        if (!asset) unknownReferences.push(`${where}.asset: unknown asset "${ref.asset}"`)
+        else if (ref.style !== undefined && !asset.styles.includes(ref.style)) {
+          unknownReferences.push(`${where}.style: asset "${ref.asset}" is not generated under style "${ref.style}"`)
+        } else if (ref.style === undefined && asset.styles.length > 1) {
+          unknownReferences.push(`${where}.style: asset "${ref.asset}" has ${asset.styles.length} styles; name one`)
         }
       }
+      checkAsset(at, layer)
+      layer.run?.forEach((sprite, n) => checkAsset(`${at}.run.${n}`, sprite))
       if (layer.name !== undefined) {
         if (names.has(layer.name)) unknownReferences.push(`${at}.name: "${layer.name}" is used twice`)
         names.add(layer.name)

@@ -1305,8 +1305,8 @@ See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
 ### `parallax`
 
 Preview or export a set from the manifest's `parallax` section: layers far to
-near, each a generated asset, a finished file, or sky bands. Offline; spends
-nothing.
+near, each a generated asset, a finished file, sky bands, or a run of
+silhouettes laid by seed. Offline; spends nothing.
 
 ```bash
 pixelkiln parallax preview dusk               # dusk.preview.html + dusk.preview.png

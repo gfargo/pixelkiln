@@ -502,12 +502,14 @@ The silhouette route behaves the same way. Step 18's runs recoloured keep their 
 
 Steps 1 to 22 led to a command. It is narrower than the proposal this note used to carry. It has no `palette`, `loop` or `haze` field, because finishing a layer still needs judgment (steps 2, 9 and 18), and the script does it.
 
-A manifest's `parallax` section names sets. A set has the `view`, how far the camera moves (`travel`, `climb`) and its layers, far to near. A layer is a generated `asset`, read from the lockfile, a finished `file`, or `sky` bands drawn by PixelKiln, with `speed` and optional `speedY`, `x`, `bottom`, `extend`, `repeat` and `repeatY`. The [manifest reference](./MANIFEST.md#parallax-sets) lists them.
+A manifest's `parallax` section names sets. A set has the `view`, how far the camera moves (`travel`, `climb`) and its layers, far to near. A layer is a generated `asset`, read from the lockfile, a finished `file`, `sky` bands drawn by PixelKiln, or a `run` of silhouettes laid by seed as step 12 lays them, with `speed` and optional `speedY`, `x`, `bottom`, `extend`, `repeat` and `repeatY`. The [manifest reference](./MANIFEST.md#parallax-sets) lists them.
 
 - `pixelkiln parallax preview <set>` writes a page that scrolls the set and a strip of frames. It measures each looping layer's join as step 1 does and warns above 2.
 - `pixelkiln parallax export <set>` writes all three formats, or one with `--format`. Tiled gets image layers with `parallaxx`, `parallaxy`, `repeatx` and `repeaty`, and the start folded into each offset. Godot gets a `Parallax2D` per layer. LDtk gets a Tiles layer per layer, factor 1 − speed, scaling off, as step 11 found it must.
 
 The sets checked in step 22 are in the manifests of [`benchmarks/parallax-refined/alpine`](../benchmarks/parallax-refined/alpine) and [`benchmarks/parallax-vertical/climb`](../benchmarks/parallax-vertical/climb).
+
+A run is baked into one picture before export, so the engines take it like any other layer. The volcanic set in [`benchmarks/parallax-refined/volcanic`](../benchmarks/parallax-refined/volcanic) has two looping runs of the same four landforms. Godot 4.7 with snapping, Tiled's renderer and the LDtk drawing code each matched its preview at camera 0, 137, 240, 333 and 480, with no pixel different.
 
 ## What other people are doing
 
@@ -539,7 +541,7 @@ The sets checked in step 22 are in the manifests of [`benchmarks/parallax-refine
 ## What is next
 
 - **Open the LDtk export in the LDtk editor.** Step 22 checked LDtk by its source, not by running it.
-- **Runs and finishing in the command.** Silhouette runs (step 12), a dithered foot and tier tints (step 18) are still script steps.
+- **Finishing in the command.** A dithered foot and tier tints (step 18) are still script steps. Silhouette runs (step 12) are in the command as `run` layers.
 - **A palette swap in the engine.** Step 20's table could run as a lookup in a shader, so one set covers a day cycle with no extra pictures.
 - **A time of day lit from another side**, such as midday. A palette swap cannot move the light, so this is where generating again might earn its cost.
 - **A full sideways Retro Diffusion set** from `rd_plus__default`, keyed by script and scrolled, with retries for candidates that come on a gradient.

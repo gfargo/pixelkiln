@@ -19,7 +19,7 @@ differ in what you generate.
 
 | Route | What you generate | Best for |
 |---|---|---|
-| Silhouettes | Four or five isolated landforms a biome, each about 240 px wide. The game lays them in overlapping runs. | Levels wider than any picture. No layer needs to loop, and the runs never repeat exactly. |
+| Silhouettes | Four or five isolated landforms a biome, each about 240 px wide. The command or the game lays them in overlapping runs. | Levels wider than any picture. No layer needs to loop, and the runs never repeat exactly. |
 | Whole layers | A far range, a middle layer and a near layer, each 400×100, looped afterwards. | The fewest steps. A short level, a title screen, a menu. |
 
 The two mix well. Both pictures above use a whole far range and a whole near
@@ -226,41 +226,41 @@ nothing.
 - A one-colour `sky` is a flat fill. The `ground` layer above fills the strip
   under the treeline.
 
-The command has no silhouette runs yet. Lay runs with the script, which draws
-the sky and scrolls the whole stack from a small JSON file:
+A `run` layer lays isolated silhouettes in an overlapping row. This is the
+volcanic set from the pictures above, two tiers of the same landforms:
 
 ```jsonc
-{
+"volcanic-dusk": {
   "view": [384, 216],
-  "sky": ["#2e3253", "#503e68", "#7b5f94", "#ad628e", "#d66283", "#f96076"],
-  "seed": 7,
-  "frames": 120,
   "travel": 480,
   "layers": [
-    { "image": "far.png", "bottom": 150, "speed": 0.125, "extend": true },
-    { "run": ["cone.far.png", "rim.far.png", "mesa.far.png"], "foot": 158, "speed": 0.25 },
-    { "run": ["cone.near.png", "rim.near.png", "mesa.near.png"], "foot": 176, "speed": 0.5 },
-    { "fill": "#0e0c20", "top": 206, "speed": 1 },
-    { "image": "near.png", "bottom": 246, "speed": 1 }
+    { "name": "sky", "sky": ["#2e3253", "#503e68", "#7b5f94", "#ad628e", "#d66283", "#f96076"], "speed": 0 },
+    { "name": "far", "file": "picked/far.png", "bottom": 150, "speed": 0.125, "extend": true },
+    { "name": "cones_far", "run": [{ "file": "picked/cone.far.png" }, { "file": "picked/rim.far.png" }, { "file": "picked/mesa.far.png" }], "bottom": 158, "speed": 0.25, "jitter": 4, "seed": 7 },
+    { "name": "cones_near", "run": [{ "file": "picked/cone.near.png" }, { "file": "picked/rim.near.png" }, { "file": "picked/mesa.near.png" }], "bottom": 176, "speed": 0.5, "jitter": 4, "seed": 8 },
+    { "name": "ground", "sky": ["#0e0c20"], "bottom": 422, "speed": 1 },
+    { "name": "near", "file": "picked/near.png", "bottom": 246, "speed": 1 }
   ]
 }
 ```
 
-```bash
-STILL=still.png SCALE=2 python3 research/scripts/parallax.py skyline preview.webp stack.json
-```
+- Each sprite starts 72% of the way across the last (`step`) plus up to 16 px
+  more (`gap`). It is flipped at random and is never the sprite just used.
+  `jitter` moves each foot up or down by up to that many pixels.
+- A sprite in a run is an `asset` (with `style` when it has several) or a
+  `file`.
+- `seed` fixes the layout. Without one, the seed comes from the layer's name,
+  so two runs of the same sprites are laid differently.
+- A run is laid as a loop by default, so it repeats with no join. With
+  `"repeat": false` it is laid once from `x` to the far end of what the camera
+  sees. `width` sets the run's length either way.
+- The command bakes each run into one picture, so every engine export takes it
+  like any other layer.
 
-- `extend` on the far range repeats its bottom row to the foot of the view, so
-  the tiers' dithered feet dissolve into distant land, not into sky.
-- A run lays its sprites left to right, each starting 72% of the way across
-  the last, flipped at random and never the same one twice in a row.
-- An image with `"repeat": false` and an `x` is drawn once: use it for a
-  landmark.
-- The camera pans `travel` pixels and back. Watch the far end of the pan for
-  seams, floating feet and gaps under the near layer.
-
-The specs and the build script for both biomes are in
-[`benchmarks/parallax-refined`](../benchmarks/parallax-refined).
+Haze, tier tints and dithered feet are still script steps. Finish those
+sprites with `research/scripts/parallax.py` and name the results in the run.
+The script's own preview (`parallax.py skyline`) and the build script for both
+biomes are in [`benchmarks/parallax-refined`](../benchmarks/parallax-refined).
 
 ## 7. Put it in the engine
 
@@ -307,8 +307,8 @@ for the near layer.
   0.6 do not.
 - Keep the tiers' speeds close together. A wide spread opens bands of sky
   between them.
-- A bounded level needs no loop. Lay each run past both ends of the level by
-  the most that layer can drift.
+- A bounded level needs no loop. A run with `"repeat": false` is laid past
+  both ends of the level by the most that layer drifts.
 
 The same layer at a quarter of the camera's speed in each tool:
 
@@ -476,6 +476,6 @@ another side needs new pictures. The manifests and build script are in
   background removal breaks the seam. The default style drew a flat background
   on 2 of 3 tries, and its colours are its own, so the rest of the set has to
   follow them (step 21).
-- Silhouette runs, haze, dithered feet and looping inside `pixelkiln
+- Haze, dithered feet and looping a whole picture inside `pixelkiln
   parallax`. Finish those pieces with `parallax.py` and name the results as
-  `file` layers.
+  `file` layers or run sprites.

@@ -759,7 +759,7 @@ letters, digits, `-` and `_`, since it names folders and a Godot node. The
 
 | Layer field | Required | Meaning |
 |---|---|---|
-| `asset` / `file` / `sky` | one of them | A manifest asset, read from the lockfile once generated; a picture on disk, relative to the manifest; or flat colour bands, top to bottom, with a dithered step between neighbours. A one-colour `sky` is a flat fill. |
+| `asset` / `file` / `sky` / `run` | one of them | A manifest asset, read from the lockfile once generated; a picture on disk, relative to the manifest; flat colour bands, top to bottom, with a dithered step between neighbours; or a run of silhouettes, each `{ "asset": … }` or `{ "file": … }`, laid left to right. A one-colour `sky` is a flat fill. |
 | `style` | when the asset has several | Which style's generation an `asset` layer uses. |
 | `name` | no | The layer's name in exports. Defaults to the asset id, the file name, or `sky`. |
 | `speed` | yes | The fraction of the camera's sideways movement the layer moves, 0 to 4: 0 stays put, 1 moves with the level, above 1 is nearer than the level. |
@@ -769,6 +769,11 @@ letters, digits, `-` and `_`, since it names folders and a Godot node. The
 | `extend` | no | Repeat the bottom row downward: `true` to the foot of the view, or a number of rows. |
 | `repeat` | no | Repeat sideways. Defaults to `true`. |
 | `repeatY` | no | Repeat vertically, for an endless climb. |
+| `seed` | no | A run's layout. Defaults to a number taken from the layer's name. |
+| `step` | no | How far across one run sprite the next starts, as a fraction of its width. Defaults to 0.72. |
+| `gap` | no | Up to this many more pixels between run sprites, at random. Defaults to 16. |
+| `jitter` | no | Moves each run sprite's foot up or down by up to this many pixels. Defaults to 0. |
+| `width` | no | A run's length. Defaults to everything the camera sees of the layer. A repeating run is laid as a loop of this width. |
 
 ```jsonc
 "parallax": {
@@ -778,14 +783,16 @@ letters, digits, `-` and `_`, since it names folders and a Godot node. The
     "layers": [
       { "sky": ["#405e9c", "#a596b9", "#f9b59c"], "speed": 0 },
       { "asset": "far-range", "bottom": 150, "speed": 0.125, "extend": true },
+      { "run": [{ "asset": "cone" }, { "asset": "mesa" }], "bottom": 176, "speed": 0.5, "jitter": 4 },
       { "file": "finished/near.png", "bottom": 256, "speed": 1 }
     ]
   }
 }
 ```
 
-The manifest refuses an `asset` it does not declare, a `style` the asset is
-not generated under, and a layer name used twice.
+The manifest refuses an `asset` it does not declare, in a layer or a run, a
+`style` the asset is not generated under, a layer name used twice, and the run
+fields on a layer that is not a run.
 
 ## Validation and editor setup
 
