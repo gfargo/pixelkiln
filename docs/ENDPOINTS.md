@@ -1,7 +1,9 @@
 # Measured PixelLab API reference
 
-Every cost here was **measured against a live Tier 2 account**, not read from
-documentation. Where a figure came from docs rather than a meter, it says so.
+Measured costs here came from a live subscription account (Tier 2 when this
+file was started, Tier 3 since), not from documentation. Not every route has
+been measured: the [validation ledger](#validation-ledger) gives each one's
+status, and where a figure came from docs rather than a meter, it says so.
 
 Source of truth for shapes: `https://api.pixellab.ai/v2/openapi.json`
 (139 paths, 95 of them POST, as of 14 November 2026; 79 and 56 when this file

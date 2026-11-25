@@ -51,6 +51,12 @@ With the skill loaded, an agent should:
     in-browser editor to them: an agent changes the manifest directly and
     spends only through `gen`. For a hand touch-up, `pixelkiln edit --no-open`
     prepares the edit file beside the generation without opening anything.
+13. Treat a PixelLab plan figure as unmeasured when its route is `Mock only`,
+    `Schema only`, or `Unknown` in the
+    [validation ledger](./ENDPOINTS.md#validation-ledger), and say so before
+    spending.
+14. Read spend from the lockfile's `billed`, never from the difference between
+    two balance readings: a provider balance can be shared with other work.
 
 The skill guides the workflow; PixelKiln remains the deterministic execution
 layer. This separation keeps agent reasoning out of polling, hashing, downloads,
@@ -79,8 +85,9 @@ adapter. Retro Diffusion generation support is experimental. Paid RD Fast and
 RD Plus single-candidate stills have passed from
 quote through validated download and recovery. Multi-candidate, tileset, GIF,
 and spritesheet workflows still need representative live smoke tests. Scenario
-has one live-tested BFL Flux 2 Dev profile plus mocked edge coverage; other
-model schemas and broader batches remain unverified. See
+has a live-tested BFL Flux 2 Dev profile, and ten more models, six tool
+models, edits, and chains have each run live once; any other model's schema
+is unverified. See
 [provider comparison](../PROVIDERS.md) before choosing a provider for a
 new project or a large environment asset. Once chosen, follow
 [Set up PixelLab](./PIXELLAB.md),

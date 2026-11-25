@@ -233,6 +233,10 @@ nothing.
   asset has more than one.
 - A one-colour `sky` is a flat fill. The `ground` layer above fills the strip
   under the treeline.
+- Anything that stands on the ground (trees, props, buildings) scrolls at the
+  ground's speed, usually `1`. On a slower layer it slides across the floor
+  as the camera moves. PixelLab's sidescroller guide makes the same mistake on
+  camera with its trees.
 
 A `run` layer lays isolated silhouettes in an overlapping row. This is the
 volcanic set from the pictures above, two tiers of the same landforms as

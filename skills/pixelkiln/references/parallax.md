@@ -15,6 +15,8 @@ and numbers, at https://pixelkiln.griffen.codes/docs/research-parallax.
   `bottom`/`x` to place it on a canvas whose origin is the view's top-left at
   the start. `extend: true` carries a far range's bottom row to the view's
   foot. Layers repeat sideways unless `repeat: false`; `repeatY` loops up.
+- Anything standing on the ground (trees, props) scrolls at the ground's
+  speed, usually `1`; on a slower layer it slides across the floor.
 - A set has `view` and `travel`; a climbing set adds `climb` and `speedY`.
 - `pixelkiln parallax preview <set>` writes a scrolling HTML page and a strip
   of frames. Read its warnings: a rough join (loop the layer first), or a

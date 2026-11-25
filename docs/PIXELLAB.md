@@ -191,7 +191,7 @@ still, 5, in only the four palette colours), and `tiles` (4 tiles at 16px,
 ## Learn from PixelLab's tutorials
 
 PixelLab's YouTube channel teaches its web app, not PixelKiln, but most of
-its advice carries over. Two recent videos changed what we recommend.
+its advice carries over. Three recent videos changed what we recommend.
 
 ### Pro tilesets
 
@@ -218,8 +218,9 @@ covers the `terrain` generator's endpoint.
   Every pair of terrains that touch needs its own set, or they meet with a
   hard edge.
 - `terrainOrientation: "sidescroller"` makes platform sets: `1). mossy stone
-  bricks texture 2). green grass texture`. The video's Pro sidescroller, at
-  64px with a taller top layer, is only in PixelLab's web app.
+  bricks texture 2). green grass texture`. Add `terrainMode: "pro"` for the
+  video's Pro look at 16 or 32px. Its 64px tiles are only in PixelLab's web
+  app.
 
 ### Animated effects
 
@@ -246,6 +247,56 @@ revision animates its parent at the parent's own size. Long PixMiniMax clips
 can also cost more than `plan` says: PixelLab prices a 40-frame 64×64 clip
 at 6 generations, and PixelKiln estimates 3. Set `--budget` with that gap in
 mind.
+
+### A sidescroller world that matches
+
+[How to Build a Sidescroller World Where Every Asset Matches](https://www.youtube.com/watch?v=63xg5NPeYP0)
+builds a platformer level, its heroes, props, and a camp of characters. Its
+three rules translate directly into a manifest.
+
+1. **Work at the screen size.** The video uses 384×216, 1080p divided by
+   five, and makes every asset at the size it is used. A background drawn
+   larger and scaled down loses its pixel grid next to the sprites. Set each
+   asset's `width` and `height` to its size in the game, and the parallax
+   `view` to the screen.
+2. **The hero sets the tile size.** A 39px hero is about 1¼ tiles tall on
+   32px tiles, the usual platformer proportion. On 16px tiles the same hero
+   towers over every platform, so the 16px world gets a smaller hero.
+   Generate the hero first and pick `terrainTileSize` from its height.
+3. **One palette for everything.** Every asset in the video uses the same
+   46-colour palette. Put it in each style's `palette`, and PixelKiln sends
+   it to every PixelLab tool that accepts one (see
+   [Target palette](./GENERATORS.md#target-palette)).
+
+The rest of the video, mapped to PixelKiln:
+
+- **Tile prompts describe a plain texture.** Whatever the prompt names (a
+  stone, a root) appears on every tile and repeats across the level. This is
+  the same advice as the Pro tileset guide above.
+- **Props are seen straight on.** If you can see a prop's roof or top, it
+  does not belong in a sidescroller. Ask for a front view or a flat side view,
+  and size each prop against the hero.
+- **Pin the ending you want.** Animated from text alone, the chest opened onto
+  treasure the model made up. Draw the open chest first (an `image-to-image`
+  revision of the closed one), then `interpolate` from the closed chest to it.
+  See [Interpolate between two keyframes](./REVISIONS.md#interpolate-between-two-keyframes).
+- **A big change of shape needs more frames.** The pangolin curling into a
+  ball used 16 PixMiniMax frames, not 8, with `enhancePrompt` on.
+- **A style character sets a minimum size.** The new character must be at
+  least as large as the `styleCharacter` anchor's visible sprite, so a 48px
+  hero cannot anchor a 32px one.
+  The video worked around it in the web app with a reference image. In
+  PixelKiln a style image must also fit the character's `size`, so draw the
+  small hero as its own base.
+- **Parallax.** Far layers move slowly, and anything standing on the ground
+  moves with the ground. See [Parallax backgrounds](./PARALLAX.md).
+- **Check every sprite at 1×** for outline gaps and doubled corners before
+  using it. `pixelkiln edit` or the gallery editor fixes them by hand.
+
+Three things the video shows are in PixelLab's web app but not its API, so
+PixelKiln cannot send them yet: a Pro character with only east and west
+directions (the "side-scroller" rotation type), slopes on a sidescroller
+tileset, and a palette on the Pro sidescroller tileset.
 
 ## Account workflows
 
