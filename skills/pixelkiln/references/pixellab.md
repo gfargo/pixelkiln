@@ -187,10 +187,11 @@ fixes `terrainMode`, so a standard set cannot connect to a Pro one.
 `"1). mossy stone bricks texture 2). green grass texture"`, the platform
 body and the layer on top of it; the other side of every edge is empty air.
 16 or 32px tiles, `terrainTransitionSize` (the top layer's height) 0, 0.25,
-0.5, or 1, and none of the mode, view, or shape controls. It billed 3
-generations for 16 tiles. A sidescroller set connects only its platform
-(`lower`) terrain. PixelLab's Pro sidescroller (64px, taller top layers) is
-web-app only.
+or 0.5, and none of the view or shape controls. It costs 1 generation on
+standard and 15 with `terrainMode: "pro"` (the retired standard model billed
+3). A sidescroller set connects only its platform (`lower`) terrain, and only
+on Pro. The API has no palette, slopes, or 64px tiles for
+sidescroller sets; those are in PixelLab's web app only.
 
 Prompt each terrain as a short material ending on the word "texture" ("deep
 ocean water texture", "plain smooth sand texture"). PixelLab's "Pro
