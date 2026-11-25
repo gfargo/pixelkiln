@@ -25,10 +25,11 @@ machine with a 12 GB RTX 3060.
 - **Skin that hides.** The body is split by what covers it. Each piece lists
   the items that hide it in its node's `extras`, as `"hiddenBy": ["Cuirass"]`.
   Hide a piece while any item in its list is worn.
-- **Lined items.** After `liner.py`, each worn item carries a dark lining: the
-  skin it covers, copied into the item's own mesh and pulled in under it. No
-  skin shows through a visor or a gap in a sleeve, and there is nothing new to
-  switch on or off.
+- **Lined, mended items.** `rig.py` ends by running `liner.py`. Each worn item
+  has its small holes filled and its edges smoothed, and carries a dark
+  lining: the skin it covers, copied into the item's own mesh and pulled in
+  under it. No skin shows through a visor or a gap in a sleeve, and there is
+  nothing new to switch on or off.
 - **Two-sided items.** What is worn is an open shell, so its material is marked
   `doubleSided` and its inside is drawn. Godot reads that as culling off.
 - **A standard skeleton.** Twenty-one bones under the names Unity's and Godot's
@@ -194,6 +195,9 @@ behind it), it gets its wrist moved to the narrowest place and `LeftGrip` or
 `RightGrip` in the middle of the fist. The script says which it found for each
 hand. `FINGERS=0` turns all of this off.
 
+When there are items, the last thing `rig.py` does is run `liner.py` on the
+file it wrote (step 9b says what that does). `LINE=0` leaves it out.
+
 ### 8. Animate
 
 ```bash
@@ -223,13 +227,24 @@ that changes the arms.
 python3 research/scripts/liner.py <character.glb> <out.glb>
 ```
 
-Run this last. `rig.py` hides the skin right under an item, but skin still
-shows through a visor's slits, through holes in a ragged sleeve and where the
-body pokes past a plate. This decides again what each worn item covers, closes
-over the holes, cuts the body's pieces to match, and gives each item a lining
-of one dark colour from its own texture, tucked under it. Held, strapped and
-hanging items get none. `ITEMS`, `NEAR`, `UNDER`, `CLOSE`, `TUCK` and `SHADE`
-are described at the top of the script. Running it again replaces the lining.
+`rig.py` runs this itself as its last step, so it is only run by hand on a
+file made before that, or to try other settings. It does two things to each
+worn item.
+
+It mends the item. A generated item comes with dozens of small holes torn in
+it and a ragged edge. A hole is a closed run of open edges up to `MEND` metres
+round (default 0.6) that the body does not pass through; a cuff, a neck or a
+hem is one it does pass through, and stays open. Each hole is filled with a
+fan of triangles in the colour around it. The edges that stay open are
+smoothed along their length, `EDGE` times (default 3), once only.
+
+It lines the item. `rig.py` hides the skin right under an item, but skin still
+shows through a visor's slits and where the body pokes past a plate. This
+decides again what each worn item covers, cuts the body's pieces to match, and
+gives each item a lining of one dark colour from its own texture, tucked under
+it. Held, strapped and hanging items get none. `ITEMS`, `NEAR`, `UNDER`,
+`CLOSE`, `TUCK` and `SHADE` are described at the top of the script. Running it
+again replaces the lining and fills nothing twice.
 
 ### 10. Dress another body
 
@@ -329,6 +344,17 @@ through the legs and trunk. `HOLD=all` rewrites each of them in place, under
 its own name, with both arms carrying the item (a sword upright, a spear
 level); `HOLD=Roll,Jump_Start` does only those. `DROP='^Sword_'` takes out the
 ones that make no sense with two hands on the item.
+
+A held motion keeps `FOLLOW` of the stock arm's own movement (default 0.25):
+the item rises, dips and swings with where the leading hand went, and while
+the body is tipped over, in a death or a roll, it is laid down (a sword along
+the spine, a shaft across the chest) and not held upright. This needs the stock arms, so run `HOLD` on a file whose
+stock motions have not been through it before.
+
+`SLIDE` moves the item through the hands towards its point, in metres. A
+spear carried level with half a metre of shaft behind the rear hand puts its
+butt through a cape; `SLIDE=0.31` on the site's spear ends the butt just
+behind that hand.
 
 A spear or staff has no guard and its hands go apart. Say where they go, give
 it to the hand that is forward, and ask for the spear motions:

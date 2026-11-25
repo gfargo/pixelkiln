@@ -61,6 +61,13 @@ Environment:
   SMOOTH  how much a change of roll from the moment before costs (default 1)
   EDGE    how much a blade turned flat to its swing costs, against a radian of wrist bend (default 2)
   REACH   the share of an arm's length it may be asked to reach (default 0.97)
+  FOLLOW  how much of the stock arm's own movement a HOLD motion keeps, 0 to 1 (default 0.25). At 0 the item is held in
+          one fixed pose through a death or a roll. With it, the item is also laid down while the body is tipped
+          over (a sword along the spine, a shaft across the chest), so it is not held upright by someone lying down. It only works on a file whose stock motions still have the arms
+          they came with: once HOLD has rewritten them there is no movement left to follow
+  SLIDE   metres to slide the item through the hands towards its blade or point, from where rig.py put it (default 0).
+          A spear carried level with a third of its shaft behind the rear hand puts its butt through a cape; slid
+          forward, the butt ends just behind that hand
   CLEAR   how far the forearms and the item are kept from the trunk, in metres (default 0.02; a negative number
           turns it off). The trunk is measured from the file's own meshes at rest, whatever is worn included
   BASE    the animations the bodies come from, as Idle,Walk,Jog (default Idle_Loop,Walk_Loop,Jog_Fwd_Loop)
@@ -76,7 +83,7 @@ source, out = sys.argv[1:3]
 env = os.environ.get
 FPS = float(env('FPS', '30')); ROLLS = int(env('ROLLS', '72')); SMOOTH = float(env('SMOOTH', '1')); EDGE = float(env('EDGE', '2'))
 REACH = float(env('REACH', '0.97'))
-CLEAR = float(env('CLEAR', '0.02')); FOREARM = 0.045  # a forearm's thickness, from its middle
+SLIDE = float(env('SLIDE', '0')); FOLLOW = float(env('FOLLOW', '0.25')); CLEAR = float(env('CLEAR', '0.02')); FOREARM = 0.045  # a forearm's thickness, from its middle
 BASE = env('BASE', 'Idle_Loop,Walk_Loop,Jog_Fwd_Loop').split(',')
 COMPONENTS = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4, 'MAT4': 16}
 
@@ -181,7 +188,7 @@ for motion in SPEAR: motion['front'] = True  # every spear motion sets its feet 
 SETS = {'great': GREAT, 'spear': SPEAR}
 if env('SET', 'great') not in SETS: sys.exit(f"SET is one of {sorted(SETS)}")
 MOTIONS = [m for m in SETS[env('SET', 'great')] if not (env('SKIP') and re.search(env('SKIP'), m['name']))]
-HELD = {'great': {'sway': 0.0, 'moments': [(0, *GUARD, 0), (1, *GUARD, 0)]}, 'spear': {'sway': 0.0, 'elbow': REAR, 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]}}[env('SET', 'great')]
+HELD = {'great': {'sway': 0.0, 'moments': [(0, *GUARD, 0), (1, *GUARD, 0)]}, 'spear': {'sway': 0.0, 'elbow': REAR, 'laid': (1.0, 0, 0), 'moments': [(0, *LEVEL, 0), (1, *LEVEL, 0)]}}[env('SET', 'great')]
 if env('SET') == 'spear' and not env('EDGE'): EDGE = 0.0  # a shaft has no edge to keep
 
 
@@ -307,6 +314,15 @@ for node in nodes:
         points = read(prim['attributes']['POSITION']); spread, ways = np.linalg.eigh(np.cov((points - points.mean(0)).T))
         if spread[2] > best_long: best_long = spread[2]; flat0 = ways[:, 0]; item_name = node.get('name')
 if flat0 is None: flat0 = np.cross(handle0, palm0); item_name = None
+if SLIDE and item_name is not None:  # the item slid through the hands: its mesh moves along the handle, the hands stay
+    for node in nodes:
+        if node.get('name') != item_name or 'mesh' not in node: continue
+        done = (doc['meshes'][node['mesh']].setdefault('extras', {})).get('slid', 0.0); step = SLIDE - done  # SLIDE is from where rig.py put it, however often this runs
+        for prim in doc['meshes'][node['mesh']]['primitives']:
+            a = doc['accessors'][prim['attributes']['POSITION']]; view = doc['bufferViews'][a['bufferView']]; start = view.get('byteOffset', 0) + a.get('byteOffset', 0)
+            points = (read(prim['attributes']['POSITION']) + handle0 * step).astype(np.float32)
+            blob[start:start + points.nbytes] = points.tobytes(); a['min'] = points.min(0).tolist(); a['max'] = points.max(0).tolist()
+        doc['meshes'][node['mesh']]['extras']['slid'] = SLIDE
 
 
 # The trunk, measured from the meshes at rest: every vertex that mostly follows the hips, spine or chest, of the body and
@@ -381,7 +397,7 @@ clips = {clip['name']: clip for clip in doc['animations']}
 if env('HOLD'):
     made = {m['name'] for m in SETS[env('SET', 'great')]}
     for name in ([n for n in clips if n not in made] if env('HOLD') == 'all' else env('HOLD').split(',')):
-        MOTIONS.append({**HELD, 'name': name, 'base': name, 'length': None})
+        MOTIONS.append({**HELD, 'name': name, 'base': name, 'length': None, 'follow': True})
 report = []
 for motion in MOTIONS:
     base_name = motion['base'] if isinstance(motion['base'], str) else BASE[motion['base']]
@@ -445,6 +461,23 @@ for motion in MOTIONS:
                 for m in local: q = np.array(quaternion(m)); values.append(-q if values and q @ values[-1] < 0 else q)
                 moved[(node, 'rotation')] = np.array(values)
     turn, place = world(len(moments), moved)
+    follow = np.zeros((len(moments), 6)); laid = np.zeros(len(moments))
+    if motion.get('follow') and FOLLOW > 0:
+        # A stock motion's own arm still acts: where its leading hand went, and which way its forearm pointed, as the chest saw
+        # them. The item is carried with a share of how far each strays from its usual place, so it rises, dips and swings
+        # with the body and is not held as if by a statue.
+        seen = []
+        for k in range(len(moments)):
+            low = place[trunk[0]][k]; up = unit(place[trunk[1]][k] - low); front = turn[trunk[1]][k] @ np.array([0, 0, 1.0]); front = unit(front - up * (front @ up))
+            axes = np.stack([np.cross(up, front) * (1.0 if lead == 'Left' else -1.0), up, front]); arm = ARMS[lead]
+            middle = (place[arm['upper']][k] + place[ARMS[other]['upper']][k]) / 2
+            seen.append(np.concatenate([axes @ (place[arm['hand']][k] - middle) / ARM, axes @ unit(place[arm['hand']][k] - place[arm['fore']][k])]))
+        # A body that has tipped over (a death, a roll) does not hold its item up: from 35 degrees off upright to 75 the item
+        # is laid down, a sword along the spine pointing past the head and a shaft across the chest.
+        tip = np.degrees(np.arccos(np.clip([unit(place[trunk[1]][k] - place[trunk[0]][k])[1] for k in range(len(moments))], -1, 1)))
+        laid = np.clip((tip - 35) / 40, 0, 1); laid = laid * laid * (3 - 2 * laid)
+        seen = np.array(seen); follow = (seen - np.median(seen, 0)) * FOLLOW
+        far = np.linalg.norm(follow[:, :3], axis=1, keepdims=True); follow[:, :3] *= np.minimum(1, 0.3 / np.maximum(far, 1e-9))  # never more than 0.3 arm lengths
     short = {lead: [], other: []}; bends = {lead: [], other: []}; flats = []; pulls = []; pushes = []; crowds = []; last = {lead: None, other: None}; last_swing = {lead: None, other: None}; before = None
     shifts = np.zeros((len(moments), 3)); swings = {lead: np.zeros(len(moments)), other: np.zeros(len(moments))}; rounds = 0
     for k in list(range(len(moments))) * 3:  # three times round, keeping the last: the first finds how far the grip must move to clear the trunk, the second settles the rolls, so a loop starts with the roll it ends on
@@ -453,13 +486,16 @@ for motion in MOTIONS:
             if rounds == 2:  # even the moves and the elbows' swings out: each moment takes the mean of the third of a second round it
                 span = max(1, int(FPS / 6)); evened = lambda v: np.stack([np.concatenate([v[-span - 1:-1], v, v[1:span + 1]])[n:n + 2 * span + 1].mean(0) for n in range(len(v))])
                 shifts = evened(shifts); swings = {side: evened(v) for side, v in swings.items()}
-                if len({(tuple(m[1]), tuple(m[2])) for m in motion['moments']}) == 1:  # one pose held throughout: one move for all of it
+                if len({(tuple(m[1]), tuple(m[2])) for m in motion['moments']}) == 1 and not np.abs(follow).max() > 0:  # one pose held throughout: one move for all of it
                     most = int(np.argmax(np.linalg.norm(shifts, axis=1))); shifts[:] = shifts[most]; swings = {side: np.full(len(moments), v[most]) for side, v in swings.items()}  # the moment that needed most
         if k == 0: turns = {node: [] for node in turns}; short = {lead: [], other: []}; bends = {lead: [], other: []}; flats = []; pulls = []; pushes = []; crowds = []; before = None
         low = place[trunk[0]][k]; up = unit(place[trunk[1]][k] - low); front = turn[trunk[1]][k] @ np.array([0, 0, 1.0]); front = unit(front - up * (front @ up))
         to_lead = np.cross(up, front) * (1.0 if lead == 'Left' else -1.0)
         middle = (place[ARMS[lead]['upper']][k] + place[ARMS[other]['upper']][k]) / 2
         grip, way, _ = posed[k]; grip = grip + np.array([0, motion['sway'] * np.sin(2 * np.pi * shares[k]), 0])
+        down = np.array(motion.get('laid', (0, 1.0, 0)), float)  # the way the item points when laid: (to the leading side, up the spine, front)
+        grip = grip + follow[k, :3] + down * (laid[k] * abs(along) / ARM / 2)  # laid, the hands sit either side of where the grip was
+        way = unit(unit(way + follow[k, 3:]) * (1 - laid[k]) + down * laid[k])
         at = middle + ARM * (to_lead * grip[0] + up * grip[1] + front * grip[2]); handle = unit(to_lead * way[0] + up * way[1] + front * way[2])
         # The blade's edge leads a cut when its flat faces across the path its point takes; when it is not being swung, across the body.
         point = at + handle * 0.5; speed = 0 if before is None else np.linalg.norm(point - before) * FPS

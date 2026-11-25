@@ -18,6 +18,10 @@ texture. The lining is part of the item, so it is shown and hidden with it and a
 new. The item's mesh extras say where the lining starts (liner.firstIndex), and running this again on its
 own output replaces the lining and does not add a second.
 
+Before that, each worn item is mended. A generated item comes with small holes torn in it and a ragged edge.
+A hole the body does not pass through is filled in the colour around it, and the edges that stay open (cuffs,
+a neck, a hem) are smoothed along their length.
+
 Things held, strapped on or hanging (most of their weight on a hand, a grip or a chain bone, or hiding no
 skin in the file as rig.py wrote it) get no lining.
 
@@ -27,6 +31,8 @@ Environment:
   UNDER   metres (default 0.12)
   CLOSE   rings of neighbours (default 3)
   TUCK    metres the lining sits under the item (default 0.006); it is never moved more than 0.03
+  MEND    the longest hole in an item that is filled, in metres round its edge (default 0.6; 0 fills none)
+  EDGE    how many times an item's open edges are smoothed (default 3; 0 leaves them)
   SHADE   how dark the lining is, as a share of the item's usual colour (default 0.4)
 
 Needs numpy, pillow, scipy.
@@ -39,6 +45,7 @@ from scipy.spatial import cKDTree
 source, out = sys.argv[1:3]
 env = os.environ.get
 NEAR = float(env('NEAR', '0.02')); UNDER = float(env('UNDER', '0.12')); CLOSE = int(env('CLOSE', '3')); TUCK = float(env('TUCK', '0.006')); SHADE = float(env('SHADE', '0.4'))
+MEND = float(env('MEND', '0.6')); EDGE = int(env('EDGE', '3'))
 TYPES = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}
 CODES = {np.dtype(v): k for k, v in TYPES.items()}
 WIDTH = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4, 'MAT4': 16}
@@ -106,6 +113,52 @@ def cast(origins, directions, triangles, reach):
         k = t.argmin(1); rows = np.arange(len(k)); far[start:start + 256] = t[rows, k]; behind[start:start + 256] = (d[:, 0] * face[k]).sum(-1) > 0
     return far, behind
 
+def mend(mine, faces, smooth):
+    """Close the small holes in an item and even out its ragged edges. A hole is a closed run of open edges no longer
+    than MEND round that the body does not pass through (a cuff or a neck is one it does); it is filled with a fan
+    of triangles in the colour around it. The edges left open are smoothed along their length, EDGE times."""
+    points = mine['POSITION'].astype(float); _, one = np.unique(np.round(points, 5), axis=0, return_inverse=True); one = one.reshape(-1)
+    spot = np.zeros((one.max() + 1, 3)); spot[one] = points
+    sides = np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]]); welded = one[sides]; sound = welded[:, 0] != welded[:, 1]
+    _, which, times = np.unique(np.sort(welded, 1), axis=0, return_inverse=True, return_counts=True)
+    rim = sides[sound & (times[which.reshape(-1)] == 1)]; after = {}
+    for a, b in rim: after.setdefault(one[a], []).append((a, b))
+    runs = []; seen = set()
+    for a, b in rim:
+        if (a, b) in seen: continue
+        run = []; edge = (a, b)
+        while edge is not None and edge not in seen:
+            seen.add(edge); run.append(edge)
+            if one[edge[1]] == one[a]: runs.append(run); break
+            edge = next((e for e in after.get(one[edge[1]], []) if e not in seen), None)
+    skin = cKDTree(at); extra = {key: [] for key in mine}; patches = []; count = len(points); filled = 0; moved = points.copy()
+    for run in runs:
+        ring = np.array([e[0] for e in run]); around = points[ring]; middle = around.mean(0)
+        length = np.linalg.norm(around - np.roll(around, -1, 0), axis=1).sum(); k = skin.query(middle)[1]
+        through = (middle - at[k]) @ normal[k] < -0.005
+        if not smooth and MEND > 0 and len(ring) >= 3 and length <= MEND and not through:
+            uv = mine['TEXCOORD_0'][ring].astype(float); one_island = np.ptp(uv, axis=0).max() < 0.1
+            nearest = np.linalg.norm(around - middle, axis=1).argmin()
+            for key, values in mine.items():
+                rows = values[ring].copy(); centre = values[ring[nearest]].copy()
+                if key == 'POSITION': centre = middle.astype(values.dtype)
+                elif key == 'NORMAL': centre = values[ring].astype(float).mean(0); centre = (centre / (np.linalg.norm(centre) + 1e-12)).astype(values.dtype)
+                elif key == 'TEXCOORD_0':
+                    if one_island: centre = uv.mean(0).astype(values.dtype)
+                    else: rows[:] = centre  # the hole crosses a seam in the texture: one colour from its edge
+                extra[key].append(np.concatenate([rows, centre[None]]))
+            size = len(ring); step = np.arange(size)
+            patches.append(np.stack([count + (step + 1) % size, count + step, np.full(size, count + size)], 1)); count += size + 1; filled += 1
+        elif smooth and len(ring) >= 6 and (through or length > MEND):
+            line = spot[one[ring]].copy()
+            for _ in range(EDGE): line = 0.5 * line + 0.25 * (np.roll(line, 1, 0) + np.roll(line, -1, 0))
+            for place, to in zip(one[ring], line): moved[one == place] = to
+    mine = dict(mine); mine['POSITION'] = moved.astype(mine['POSITION'].dtype)
+    if patches:
+        mine = {key: np.concatenate([values] + extra[key]) for key, values in mine.items()}; faces = np.concatenate([faces] + patches)
+    return mine, faces, filled
+
+
 def bone_names(skin): return [nodes[j].get('name', '') for j in doc['skins'][skin]['joints']]
 
 def worn(i):  # something rig.py fitted over the skin: not held, strapped on or hanging
@@ -127,6 +180,12 @@ for i in item_nodes:
         faces = faces[:was['firstIndex'] // 3]; keep = was['firstVertex']; mine = {key: values[:keep] for key, values in mine.items()}
     linings[i] = (mine, faces, None)
     if (wanted is not None and name not in wanted) or (wanted is None and not worn(i)): continue
+    mended = 0; smoothed = bool((mesh.get('extras') or {}).get('edgesSmoothed'))
+    for _ in range(6):  # filling one hole can close a run of edges that crossed it into another
+        mine, faces, more = mend(mine, faces, False); mended += more
+        if not more: break
+    if EDGE > 0 and not smoothed: mine, faces, _ = mend(mine, faces, True); mesh.setdefault('extras', {})['edgesSmoothed'] = True  # once: a second run would shrink them again
+    linings[i] = (mine, faces, None)
     points = mine['POSITION'].astype(float); corners = points[faces]
     # near: the item's surface within NEAR
     area = np.linalg.norm(np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0]), axis=1); rng = np.random.default_rng(5)
@@ -174,7 +233,7 @@ for i in item_nodes:
         side /= np.linalg.norm(side, axis=1, keepdims=True); lining['TANGENT'] = np.concatenate([side, np.ones((len(side), 1))], 1).astype(np.float32)
     renumber = np.zeros(len(position), np.int64); renumber[used] = np.arange(len(used))
     linings[i] = (mine, faces, (lining, renumber[merged[body_faces[under_item]]]))
-    report[name] = {'bodyTrianglesHidden': int(under_item.sum()), 'liningMovedInMetres': round(float(field[spot].max()), 4),
+    report[name] = {'holesFilled': mended, 'bodyTrianglesHidden': int(under_item.sum()), 'liningMovedInMetres': round(float(field[spot].max()), 4),
                     'liningColour': [int(c) for c in texture[best[1], best[0]]], 'usualColour': [int(c) for c in usual]}
 
 # ---- the body's pieces, cut again

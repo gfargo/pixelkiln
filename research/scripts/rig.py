@@ -52,6 +52,9 @@ Environment:
   JPEG     write textures as JPEG at this quality (for example 90) in place of PNG: far smaller for painted textures
   TEX      shrink textures to this many pixels a side
   PALETTE  <sprite-dir>:<name>, the sprites whose colours are stored on the materials; COLOURS of them (default 24)
+  LINE     0 leaves out the last step, which runs liner.py on the file: it fills the small holes in each worn item,
+           smooths its edges and lines it, so no skin shows through. liner.py's own settings are read from the
+           environment as usual. The preview is drawn before that step
   CELL     the size of each preview picture
 """
 import io, json, math, os, struct, sys
@@ -600,6 +603,12 @@ js = json.dumps(gltf, separators=(",", ":")).encode(); js += b" " * ((4 - len(js
 with open(out, "wb") as f:
     f.write(struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(js) + 8 + len(binary)))
     f.write(struct.pack("<I4s", len(js), b"JSON") + js + struct.pack("<I4s", len(binary), b"BIN\x00") + binary)
+LINED = None
+if ITEMS and os.environ.get("LINE", "1") != "0":  # mend and line what is worn: liner.py, on the file just written
+    import subprocess
+    done = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "liner.py"), out, out], capture_output=True, text=True)
+    if done.returncode == 0: LINED = json.loads(done.stdout)["lined"]
+    else: print("liner.py failed, the file is as rig.py wrote it: " + done.stderr.strip().splitlines()[-1], file=sys.stderr)
 
 # ---- preview: pose the mesh ourselves with the same bones and weights, and draw it
 def qmat(q):
@@ -658,5 +667,5 @@ if preview:
     owner = joints_attr[np.arange(len(pos)), weights_attr.argmax(1)]
     rgb = palette[owner % 8][faces[pick][:, 0]].astype(np.int64)
     Image.fromarray(np.hstack([draw(pos.astype(np.float64), math.radians(a)) for a in (0, 60, 180, 240)])).save(preview.replace(".png", ".weights.png"))
-print(json.dumps({"out": out, "vertices": len(pos), "triangles": len(faces), "items": {i["name"]: len(i["faces"]) for i in ITEMS}, "bodyPieces": {p["name"]: len(p["faces"]) for p in PARTS[:BODY_PARTS]}, "bones": names, "heightMetres": 1.8, "animation": "Walk", "keys": KEYS,
+print(json.dumps({"out": out, "vertices": len(pos), "triangles": len(faces), "items": {i["name"]: len(i["faces"]) for i in ITEMS}, "bodyPieces": {p["name"]: len(p["faces"]) for p in PARTS[:BODY_PARTS]}, "bones": names, "lined": LINED, "heightMetres": 1.8, "animation": "Walk", "keys": KEYS,
                   "bytes": 12 + 8 + len(js) + 8 + len(binary), "maxInfluences": int((weights_attr > 0).sum(1).max())}))
