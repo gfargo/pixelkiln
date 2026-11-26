@@ -118,6 +118,38 @@ describe("versioned recipes", () => {
     expect((await verifyRecipe("comfyui/pixel-art-xl-img2img")).ok).toBe(true)
   })
 
+  it("ships an intact ComfyUI pose frame-set recipe that varies only the pose", async () => {
+    const recipes = await listBundledRecipes()
+    const loaded = recipes.find(({ recipe }) => recipe.id === "comfyui/pixel-art-pose-frames")
+    expect(loaded?.recipe.version).toBe("1.0.0")
+    expect(loaded?.recipe.style.generator).toBe("frames")
+    expect(loaded?.recipe.workflow?.frames).toEqual({ vary: "pose", seedStep: 0 })
+    expect(loaded?.recipe.workflow?.bindings.pose).toEqual({ nodeId: "20", input: "image" })
+    expect(loaded?.recipe.style.providerOptions.comfyui).toMatchObject({
+      numImages: 1,
+      frames: { vary: "pose", seedStep: 0 },
+    })
+    expect(loaded?.recipe.quality.stage).toBe("composition-source")
+    expect((await verifyRecipe("comfyui/pixel-art-pose-frames")).ok).toBe(true)
+  })
+
+  it("requires frame options exactly when a recipe's style generates frames", async () => {
+    const recipes = await listBundledRecipes()
+    const authored = structuredClone(
+      recipes.find(({ recipe }) => recipe.id === "comfyui/pixel-art-pose-frames")!.authored,
+    ) as any
+    delete authored.workflow.frames
+    delete authored.style.providerOptions.comfyui.frames
+    expect(RecipeSchema.safeParse(authored).success).toBe(false)
+
+    const wrongVary = structuredClone(
+      recipes.find(({ recipe }) => recipe.id === "comfyui/pixel-art-pose-frames")!.authored,
+    ) as any
+    wrongVary.workflow.frames.vary = "expression"
+    wrongVary.style.providerOptions.comfyui.frames.vary = "expression"
+    expect(RecipeSchema.safeParse(wrongVary).success).toBe(false)
+  })
+
   it("checks workflow and model bytes independently", async () => {
     const { recipePath, modelRoot } = await writeTestRecipe()
     const withoutModels = await verifyRecipe(recipePath)

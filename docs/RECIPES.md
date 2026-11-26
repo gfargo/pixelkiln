@@ -61,6 +61,23 @@ of colors. Keep it at `composition-source`; use the smoke to test plumbing, not
 as a quality preset. See
 [Controlled asset revisions](REVISIONS.md).
 
+For an ordered frame set driven by pose maps, install the pose recipe:
+
+```bash
+pixelkiln recipe install comfyui/pixel-art-pose-frames@1.0.0
+```
+
+Its style uses `generator: frames` with `frames.vary: "pose"` and
+`seedStep: 0`, so each asset lists its committed OpenPose maps under
+`providerInputs.pose` and every other input stays fixed. The graph is SDXL
+base, Pixel Art XL at 0.85 and the xinsir OpenPose ControlNet at 0.75, all
+built-in ComfyUI nodes. It is `composition-source`. Eleven benchmark runs
+over two characters showed frames that follow their poses but drift in
+identity and props without a per-character LoRA, which the recipe does not
+ship. The [pose-frame benchmark](../benchmarks/provider-frame-sets/comfyui/README.md)
+has the evidence and the settings that were rejected. Review and approve the
+whole set at 1×.
+
 ## Verify the recipe and workstation
 
 Verify the metadata digest and every included workflow before using a pack:

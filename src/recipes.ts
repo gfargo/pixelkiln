@@ -59,7 +59,12 @@ export const RecipeSchema = z.object({
       sourceImage: RecipeBindingSchema.optional(),
       maskImage: RecipeBindingSchema.optional(),
       strength: RecipeBindingSchema.optional(),
-    }).strict(),
+    }).catchall(RecipeBindingSchema),
+    /** Frame-set options; required when the style's generator is `frames`. */
+    frames: z.object({
+      vary: z.string().min(1),
+      seedStep: z.number().int().optional(),
+    }).strict().optional(),
   }).strict().optional(),
   quality: z.object({
     stage: z.enum(["composition-source", "production-candidate"]),
@@ -153,11 +158,27 @@ export const RecipeSchema = z.object({
       })
       return
     }
+    const frames = recipe.workflow.frames
+    if ((recipe.style.generator === "frames") !== (frames !== undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["workflow", "frames"],
+        message: "is required for a frames style and only allowed there",
+      })
+    }
+    if (frames && !Object.hasOwn(recipe.workflow.bindings, frames.vary)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["workflow", "frames", "vary"],
+        message: "must name a workflow binding",
+      })
+    }
     const expected = {
       workflowFile: `${RECIPE_DIR_TOKEN}/${recipe.workflow.path}`,
       outputNodeId: recipe.workflow.outputNodeId,
       numImages: recipe.workflow.numImages,
       bindings: recipe.workflow.bindings,
+      frames,
     }
     if (JSON.stringify(canonical(options)) !== JSON.stringify(canonical(expected))) {
       context.addIssue({

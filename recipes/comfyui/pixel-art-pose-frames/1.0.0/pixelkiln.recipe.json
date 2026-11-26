@@ -1,0 +1,142 @@
+{
+  "$schema": "https://unpkg.com/pixelkiln/schema/recipe.schema.json",
+  "format": "pixelkiln-recipe",
+  "schemaVersion": 1,
+  "id": "comfyui/pixel-art-pose-frames",
+  "version": "1.0.0",
+  "provider": "comfyui",
+  "summary": "SDXL, Pixel Art XL and an OpenPose ControlNet that render one still per committed pose map, tracked as one frame set.",
+  "files": [
+    {
+      "path": "workflow-api.json",
+      "role": "workflow",
+      "sha256": "5db97b88a07e307ccf3930ba3e970851051533f963f9ef6030d38926e1c4e0c2"
+    }
+  ],
+  "models": [
+    {
+      "path": "checkpoints/sd_xl_base_1.0.safetensors",
+      "sha256": "31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b",
+      "source": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/sd_xl_base_1.0.safetensors",
+      "license": "CreativeML Open RAIL++-M"
+    },
+    {
+      "path": "loras/pixel-art-xl.safetensors",
+      "sha256": "4234637cb80c998f41e348e6a6cb6bc20d8d038b2b0f256b6129b3b5e353eef7",
+      "source": "https://huggingface.co/nerijs/pixel-art-xl/blob/main/pixel-art-xl.safetensors",
+      "license": "CreativeML OpenRAIL-M"
+    },
+    {
+      "path": "controlnet/controlnet-openpose-sdxl-1.0.safetensors",
+      "sha256": "b8524e557a7df60d081f5d4a0eb109967d107df217943bf88c2d99b9ebcc06c5",
+      "source": "https://huggingface.co/xinsir/controlnet-openpose-sdxl-1.0/blob/main/diffusion_pytorch_model.safetensors",
+      "license": "Apache-2.0"
+    }
+  ],
+  "styleId": "comfyui-pose-frames",
+  "style": {
+    "provider": "comfyui",
+    "generator": "frames",
+    "outDir": "art/generated/comfyui-pose-frames",
+    "seed": 31415,
+    "noBackground": false,
+    "promptPrefix": "pixel art, full body side view, facing right",
+    "promptSuffix": "plain flat grey background, game sprite",
+    "providerOptions": {
+      "comfyui": {
+        "workflowFile": "{{recipeDir}}/workflow-api.json",
+        "outputNodeId": "9",
+        "numImages": 1,
+        "bindings": {
+          "prompt": {
+            "nodeId": "6",
+            "input": "text"
+          },
+          "width": {
+            "nodeId": "5",
+            "input": "width"
+          },
+          "height": {
+            "nodeId": "5",
+            "input": "height"
+          },
+          "seed": {
+            "nodeId": "3",
+            "input": "seed"
+          },
+          "pose": {
+            "nodeId": "20",
+            "input": "image"
+          }
+        },
+        "frames": {
+          "vary": "pose",
+          "seedStep": 0
+        }
+      }
+    }
+  },
+  "workflow": {
+    "path": "workflow-api.json",
+    "outputNodeId": "9",
+    "numImages": 1,
+    "bindings": {
+      "prompt": {
+        "nodeId": "6",
+        "input": "text"
+      },
+      "width": {
+        "nodeId": "5",
+        "input": "width"
+      },
+      "height": {
+        "nodeId": "5",
+        "input": "height"
+      },
+      "seed": {
+        "nodeId": "3",
+        "input": "seed"
+      },
+      "pose": {
+        "nodeId": "20",
+        "input": "image"
+      }
+    },
+    "frames": {
+      "vary": "pose",
+      "seedStep": 0
+    }
+  },
+  "quality": {
+    "stage": "composition-source",
+    "workingCanvas": {
+      "width": 1024,
+      "height": 1024
+    },
+    "recommendedNativeSize": {
+      "min": 48,
+      "max": 128
+    },
+    "paletteColors": {
+      "min": 16,
+      "max": 32
+    },
+    "background": "opaque",
+    "checks": [
+      "prompt-coverage",
+      "native-grid",
+      "final-palette",
+      "human-1x"
+    ],
+    "notes": [
+      "Each frame is an independent still conditioned on its pose map; nothing carries identity from one frame to the next.",
+      "Pose maps are committed OpenPose images at 1024x1024 with one ground line; overshoot the motion you want, because the ControlNet at 0.75 undershoots it.",
+      "Without a character LoRA, identity and props drift between frames. The benchmark's best identity came from a LoRA trained per character, which this recipe does not ship.",
+      "Review the whole set at 1x before approving it; a passing grid check cannot judge identity, arcs or foot sliding."
+    ]
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "9b12926f43e4b14a2c01139d468e2056a6216f516e0b433c70fb84db65f61ccd"
+  }
+}
