@@ -1,3 +1,10 @@
+## [0.144.2](https://github.com/gfargo/pixelkiln/compare/v0.144.1...v0.144.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **pixellab:** measure the remaining routes and fix what the run found ([#401](https://github.com/gfargo/pixelkiln/issues/401)) ([446880f](https://github.com/gfargo/pixelkiln/commit/446880f4e49f51c8819728ded1ad5de361557cd5))
+
 ## [0.144.1](https://github.com/gfargo/pixelkiln/compare/v0.144.0...v0.144.1) (2026-11-25)
 
 
