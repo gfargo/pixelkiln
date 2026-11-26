@@ -1,3 +1,10 @@
+# [0.147.0](https://github.com/gfargo/pixelkiln/compare/v0.146.0...v0.147.0) (2026-11-26)
+
+
+### Features
+
+* --accept-first takes every asset's first candidate ([76555df](https://github.com/gfargo/pixelkiln/commit/76555df34c3269eb8cd478b0fae62db7da3d7276))
+
 # [0.146.0](https://github.com/gfargo/pixelkiln/compare/v0.145.0...v0.146.0) (2026-11-26)
 
 
