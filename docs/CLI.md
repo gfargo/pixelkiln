@@ -366,8 +366,15 @@ on the account that no entry claims are listed at the end with their ids, so
 bringing one in is a matter of declaring the asset with that `remoteId` and
 running `adopt` again.
 
+`--dry-run` still contacts the provider and matches, then reports what it
+would adopt and every character file it would write, without writing to the
+style's `outDir`, the lockfile, or the manifest; `--tag` and `--write-prompts`
+are skipped. Add `--json` for the same report on stdout (progress goes to
+stderr).
+
 ```bash
 pixelkiln adopt --style cast
+pixelkiln adopt --style cast --dry-run --json
 ```
 
 `adopt --local` is the keyless path for art made somewhere else (the PixelLab
@@ -2199,7 +2206,7 @@ Print the package version. `-v` is an alias.
 | `--only id1,id2` | most workflows | Restrict asset ids; repeatable. An `animation.directions` shorthand id selects every loop and mirror it expands into. |
 | `--budget <n\|provider=n>` | submit/gen/gallery/model normal-map | Refuse work above this cost. Repeat `provider=n` for every provider in a mixed run; do not mix keyed and unkeyed forms. For `gallery`, the session ceiling that enables generation from the page, and (from `pixellab=<n>` or the plain amount) the ceiling on a session's normal map detail for models. |
 | `--force` | gen/fetch/derived commands/recipe install/quality snapshot | Regenerate current work, replace a changed or untracked fetch destination, rebuild current quality-profile output, take ownership of modified/unowned derived output, replace changed recipe files, or replace a changed quality baseline. A refinement rebuild resets approval. |
-| `--dry-run` | supported mutating commands, adopt --local, quality snapshot --only | Inspect without spending or mutating provider state. |
+| `--dry-run` | supported mutating commands, adopt, adopt --local, quality snapshot --only | Inspect without spending or mutating provider state. |
 | `--json` | plan/doctor/audit/cache/status/gallery/salvage/refine/recipe/quality/unzoom/pixelate/normal-map/vfx/font | Machine-readable stdout where supported. For `gallery`, prints the snapshot instead of serving it. |
 | `--check` | plan/audit/cache | Exit nonzero when selected state is unsafe. |
 | `--strict` | plan/hash/doctor | Fail on any invalid manifest entry instead of listing it and continuing. |

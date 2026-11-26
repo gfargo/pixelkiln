@@ -33,7 +33,7 @@ export async function adopt(
   specs: ResolvedSpec[],
   lock: Lock,
   lockPath: string,
-  opts: { onProgress?: (msg: string) => void; concurrency?: number; noCache?: boolean } = {},
+  opts: { onProgress?: (msg: string) => void; concurrency?: number; noCache?: boolean; /** Match and report, but leave the lockfile alone. */ dryRun?: boolean } = {},
 ): Promise<AdoptResult> {
   const log = opts.onProgress ?? (() => {})
   const concurrency = opts.concurrency ?? 8
@@ -138,13 +138,13 @@ export async function adopt(
           provider: provider.id,
         })
         matched++
-        log(`  adopted ${key} ← ${obj.id}`)
+        log(`  ${opts.dryRun ? "would adopt" : "adopted"} ${key} ← ${obj.id}`)
       }
     }
   }
 
   await Promise.all(Array.from({ length: Math.min(concurrency, remote.length || 1) }, worker))
-  await saveLock(lockPath, lock)
+  if (!opts.dryRun) await saveLock(lockPath, lock)
 
   if (!opts.noCache) {
     pruneCache(cache, new Set(remote.map((o) => o.id)))

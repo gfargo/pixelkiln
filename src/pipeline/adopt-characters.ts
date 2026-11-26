@@ -34,7 +34,7 @@ export interface AdoptCharactersResult {
   unmatched: string[]
   /** Characters on the account no entry of this lockfile claims. */
   remaining: RemoteCharacter[]
-  /** Files written because they were missing locally. */
+  /** Files written because they were missing locally (with `dryRun`, the files that would be). */
   written: string[]
   /** Local files that differ from the account's bytes and were left alone. */
   differing: string[]
@@ -49,6 +49,13 @@ export interface AdoptCharactersOptions {
    */
   resolve: () => Promise<ResolvedSpec[]>
   noCache?: boolean
+  /**
+   * Match and report without writing: no file lands in `outDir` and the
+   * lockfile is left alone (the hash cache may still be updated). Without the
+   * parent's files on disk the manifest is not re-resolved between waves, so
+   * a state keeps the identity it had before the run.
+   */
+  dryRun?: boolean
 }
 
 export async function adoptCharacters(
@@ -114,6 +121,8 @@ export async function adoptCharacters(
       const file = expectedOutputPath(spec, source.role, index, sources.length)
       if (existsSync(file)) {
         if (sha256(await readFile(file)) !== hash) result.differing.push(path.relative(process.cwd(), file))
+      } else if (opts.dryRun) {
+        result.written.push(path.relative(process.cwd(), file))
       } else {
         await mkdir(path.dirname(file), { recursive: true })
         await writeFile(file, bytes)
@@ -149,7 +158,7 @@ export async function adoptCharacters(
         result.unmatched.push(`${key}: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
-    if (adoptedThisWave) {
+    if (adoptedThisWave && !opts.dryRun) {
       await saveLock(lockPath, lock)
       current = await opts.resolve()
     }
@@ -221,7 +230,7 @@ export async function adoptCharacters(
     })
     claimed.add(full.id)
     result.matched++
-    log(`  adopted ${key} ← character ${full.id}${full.stateName && full.stateName !== "Idle" ? ` (${full.stateName})` : ""}`)
+    log(`  ${opts.dryRun ? "would adopt" : "adopted"} ${key} ← character ${full.id}${full.stateName && full.stateName !== "Idle" ? ` (${full.stateName})` : ""}`)
     return true
   }
 
@@ -306,11 +315,11 @@ export async function adoptCharacters(
       provider: provider.id,
     })
     result.matched++
-    log(`  adopted ${key} ← ${animation.direction} animation ${match.groupId ?? animationId ?? match.type} of ${parentId}`)
+    log(`  ${opts.dryRun ? "would adopt" : "adopted"} ${key} ← ${animation.direction} animation ${match.groupId ?? animationId ?? match.type} of ${parentId}`)
     return true
   }
 
-  await saveLock(lockPath, lock)
+  if (!opts.dryRun) await saveLock(lockPath, lock)
   if (!opts.noCache) {
     pruneCache(cache, new Set(remote.map((character) => character.id)), "character:")
     await saveCache(cachePath, cache)
