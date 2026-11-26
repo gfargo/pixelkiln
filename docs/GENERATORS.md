@@ -94,9 +94,12 @@ pipeline. It is square and priced by canvas area:
 
 | Pixel area | Cost |
 |---:|---:|
-| ≤1024 | 20 |
-| ≤2048 | 25 |
-| larger | 40 |
+| ≤1024 | 10 |
+| ≤2048 | 15 |
+| larger | 25 |
+
+These are the prices since PixelLab's October 2026 Pro cut (20, 25 and 40
+before); a 32px batch billed exactly 10 in November 2026.
 
 Candidate count is also size-derived and does not reduce price:
 
@@ -341,23 +344,23 @@ and regenerating the parent makes the child stale.
 |---|---:|---:|
 | base, `mode: standard` | create-character-with-4/8-directions | 1 |
 | base, `mode: v3` | create-character-v3 | 1 + ceil(size² × 8 / 65536): 2 at 64px, 3 at 128px; from a `reference`, the rotations alone on its canvas: 1 at 64px |
-| base, `mode: pro` | create-character-pro | 10–25 by canvas |
+| base, `mode: pro` | create-character-pro | 10 to 85px: 10, to 113px: 15, to 128px: 25 (longest side); 64px billed exactly 10 |
 | base, `mode: pro-flash` | create-character-pro-flash | image tier (5 to 96px, 6 to 208px, 9 above) + ceil(size² × 8 / 65536): 6 at 64px, 8 at 128px, 17 at 256px; rotations only from a `reference` |
-| state | create-character-state | 10–25 by canvas |
+| state | create-character-state | the same Pro tier by longest side; a 64px state billed exactly 10 |
 | animation with a `template` | animate-character | 1 |
 | animation from text (v3) | animate-character | ceil(size² × frames / 65536): 1 at 64px, 2 at 128px |
-| animation, `mode: pro` | animate-character | 10–25 by canvas |
-| portrait | portrait-character-pro | 10–25 by `size` (16px billed exactly 20 live, before the October 2026 cut) |
+| animation, `mode: pro` | animate-character | the same Pro tier by longest side; a 64px loop cost 10 |
+| portrait | portrait-character-pro | the same Pro tier by `size` (16px billed exactly 20 live, before the October 2026 cut) |
 | outfit | transfer-outfit-v2 | 20 (a 2-frame, 92×92 job billed exactly this live; not yet measured at other frame counts or canvases) |
 | layer | inpaint-v3, one call for every frame | 10–25 by the sheet's canvas; planned at 25 (56 frames at 384×448 billed 25) |
 
-The 10–25 tiers are PixelLab's (20–40 before its October 2026 cut); the tier
-is resolved from the canvas when the job runs and reserved against the floor,
-so `plan` reports the tier the canvas lands in. `plan` prices a 64px state at
-25 (the 1dir tier for that many pixels); one live 64px state in September
-2026, before the cut, moved the balance by about 22 against the then 20–40
-tiers, so there is no bill on the new list, and the estimate is read as high,
-which is the safe side for a budget.
+The 10–25 tiers are PixelLab's (20–40 before its October 2026 cut), chosen by
+the canvas's longest side: 10 up to 85px, 15 up to 113px, 25 up to 128px.
+The tier is resolved when the job runs and reserved against the floor, so
+`plan` reports the tier the canvas lands in. Measured November 2026 on a
+64px pro character: the base, a state, and a `pro` loop each cost exactly
+10. `plan` used to price these by pixel area, which put 64×64 in the top
+tier at 25.
 `poll` now reads what a job like this actually billed and records it
 alongside the estimate as `billed`; `pixelkiln history`, `plan --json`, and
 the gallery show both when they differ, though `gen`'s wave budget still
@@ -416,13 +419,16 @@ ignored, since none of them reach the API for an object.
   restricted to the fields above (no `template`/`subject`, since neither
   applies). See [Working with a cast](./CHARACTERS.md#working-with-a-cast).
 
-**Cost: the base is measured, the rest is assumed.** `objectProCost()` prices
-`/create-object-pro-flash`/its state/its animation identically to
-`character`'s own measured pro-flash formula (`proFlashCharacterCost`),
-since the request bodies are near-identical minus `template_id`. A 32px base
-billed exactly 6 live (November 2026, Tier 3) and returned 8 files at 32×32,
-matching the plan. The state route, the `pro` animation and other sizes
-are still mock only; treat them as a working assumption.
+**Cost: measured at 32px.** A base is priced like a pro-flash character
+(`proFlashCharacterCost`), a state and a `pro` animation on the 10/15/25 Pro
+tiers by canvas, and a `v3` animation by canvas and frames. In November 2026,
+on a 32px object, the base billed 6, a state 10, a `v3` loop 1, and a `pro`
+loop 10, each exactly as planned. Other sizes are unmeasured.
+
+A `pro` animation's frame count is set by the object's canvas: 16 up to 64px;
+4, 9 or 16 up to 128px; 9 up to 170px; and `pro` is refused above that.
+Leave `frames` out to get the smallest allowed count. PixelLab refuses any
+other count, so PixelKiln checks it before submitting.
 
 Adoption (`pixelkiln adopt`) has not been extended for `objectPro`'s own
 `<object id>#<animation group id>` remote-id scheme yet, unlike `character`'s

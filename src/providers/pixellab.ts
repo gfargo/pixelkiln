@@ -149,13 +149,13 @@ function billedFromUsage(usage: PixelLabUsage | null | undefined): BilledAmount 
  * A standard base is a flat 1. A v3 base is Pixen's 1 plus the rotation
  * pass, `ceil(s*s*8 / 65536)`; a pro-flash base is its image tier plus the
  * same rotation pass. Pro bases, every state, and a portrait are priced by
- * canvas tier, 10 to 25 since PixelLab's October 2026 price cut (20 to 40
- * before), the same tiers as `1dir`; PixelLab resolves the exact tier when
- * the job runs and reserves against the floor, so this reports the tier the
- * canvas lands in (a 16px portrait billed exactly the then 20-generation
+ * the Pro character tier (`proCharacterTierCost`), 10 to 25 by the canvas's
+ * longest side since PixelLab's October 2026 price cut (20 to 40 before);
+ * PixelLab resolves the exact tier when the job runs and reserves against
+ * the floor, so this reports the tier the canvas lands in (a 16px portrait billed exactly the then 20-generation
  * floor live; docs/ENDPOINTS.md, "Characters, measured"). A template
  * animation is 1 per direction; a v3 animation scales with canvas and
- * frames, `ceil(w*h*frames / 65536)`; a pro animation is the 10 to 25 tier.
+ * frames, `ceil(w*h*frames / 65536)`; a pro animation is the same Pro tier.
  */
 export function characterCost(spec: ResolvedSpec): number {
   const character = spec.character
@@ -170,9 +170,9 @@ export function characterCost(spec: ResolvedSpec): number {
     // it keeps the same ceiling.
     if (animation.mode === "skeleton-v3") return 4
     if (animation.mode === "v3") return Math.max(1, Math.ceil((px * animation.frames) / 65536))
-    return generationCost(spec.width, spec.height, "1dir")
+    return proCharacterTierCost(spec.width, spec.height)
   }
-  if (character.kind === "state" || character.kind === "portrait") return generationCost(spec.width, spec.height, "1dir")
+  if (character.kind === "state" || character.kind === "portrait") return proCharacterTierCost(spec.width, spec.height)
   if (character.kind === "outfit") {
     // Measured once, live: a 2-frame, 92x92 job billed 20 (docs/ENDPOINTS.md,
     // "Characters, measured"), the floor of the 1dir tier that number would
@@ -203,7 +203,22 @@ export function characterCost(spec: ResolvedSpec): number {
     const south = character.reference?.south
     return south ? proFlashCharacterCost(south.width, south.height, true) : proFlashCharacterCost(spec.width, spec.height, false)
   }
-  return generationCost(spec.width, spec.height, "1dir")
+  return proCharacterTierCost(spec.width, spec.height)
+}
+
+/**
+ * The Pro character tier, by the canvas's longest side: 10 up to 85px, 15 up
+ * to 113px, 25 up to 128px (PixelLab's MCP description of `create_character`
+ * mode pro). It prices a pro base, every state and portrait, and a `pro`
+ * loop. Measured November 2026 at 64px: a pro base, its state, and a `pro`
+ * loop each billed exactly 10. The `1dir` area tiers this replaced read a
+ * 64×64 canvas as 25.
+ */
+export function proCharacterTierCost(width: number, height: number): number {
+  const side = Math.max(width, height)
+  if (side <= 85) return PRO_TIER_PRICES[0]
+  if (side <= 113) return PRO_TIER_PRICES[1]
+  return PRO_TIER_PRICES[2]
 }
 
 /**

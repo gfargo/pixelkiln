@@ -933,6 +933,15 @@ export const NORMAL_MAP_SHAPE_RANGES = {
   detailSoftness: [0.6, 3],
 } as const
 
+/** A DELETE answered 200 can still report `success: false`; that is a failure, not a deletion. */
+function deleteSucceeded(body: unknown, what: string): unknown {
+  if (body && typeof body === "object" && (body as { success?: unknown }).success === false) {
+    const reason = (body as { error?: unknown }).error
+    throw new PixelLabError(`${what} → 200 but success: false${typeof reason === "string" && reason ? ` (${reason})` : ""}`, 200, JSON.stringify(body))
+  }
+  return body
+}
+
 export class PixelLabClient {
   private readonly http: RetryingFetch
 
@@ -1743,9 +1752,14 @@ export class PixelLabClient {
     return validateResponse(SelectFramesSchema, raw, "select frames")
   }
 
-  /** Irreversible. Only reached via `purge`, behind an explicit confirmation. */
-  deleteObject(objectId: string): Promise<unknown> {
-    return this.request(`/objects/${objectId}`, { method: "DELETE" })
+  /**
+   * Irreversible. Only reached via `purge`, behind an explicit confirmation.
+   * PixelLab can answer 200 with `success: false` (an object a dismissed
+   * review already removed came back `"error": "Object not found"`), so the
+   * body is checked, not only the status.
+   */
+  async deleteObject(objectId: string): Promise<unknown> {
+    return deleteSucceeded(await this.request<unknown>(`/objects/${objectId}`, { method: "DELETE" }), `DELETE /objects/${objectId}`)
   }
 
   dismissReview(objectId: string): Promise<unknown> {
@@ -3051,9 +3065,19 @@ export class PixelLabClient {
     return bytes
   }
 
-  /** `GET /generate-font-pro/{job_id}`: status, then no-auth atlas and `.ttf` URLs once completed. */
+  /**
+   * `GET /generate-font-pro/{job_id}`: status, then no-auth atlas and `.ttf`
+   * URLs once completed. PixelLab answers 423 ("Job is still processing")
+   * while the font draws, so that reads as `status: "processing"`.
+   */
   async getFontJob(jobId: string): Promise<z.output<typeof FontJobSchema>> {
-    const raw = await this.request<unknown>(`/generate-font-pro/${encodeURIComponent(jobId)}`)
+    let raw: unknown
+    try {
+      raw = await this.request<unknown>(`/generate-font-pro/${encodeURIComponent(jobId)}`)
+    } catch (error) {
+      if (error instanceof PixelLabError && error.status === 423) return { job_id: jobId, status: "processing" }
+      throw error
+    }
     return validateResponse(FontJobSchema, raw, "generate-font-pro/{job_id}")
   }
 
@@ -3283,9 +3307,10 @@ export class PixelLabClient {
     return validateResponse(DeleteAnimationsSchema, raw, "characters/{id}/animations")
   }
 
-  /** Irreversible: the character, its states are separate records, and its animations. */
-  deleteCharacter(characterId: string): Promise<unknown> {
-    return this.request(`/characters/${encodeURIComponent(characterId)}`, { method: "DELETE" })
+  /** Irreversible: the character, its states are separate records, and its animations. Checks `success` like `deleteObject`. */
+  async deleteCharacter(characterId: string): Promise<unknown> {
+    const path = `/characters/${encodeURIComponent(characterId)}`
+    return deleteSucceeded(await this.request<unknown>(path, { method: "DELETE" }), `DELETE ${path}`)
   }
 
   setCharacterTags(characterId: string, tags: string[]): Promise<unknown> {

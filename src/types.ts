@@ -1019,8 +1019,10 @@ export const CharacterAnimationSchema = z
     }
     const sentence = animation.mode === "skeleton-v3" && !animation.template
     // A sentence loop's frame count is PixelLab's own 3 to 15, odd allowed;
-    // the v3 and pro engines draw an even 4 to 16.
-    if (animation.frames !== undefined && !sentence) {
+    // the v3 engine draws an even 4 to 16. A pro object loop takes the
+    // counts its canvas allows (9 included), checked when the parent's size
+    // is known; a pro character loop sends no frame count at all.
+    if (animation.frames !== undefined && !sentence && animation.mode !== "pro") {
       if (animation.frames % 2 !== 0) {
         context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
       } else if (animation.frames < 4) {

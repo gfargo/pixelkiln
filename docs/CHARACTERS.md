@@ -69,7 +69,7 @@ asset, that PixelLab draws facing 4 or 8 directions. `mode` picks the
 engine: `standard` (1 generation, the skeleton template, `outline`,
 `shading`, and `detail` as soft guidance, and `palette` sent as a colour
 reference), `v3` (2 to 9 by size, the highest quality, up to 256px),
-`pro` (10 to 25 by size), or `pro-flash` (6 to 17 by size: PixelLab's
+`pro` (10 to 25 by longest side: 10 up to 85px), or `pro-flash` (6 to 17 by size: PixelLab's
 newest image model draws the south sprite and v3 rotates it; sizes are
 multiples of 4 up to 256, `template` may be `custom`, and a `reference`
 pays for the rotations only, 1 at 64px). `size` is the character's size;
@@ -281,8 +281,10 @@ character from it, with no template to pick. `frames` takes PixelLab's own
   - **Replacing**: only an asset's own direction is ever deleted, from the
     group it is in, so redrawing a follower never removes the leader's
     animation or the reverse. This relies on PixelLab keeping a group alive
-    while any direction remains, and on a follower keeping its motion after
-    the leader's direction is deleted; neither is verified.
+    while any direction remains, which was verified live in November 2026:
+    deleting `west` from a two-direction sentence loop's group left its
+    `south` frames in place. Whether a follower keeps its motion after the
+    leader's direction is deleted is not verified.
   - **Fallback**: a leader with no recorded `animationGroupId` (generated
     before groups were recorded, or adopted without one) does not block its
     followers. Each is drawn as its own request and animation, as before, and

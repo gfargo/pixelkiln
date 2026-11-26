@@ -38,7 +38,9 @@ Which PixelLab endpoints PixelKiln calls, and how much is actually known about
 each, so live spending can be chosen by risk. Audited 5 November 2026 from
 `src/client.ts`, `src/pixellab-vfx.ts`, this file, the other docs, the skill
 references, the benchmark and showcase lockfiles, and git history. No PixelLab
-call was made for it. Each row is one endpoint (or one tightly coupled family
+call was made for it. On 25 November 2026 a 116-generation live run measured
+every wrapped route the audit had left unmeasured; see
+[Remaining routes, measured](#remaining-routes-measured-november-2026). Each row is one endpoint (or one tightly coupled family
 of paths: a `POST` and the `GET` that polls it). The Evidence is the section
 named in the "What is known" cell.
 
@@ -92,8 +94,8 @@ not probed.
 | `POST /map-objects` (+ `GET /map-objects/{id}`, falling back to `GET /objects`) | `map` | Measured live | 1 generation, job about 30 s; the job record expires after 8 hours but the image survives ([Object lifecycle](#object-lifecycle)). `color_image` returns 500. `init_image` at the same four strengths billed 1 each (November 2026; see [Init images](#init-images-measured)). | The `scene` field (`background_image` + inpainting): "Unverified until a real call is billed" ([GENERATORS.md](./GENERATORS.md), `map`). | Low |
 | `POST /generate-image-v2` | `imagePro` | Measured live | A 64×64 call billed 10 (40 before the cut) and 10 again with `target_palette`; the completed job was read and a candidate downloaded through `gen` ([October 2026 Pro price cut](#october-2026-pro-price-cut), [Target palette](#target-palette-target_palette)). | Canvases above 65536px² (15 and 25 tiers) are priced from the shared Pro ladder, not measured here; `reference_images` and `style_image` are unmodeled. | High |
 | `POST /create-image-pro-flash` | `imageProFlash` | Measured live | A 32×32 still with a four-colour `target_palette` billed 5, in only those colours (November 2026; [GENERATORS.md](./GENERATORS.md#target-palette)). | Larger canvases (quote 9 at 256px) and the style-image path were never billed. | Medium |
-| `POST /edit-image-pro-flash` | revision `engine: "pro-flash"`, `image-to-image` | Mock only | Quote 5 at 64px, provisional, from MCP (roadmap, "Pro Flash for plain image create, edit, and inpaint"). | Never billed; completed-job shape never read live; the `reference` edit method is unmodeled. | Medium |
-| `POST /inpaint-image-pro-flash` | revision `engine: "pro-flash"`, `inpaint` | Mock only | Quotes 5 at 64px and 6 at 128px, provisional, from MCP (same roadmap entry). | Never billed; completed-job shape never read live; `context_image` and `output_methods` unmodeled. | Medium |
+| `POST /edit-image-pro-flash` | revision `engine: "pro-flash"`, `image-to-image` | Measured live | A 64×64 edit billed exactly 5, as planned ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | Sources above 96px (planned 6 and 9). | Low |
+| `POST /inpaint-image-pro-flash` | revision `engine: "pro-flash"`, `inpaint` | Measured live | A 64×64 inpaint with a mask over the top third billed exactly 5, as planned ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | Sources above 96px. | Low |
 | `POST /image-to-pixelart-pro-flash` | `pixelkiln pixelate` | Measured live | A 256×256 and a 384×384 render each billed 6; the image is `last_response.images[0]`; the result is opaque on a near-white field ([Image to Pixel Art Pro Flash, measured](#image-to-pixel-art-pro-flash-measured)). | Whether 6 is flat above 384px or with a larger source. | Medium |
 | `POST /image-to-pixelart-pro` | `pixelkiln pixelate --pro` | Measured live | One 256×256 render billed 20; 42 s; the image is `last_response.image` (not a list) with a `quantized_image` beside it ([Asset upkeep and the Pro converter](#asset-upkeep-and-the-pro-converter-measured)). | `target_palette`, `description`, and other source sizes are mock only. | High |
 | `POST /objects/import` | `pixelkiln asset import` | Measured live | Free; a 32×32 and a 64×64 PNG each became a completed 1-direction object. | Refusal of a JPEG or an oversize PNG is client-side only. | Low |
@@ -105,25 +107,25 @@ not probed.
 | `POST /lip-sync` | `pixelkiln talk plan` | Measured live | Free; a plan against the 7-position and 3-position presets, with `frame_ms` and `hold_ms` honoured. | The character form (`grid_url`, `row`). | Low |
 | `POST /objects/{id}/expand-rotations` (+ `select-frames`, `dismiss-review`) | `pixelkiln asset expand`, `asset review` | Measured live | Two expansions each quoted and billed 10, at the review stage; one kept, one discarded. | The 15 and 25 tiers; a `description`-less call. | High |
 | `POST /{objects,characters}/{id}/canvas` | `pixelkiln asset canvas` | Measured live | Free on an object; a cropping size refused with a 400 that names the art's bounds. | The character route is mock only. | Low |
-| `POST /{objects,characters}/{id}/animations/{group}/mirror` | `pixelkiln asset mirror` | Mock only | Wrapped from the OpenAPI schema; needs an animated asset to run. | Everything. Free, so the exposure is a wrong request shape. | Low |
+| `POST /{objects,characters}/{id}/animations/{group}/mirror` | `pixelkiln asset mirror` | Measured live | Free: mirroring a character's 6-frame west walk added an east direction to the same group, `frames_created: 6`, `usage: null`, no balance change ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | An object's mirror. | Low |
 | `GET /{objects,characters}/{id}/{zip,spritesheet,aseprite,gif}` | `pixelkiln asset export` | Measured live | Free; all four formats downloaded for an 8-direction object, and the three non-GIF ones for a 1-direction object. | Character routes, an animation GIF, and the 423 while generating are mock only. | Low |
 | `POST /inpaint-v3` | revision `inpaint` | Measured live | Nine pre-cut points from 32×32 to 512×512 (20 / 25 / 40); after the cut 256, 288, 352 and 384px billed 10, 15, 25, 25. `last_response.image` is a single object ([Limits and billing](#limits-and-billing), [October 2026 Pro price cut](#october-2026-pro-price-cut)). | The 20-to-25 break sits in (65536px², 82944px²] and 25-to-40 in (102400px², 123904px²]; 32px to 128px and 512px were not re-measured after the cut. | High |
 | `POST /edit-images-v2` | revision `image-to-image` | Measured live | One 32×32 call billed 20 (before the cut); `images` is an array of `{type, base64, width, height}` ([Limits and billing](#limits-and-billing)). | Nothing above 32×32 and nothing after the cut; the plan borrows `proTierCost`. | High |
 | `POST /remove-background` | revision `remove-background` | Measured live | 1 generation, synchronous `{usage, image}`; keeps the palette ([Post-processing utilities, measured](#post-processing-utilities-measured)). Measured as a loose call in the July 2026 reference. | The `complex` task and the foreground text hint (roadmap, "Remove background"). | Low |
 | `POST /reduce-colors` | revision `reduce-colors` | Measured live | 0.1 generations at 32×32, balance diff and `usage` agree ([Cleanup tier, measured](#cleanup-tier-measured), September 2026). | Larger canvases; the price of a multi-frame set call is unmeasured. | Low |
 | `POST /correct-pixelart` | revision `correct-pixelart` | Measured live | 0.1 generations at 32×32 ([Cleanup tier, measured](#cleanup-tier-measured)). | Larger canvases and multi-frame sets, as above. | Low |
-| `POST /unzoom` | `pixelkiln unzoom` | Unknown | "Cost unmeasured; PixelLab's MCP tool description claims 0.1" ([Cleanup tier, measured](#cleanup-tier-measured)). Nothing records a live run. | Everything. | Low |
+| `POST /unzoom` | `pixelkiln unzoom` | Measured live | A 512×512 upscale of a 64px sprite billed 0.1 (the job's `usage` and the balance agree) ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | Larger inputs. | Low |
 | `POST /normal-map` | revision `normal-map`, `pixelkiln normal-map` | Measured live | An 8-frame 1304×26 strip and a 64×64 revision each billed 0.5; the map comes back the input's size with matching alpha ([Normal map](#normal-map-post-normal-map-measured-once), October 2026). November 2026: lite (now the default) billed 0.1 six times and pro 0.5 once, with the shape controls. | The `directx` convention; strips near the 32-frame limit. | Low |
 | `POST /generate-ui-v2` | `uiElement` | Measured live | A 32×32 call billed 10 and the review page showed 64 candidates at 32×32 (November 2026, Tier 3; the plan said 1 candidate and now follows `uiElementCandidateCount`). Planned on the 10/15/25 ladder ([GENERATORS.md](./GENERATORS.md#uielement)). `target_palette` sent, mock only. | Other sizes (the 15 and 25 tiers and the other candidate bands, which come from PixelLab's published grid), and the concept-image path. | High |
 | `POST /create-1-direction-object` (+ `GET /objects/{id}`) | `1dir` | Measured live | A 32px, 3-description `batch` billed 20 (the pre-cut floor) and `item_descriptions[0]` owned slot 0 ([Candidates](#candidates)); candidate counts follow size. `target_palette` sent, mock only. | No bill since the October 2026 cut (10 / 15 / 25 is PixelLab's published ladder); tiers above the floor under `item_descriptions`. | High |
-| `POST /objects/{id}/select-frames` | `1dir` and `batch` pick | Run live, not measured | Promoted three candidates in the live batch run ([Candidates](#candidates)); `indices` is plural. | Its cost was not recorded. | Low |
+| `POST /objects/{id}/select-frames` | `1dir` and `batch` pick | Measured live | Free: promoting candidate 3 of a 32px `1dir` batch returned one `created_object_ids` entry and left the batch object in `review`. The batch itself billed exactly 10, as planned ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | Several indices in one call. | Low |
 | `GET /objects?limit=&offset=` | `adopt`, `salvage` | Measured live | Free; a March 2026 sprite still resolved four months on ([Object lifecycle](#object-lifecycle)). | None recorded. | Low |
 | `POST /create-object-pro-flash` | `objectPro` base | Measured live | A 32px base billed 6 and returned 8 files at 32×32 (the rotations), matching the plan, which prices it like `character` pro-flash (November 2026, Tier 3; [GENERATORS.md](./GENERATORS.md#objectpro)). `target_palette` sent, mock only. | Other sizes and the 1-generation `reference` path. | Medium |
-| `POST /objects/{id}/states` | `objectPro` state | Mock only | Assumed to price like `character` pro-flash; the base ran live, this route did not. `target_palette` sent, mock only. | Price and shape. | Medium |
-| `POST /objects/{id}/animations` | `objectPro` animation (`v3`, `pro`) | Mock only | Same assumption as the state row; `pro` mode is documented 10 to 25 per direction. `target_palette` sent on `pro` only, mock only. | Price, shape, per-direction billing. | High |
-| `PATCH /objects/{id}/tags`, `PATCH /characters/{id}/tags` | tagging in `fetch`, `adopt`, `salvage` | Unknown | Only the negative is documented: pixflux, pixen and bitforge results "cannot be tagged" ([Object lifecycle](#object-lifecycle)). | A recorded live call. | Low |
-| `DELETE /objects/{id}`, `POST /objects/{id}/dismiss-review`, `DELETE /characters/{id}` | `salvage`, account cleanup | Unknown | Not discussed in the docs. | A recorded live call. | Low |
-| `DELETE /characters/{id}/animations` | replacing a loop's direction | Unknown | "Deleting one direction of a shared group has not been run live" ([Skeleton-driven motion, measured](#skeleton-driven-motion-measured)). | Whether the rest of the group keeps its motion. | Low |
+| `POST /objects/{id}/states` | `objectPro` state | Measured live | A state of a 32px object billed exactly 10, the planned `1dir` tier ([Remaining routes, measured](#remaining-routes-measured-november-2026)). `target_palette` sent, mock only. | Larger canvases. | Medium |
+| `POST /objects/{id}/animations` | `objectPro` animation (`v3`, `pro`) | Measured live | On a 32px object, a `v3` loop billed 1 and a `pro` loop billed 10 with 16 frames, both as planned. `pro` frame counts are fixed by the canvas (16 up to 64px; 4, 9 or 16 up to 128px; 9 up to 170px), and PixelKiln now sends that count ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | `pro` above 64px. | Medium |
+| `PATCH /objects/{id}/tags`, `PATCH /characters/{id}/tags` | tagging in `fetch`, `adopt`, `salvage` | Measured live | Free: both replaced the tag set and read back as sent, `usage: null` ([Remaining routes, measured](#remaining-routes-measured-november-2026)). Pixflux, pixen and bitforge results "cannot be tagged" ([Object lifecycle](#object-lifecycle)). | | Low |
+| `DELETE /objects/{id}`, `POST /objects/{id}/dismiss-review`, `DELETE /characters/{id}` | `salvage`, account cleanup | Measured live | Free. Deleting a state left its base; deleting a character took its animations. Dismiss-review needs an object in review and removed the batch object; deleting that object afterwards answered **200 with `success: false`**, which PixelKiln now treats as a failure ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | | Low |
+| `DELETE /characters/{id}/animations` | replacing a loop's direction | Measured live | Free: deleting `west` from a two-direction sentence loop's shared group left the group with its 8 `south` frames ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | Whether a follower keeps its motion once the leader's direction is gone. | Low |
 | `POST /create-tiles-pro` (+ `GET /tiles-pro/{id}`) | `tiles` | Measured live | One numbered description, 4 tiles at 16px, with a Game Boy `target_palette`, billed 10, every candidate in the palette (November 2026). `GET` has no `status`: 423 while drawing ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind)). November 2026: a 32px `tileset` feature with `elevation` 4, `step_slope` 1 and `boundary_amplitude` 0.2 billed 10 (planned 25) and returned 16 tiles; `elevation` 6 was refused at 16px and 32px ([Tiles shape options](#tiles-shape-options-measured)). | `tile_feature` sets (`roads`, `tileset`, `building`) and `tile_rules`; large tile-size × variation canvases that reach the top tier. `roof_profile` is mock only. | High |
 | `POST /create-tileset` (+ `GET /tilesets/{id}`) | `terrain`, top-down | Measured live | Pro 32px billed 15 (three sets, one connected through `lower_base_tile_id`, one with edge slope); Pro 64px billed 25 and returned 25 tiles at transition 0.5; standard sets billed 3 each (planned 4), one connected through `upper_base_tile_id` ([Tilesets: measured once per kind](#tilesets-measured-once-per-kind), October 2026). `target_palette` on Pro, mock only. In November 2026 five standard 16px sets billed 1 each, with `shape_seed`, side walls, `enhance: false`, walkable flags, and reference images ([Tileset options, November 2026](#tileset-options-november-2026-measured)). | Pro below 32px; standard above 32px; a standard set cannot connect to a Pro set. | High |
 | `POST /create-tileset-sidescroller` | `terrain`, `terrainOrientation: "sidescroller"` | Measured live | Since November 2026: a standard 16px set billed 1 and a pro 16px set billed 15; 16 tiles each; a standard request with `lower_base_tile_id` is refused with a 422. The older model billed 3 ([Tileset options, November 2026](#tileset-options-november-2026-measured)). | `lower_reference_image` (pro) and `transition_reference_image` (standard) are mock only; 32px. | High |
@@ -132,18 +134,18 @@ not probed.
 | `POST /ui-assets/{id}/split` | `pixelkiln ui split` | Measured live | Free; a 256×192 template split into the 3 elements its `split_preview` listed. A second split is refused client-side ([UI split, states and 9-slice](#ui-split-states-and-9-slice-measured)). | Custom `boxes` are mock only. | Low |
 | `POST /ui-assets/states` | `pixelkiln ui states` | Measured live | One 86×38 element in 2 states quoted and billed 10; about a minute. State images differ in size from their element. | The 15 and 25 tiers, several elements in one call, and `target_palette` are mock only. | High |
 | `PATCH /ui-assets/{id}` | `pixelkiln ui nine-slice` | Measured live | Free; insets set on an element and returned on the next `GET`. | `clear_nine_slice` and rename are mock only. | Low |
-| `POST /generate-font-pro` (+ `GET /generate-font-pro/{id}`) | `pixelkiln font` | Unknown | Documented at 15 since the cut; "its cost is not yet measured" ([Not yet explored](#not-yet-explored)). Nothing records a live run. | Price and the non-`{usage, image}` response shape. | Medium |
+| `POST /generate-font-pro` (+ `GET /generate-font-pro/{id}`) | `pixelkiln font` | Measured live | One 16px font billed 15 (the job reported no `usage`; the balance moved exactly 15 beyond the two VFX bills). It took about 8 minutes, not the documented 30 to 80 s, and the status route answers **423** while it runs, which PixelKiln now reads as still processing ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | Other glyph sizes. | Medium |
 | `POST /music` (+ `GET /music/{id}`) | `pixelkiln music` | Measured live | Two instrumental requests billed 10 each, as quoted; two MP3 takes per request, a 60 s request returning 60.6 s and 61.2 s ([Music and sound effects](#music-and-sound-effects-measured)). | Vocals (`lyrics`, `auto_lyrics`), `restyle_song_id`, and lengths above 60 s are mock only. | Medium |
 | `POST /music/{id}/loop` | `pixelkiln music --loop`, `--loop-of` | Measured live | One loop billed 4, as quoted; two takes with `loop_start_s`/`loop_end_s`. A 30 s song was refused with a 422 (a loop needs 36 s between intro and ending), unbilled. | The shortest song that loops is bracketed only as above 30 s and at most 60 s. | Medium |
 | `POST /music/improve-style`, `POST /music/lyrics` | `pixelkiln music style`, `music lyrics`, `--improve` | Measured live | Each billed 0.05; synchronous. | None known. | Low |
 | `POST /sound-effects` (+ `GET /sound-effects/{id}`) | `pixelkiln sfx` | Measured live | A 1 s clip billed 1 and a 3 s clip billed 2, matching 0.614 per second rounded up; 16-bit stereo 44.1 kHz WAV. | The 6 s, 10 s and 30 s steps are PixelLab's published figures, not measured. | Medium |
 | `POST /create-character-with-8-directions`, `/create-character-with-4-directions` | `character` base, `mode: standard` | Measured live | 1 generation (read from the job's `usage`); canvas 28px larger than `image_size` ([Limits and billing](#limits-and-billing), [Characters, measured](#characters-measured), September 2026). | The 4-direction body and quadruped templates are not recorded. | Low |
-| `POST /create-character-v3` | `character` base, `mode: v3` | Run live, not measured | A base once recorded `billed: {amount: 0, unit: "usd"}` against an estimate of 2 while the submit reported 1 generation; the job had expired, so the real bill is unseen ([Limits and billing](#limits-and-billing)). | The real bill at any size. | Low (Medium at 256px, 9) |
-| `POST /create-character-pro` | `character` base, `mode: pro` | Unknown | Planned 10 to 25 by canvas ([GENERATORS.md](./GENERATORS.md)). No bill recorded in the docs. `target_palette` sent, mock only. | Everything. | High |
+| `POST /create-character-v3` | `character` base, `mode: v3` | Measured live | A 64px base cost 2, as planned, read from the balance: the job recorded no `billed` amount ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | Why `billed` is missing. | Low |
+| `POST /create-character-pro` | `character` base, `mode: pro` | Measured live | A 64px base billed exactly 10. The plan read 25 from the `1dir` area tiers; it now uses PixelLab's longest-side tiers, 10 up to 85px, 15 up to 113px, 25 up to 128px ([Remaining routes, measured](#remaining-routes-measured-november-2026)). `target_palette` sent, mock only. | 96 and 128px. | Medium |
 | `POST /create-character-pro-flash` | `character` base, `mode: pro-flash` | Measured live | Two live jobs (7 and 2, the second from a `reference`) billed exactly the estimate; returns exactly the requested canvas ([Characters, measured](#characters-measured), September 2026). `target_palette` sent, mock only. | Sizes beyond 96px; `source_image_id` and the style-image path. | High |
-| `POST /create-character-state` | `character` state | Run live, not measured | A 64px state "moved the balance by about 22 against the 20 to 40 tier", with other jobs running ([Characters, measured](#characters-measured)). `target_palette` sent, mock only. | A clean bill, and any bill since the cut. | High |
-| `POST /animate-character`, `mode` template or v3 | `character` loops without skeleton-v3 | Run live, not measured | A v3 text loop on a 96px pro-flash base came back 108×108; template loops need a skeleton template ([Characters, measured](#characters-measured)). Plan: template 1, v3 `ceil(size² × frames / 65536)`. | Billed amounts were not recorded; billed per direction. | High |
-| `POST /animate-character`, `mode: pro` | `character` loops, `mode: pro` | Unknown | Planned 10 to 25 by canvas ([GENERATORS.md](./GENERATORS.md)). Nothing records a live run. | Everything. | High |
+| `POST /create-character-state` | `character` state | Measured live | A state of a 64px pro base billed exactly 10, now planned at the same longest-side tier ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | States of other engines' bases since the October cut. | Medium |
+| `POST /animate-character`, `mode` template or v3 | `character` loops without skeleton-v3 | Measured live | Two template walk loops on a 64px v3 base cost 1 each by the balance, but each job's `usage` came back in **USD** (0.012 and 0.009), so `billed` records dollars ([Remaining routes, measured](#remaining-routes-measured-november-2026)). A v3 text loop on a 96px pro-flash base came back 108×108 ([Characters, measured](#characters-measured)). | A v3 loop's bill. | Low |
+| `POST /animate-character`, `mode: pro` | `character` loops, `mode: pro` | Measured live | A 64px loop cost 10 and returned 16 frames; the job recorded no `billed` amount, and the balance moved exactly 10 ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | Larger canvases. | Medium |
 | `POST /characters/animations`, `mode: skeleton-v3` | `character` loops, `mode: "skeleton-v3"` (template or sentence) | Measured live | On a v3 character: a template loop billed 3; a sentence loop (no template) billed 3, 8 frames at 96×96 from a 64px character; `west` added with `animation_group_id` billed 3 and joined the group. A standard-engine character is refused with a 500 "no stored 3D skeleton" ([Skeleton-driven motion, measured](#skeleton-driven-motion-measured), October 2026). | `pro` and `pro-flash` bases; other frame counts; the price per direction across 8 directions is untested. | High |
 | `POST /portrait-character-pro` (+ `GET /portrait-character-pro/{job_id}`) | `character` portrait | Measured live | 16px billed 10 five times (November 2026). Before the cut, 16px billed 20 and four 128px ones billed 25 each (against a plan of 40 then; the plan now says 25). The `GET` reports `usage: null`, so read the job ([Characters, measured](#characters-measured)). The job's `last_response.seed` is the seed it used. **A `seed` in the request makes it ignore the image** ([Portrait seeds](#portrait-seeds-measured)), so none is sent. `target_palette` sent, mock only. | 32, 48, 64, 128 and 160px after the cut. | High |
 | `POST /characters/{id}/portrait` | `character` portrait attach | Measured live | Free (`usage.generations: 0`); the reply holds the only copy of the stored URL ([Characters, measured](#characters-measured)). | None recorded. | Low |
@@ -152,12 +154,12 @@ not probed.
 | `POST /animate-with-text-v3` | revision `animate` | Measured live | A 64×64, 4-frame call billed 1 and returned 5 frames at 64×64 (the input frame plus 4); the plan, which borrows `character`'s v3 formula, said 1 (November 2026, Tier 3; [REVISIONS.md](./REVISIONS.md#animation-and-interpolation)). | Other sizes and frame counts (up to 16 frames at 256px reads 16 by the borrowed formula). | Medium |
 | `POST /animate-pixminimax` | revision `animate-pixminimax` | Measured live | 64×64 at 8 frames billed 1 and returned 9 frames at 64×64 (the input frame plus 8); at 16 frames billed 2 and returned 17. The plan said 1 for the 16-frame call because its old placeholder under-read; it now follows PixelLab's published table (64×64 at 4 / 8 / 16 / 40 frames: 1 / 1 / 2 / 6), see `pixMiniMaxCost` (November 2026, Tier 3; [roadmap](../skills/pixelkiln/references/pixellab-roadmap.md), "Generated effects with PixMiniMax"). | 40 frames and other sizes are unbilled (the table is PixelLab's, not a bill); `enhance_prompt`'s 0.05 is the schema's number. | Medium |
 | `POST /animate-with-skeleton-v3` | revision `animate-skeleton` | Measured live | 8 frames at 64×64 billed 3 and returned 8 frames at 64×64; `description` and `action` are both required, and sent with neither the endpoint returns 422 ([Skeleton-driven motion, measured](#skeleton-driven-motion-measured), October 2026). | Other frame counts (3 = 2 and 15 = 4 are PixelLab's anchors, unbilled). | Low |
-| `POST /estimate-skeleton` | `pixelkiln estimate-skeleton`, gallery pose helper | Run live, not measured | Ran on a 64×64 sprite before the 8-frame revision ([REVISIONS.md](./REVISIONS.md#skeleton-driven-animation)). | Its cost; the reply's `usage` is typed `unknown`. | Low |
+| `POST /estimate-skeleton` | `pixelkiln estimate-skeleton`, gallery pose helper | Measured live | A 64×64 sprite billed 0.1 by the balance ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | | Low |
 | `POST /interpolation-v2` | revision `interpolate` | Measured live | A 64×64 start sprite with a `lastFrame` keyframe and the default frame count billed 10 and returned 14 frames at 64×64 (November 2026, Tier 3; [REVISIONS.md](./REVISIONS.md#interpolate-between-two-keyframes)). The planner said 25, a 2.5× over-read, and now prices the canvas on the 10/15/25 ladder. `target_palette` sent, mock only. | Canvases above 65536px² (15 and 25 tiers, unbilled) and other frame counts. | High |
 | `POST /edit-animation-v2` | revision `edit-animation` | Measured live | One text edit of a 9-frame 64×64 set billed 10 and the edited set was accepted into review (November 2026, Tier 3). The planner said 25 and now prices the packed grid (nine 64×64 frames: 192×192) on the same ladder. `target_palette` sent, mock only. | Larger sets and canvases, where the packed grid crosses 65536px² (unbilled, assumed to follow the ladder). | High |
 | `POST /vfx`, lite artist, no sprite | `pixelkiln vfx --description`, `vfx` block `description` | Measured live | One effect billed 1 (balance 5104 to 5103); 163×26, 8 frames, sheet and atlas cut into 8 correct frames ([VFX artist](#vfx-artist-post-vfx-measured-once), October 2026). | The `files` shape (list or map) is undocumented; PixelKiln reads three. | Low |
 | `POST /vfx`, lite artist, animated sprite | `pixelkiln vfx --description --sprite-frames`, `vfx` block `spriteFrames` | Measured live | Four effects around a 108px walk cycle (4-, 8- and 12-frame, strip and GIF) were each quoted 2 and billed 2, 2, 2 and 4, the last at the 2× ceiling ([Animated sprites](#vfx-animated-sprites-measured), November 2026). | Pro bills; a still sprite's bill. | Low |
-| `POST /vfx`, still sprite, pro artist, `effect_id` change or `game_pack` | same | Mock only | Quoted from the OpenAPI table: pro 6 (8 with a sprite), 14 and 28 for larger sprites; plans count twice the quote ([VFX artist](#vfx-artist-post-vfx-measured-once)). | Every variant above. | High |
+| `POST /vfx`, pro artist, still sprite | same | Measured live | Pro with no sprite billed exactly 6 (quoted 6, 8 frames); pro around a 64px still sprite billed exactly 8 (quoted 8, 14 frames) ([Remaining routes, measured](#remaining-routes-measured-november-2026)). | An `effect_id` change and `game_pack`. | Medium |
 | MCP `tools/call` `vfx_workbench` at `api.pixellab.ai/mcp` | `pixelkiln vfx`, `vfx` block `preset` or `recipe` | Measured live | Free on a subscription; same recipe re-rendered byte-identical; exports a sheet, GIF, atlas and optional game pack ([VFX workbench (MCP only), measured](#vfx-workbench-mcp-only-measured), October 2026). | "Busy, retry" is the only recorded error; a `character:` or `gallery:` sprite reference (an `object:<id>` reference and local prop sprites rendered, November 2026). | Low |
 | `POST /create-image-pixen`, `/create-image-bitforge` | none | Not wrapped | Each 1 generation; bitforge returned blobs for a simple prompt ([Single-image generators, measured](#single-image-generators-measured)). | n/a | n/a |
 | `POST /rotate`, `/resize`, `/image-to-pixelart` | none | Not wrapped | Each 1 generation; all three break a locked palette ([Post-processing utilities, measured](#post-processing-utilities-measured)). | n/a | n/a |
@@ -203,17 +205,15 @@ from 256px to 384px.
 
 ### Needs a human look
 
-The repo does not establish whether or how these ran live:
+Every wrapped route listed here in the 5 November audit has since been run
+live ([Remaining routes, measured](#remaining-routes-measured-november-2026)).
+Still open:
 
-- `POST /create-character-pro` and `POST /animate-character` with
-  `mode: "pro"`: the docs plan 10 to 25 and record no bill.
-- `POST /generate-font-pro`: documented price only (`pixelkiln font`).
-- `POST /unzoom`: documented price only (`pixelkiln unzoom`).
-- `PATCH` tags on objects and characters, `DELETE /objects/{id}`,
-  `DELETE /characters/{id}`, `POST /objects/{id}/dismiss-review`: used by
-  `fetch`, `adopt` and `salvage`, and no doc records a live call.
-- `DELETE /characters/{id}/animations`: only the one-direction-of-a-shared-group
-  case is called out as not run.
+- Three jobs finish without a usable `billed`: a v3 base and a `pro` character
+  loop record none, and a template loop records dollars. The balance gives
+  their real cost in generations.
+- Whether a loop that followed a leader keeps its motion after the leader's
+  direction is deleted.
 
 ### Keeping the ledger current
 
@@ -1609,8 +1609,8 @@ Listed so the gaps are known rather than assumed away:
   canvas on the 10/15/25 Pro ladder (the planner had read them as 25).
 - `/generate-font-pro` (+ `GET /generate-font-pro/{job_id}`) — an 80-glyph
   atlas PNG plus a `.ttf` from a style description, `weight`
-  (`Bold`/`Regular`), and `glyph_px` (8/16/32/64). Documented at 15
-  generations since the October 2026 cut (25 before), unmeasured. Wired up as `pixelkiln font`, outside the
+  (`Bold`/`Regular`), and `glyph_px` (8/16/32/64). 15 generations since the
+  October 2026 cut (25 before), measured once in November 2026. Wired up as `pixelkiln font`, outside the
   manifest; see [the CLI reference](./CLI.md#font).
 - Everything else PixelLab's own tutorials demonstrate that this file has no
   entry for at all — "animation to animation" motion transfer,
@@ -1625,8 +1625,7 @@ Listed so the gaps are known rather than assumed away:
   The non-Pro version is characterised above, and the Pro Flash version,
   which pixelkiln wraps, [below](#image-to-pixel-art-pro-flash-measured).
 - `generate-font-pro`, job-based, with a response shape not in the simple
-  `{usage, image}` form (wrapped by `pixelkiln font`, but its cost is not
-  yet measured)
+  `{usage, image}` form (wrapped by `pixelkiln font`; one 16px font billed 15)
 - the character family beyond what the `character` generator uses: lip-sync,
   `portrait_to_character` (a full character from a bust),
   and `source_image_id` on Pro Flash. The four creation engines, states,
@@ -1730,6 +1729,71 @@ generations and finished in about two minutes:
   other multi-frame result here.
 
 ---
+
+## Remaining routes, measured (November 2026)
+
+One run on 25 November 2026, Tier 3 account, measured every route the
+[validation ledger](#validation-ledger) still had as mock only, unknown, or
+run but not measured. It spent 116.2 generations: the balance went from
+4596.05 to 4479.85, the exact sum of the bills below, so nothing else spent
+during the run. Test assets were deleted from the account afterwards, apart
+from the two Pro Flash edit images.
+
+| Route | What ran | Planned | Billed |
+|---|---|---|---|
+| `/edit-image-pro-flash` | `image-to-image` revision, 64×64 sprite | 5 | 5 |
+| `/inpaint-image-pro-flash` | `inpaint` revision, 64×64, mask over the top third | 5 | 5 |
+| `/create-object-pro-flash` | 32px object, 8 directions | 6 | 6 |
+| `/objects/{id}/states` | state of that object | 10 | 10 |
+| `/objects/{id}/animations`, `v3` | one direction, 8 frames | 1 | 1 |
+| `/objects/{id}/animations`, `pro` | one direction, 16 frames | 10 | 10 |
+| `/create-character-v3` | 64px base | 2 | 2 (balance; no `billed`) |
+| `/animate-character`, template | `walk`, south and west | 1 each | 1 each (balance; `usage` in USD) |
+| `/animate-character`, skeleton-v3 sentence | south, then west into its group | 4 each | 3 each |
+| `/create-character-pro` | 64px base | 25 | **10** |
+| `/create-character-state` | state of that base | 25 | **10** |
+| `/animate-character`, `pro` | one direction, 16 frames | 25 | **10** (balance; no `billed`) |
+| `/generate-font-pro` | 16px glyphs | 15 | 15 (balance; no `usage`) |
+| `/vfx`, pro artist | no sprite, 8 frames | 6 quoted | 6 |
+| `/vfx`, pro artist | 64px still sprite, 14 frames | 8 quoted | 8 |
+| `/unzoom` | 512×512, an 8× upscale of a 64px sprite | 0.1 | 0.1 |
+| `/estimate-skeleton` | 64×64 sprite | 0.1 | 0.1 |
+| `/create-1-direction-object` | `1dir` at 32px, 64 candidates | 10 | 10 |
+
+Free, with no balance change: object and character tags, an animation mirror,
+`select-frames`, dismiss-review, deleting one direction of a shared group, and
+deleting objects and characters.
+
+What it changed in PixelKiln:
+
+- **Pro characters are priced by longest side.** A pro base, state, portrait,
+  and `pro` loop now plan at 10 up to 85px, 15 up to 113px, and 25 up to
+  128px, PixelLab's own tiers. The `1dir` area tiers they used read 64×64 as
+  25.
+- **A `pro` object animation sends the frame count its canvas allows.**
+  PixelLab refused 8 frames on a 32px object with "Pro frame_count for a
+  32x32 canvas must be one of [16]" (no charge). PixelKiln now leaves
+  `frames` out to get the smallest allowed count (16 up to 64px; 4, 9 or 16
+  up to 128px; 9 up to 170px), checks an explicit one against that list, and
+  refuses `pro` above 170px.
+- **A font's 423 means still drawing.** `GET /generate-font-pro/{id}` answers
+  423 "Job is still processing ... ETA: 479 seconds" while it runs, and
+  `pixelkiln font` used to stop there. It now keeps polling, for up to 15
+  minutes; this font took about 8.
+- **A delete can fail with a 200.** Deleting an object that dismiss-review had
+  already removed answered 200 with `success: false, error: "Object not
+  found"`. `purge` now reports that as a failed delete.
+
+Seen but not changed:
+
+- A template loop's `usage` is in dollars (0.012 and 0.009 here), and the lock
+  records that as `billed`. The subscription was charged 1 generation each.
+- A v3 base and a `pro` character loop record no `billed`, and a font job
+  reports no `usage`; the balance is the only record of their cost.
+- `select-frames` leaves the batch object in `review`; dismiss-review then
+  removes it.
+- Deleting a character state leaves its base, and deleting a character takes
+  its animations (`animations_deleted` in the reply).
 
 ## Reproducing these numbers
 
