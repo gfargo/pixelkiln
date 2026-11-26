@@ -1,3 +1,10 @@
+# [0.145.0](https://github.com/gfargo/pixelkiln/compare/v0.144.2...v0.145.0) (2026-11-26)
+
+
+### Features
+
+* times of day for parallax sets ([6cd4a65](https://github.com/gfargo/pixelkiln/commit/6cd4a6553c6fdb0a1f7b9d6c804da800dfdc4c42))
+
 ## [0.144.2](https://github.com/gfargo/pixelkiln/compare/v0.144.1...v0.144.2) (2026-11-26)
 
 
