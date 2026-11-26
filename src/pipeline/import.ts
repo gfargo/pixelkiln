@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs"
-import { readFile } from "node:fs/promises"
+import { readdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import { sha256 } from "../hash.ts"
 import { MediaType } from "../media.ts"
 import { saveLock, upsert } from "../lock.ts"
-import { portableOutputPath } from "../outputs.ts"
+import { memberPath, portableOutputPath } from "../outputs.ts"
 import { decodePng } from "../png.ts"
 import { DEFAULT_HISTORY_LIMIT, lockKey, type Lock, type LockEntry, type LockOrigin, type ResolvedSpec } from "../types.ts"
 import { cacheMedia } from "./fetch.ts"
@@ -62,8 +62,10 @@ export function buildImportedEntry(
     rawSha256?: string
   } = {},
   now: Date = new Date(),
+  frames?: ImportFrame[],
 ): EntryPatch {
   const png = decodePng(bytes)
+  for (const frame of frames ?? []) decodePng(frame.bytes)
   const at = now.toISOString()
   const origin: LockOrigin = {
     ...(opts.tool ? { tool: opts.tool } : {}),
@@ -88,7 +90,16 @@ export function buildImportedEntry(
     error: null,
     sourceUrl: null,
     sourceUrls: [],
-    outputs: [{ path: portableOutputPath(spec.outFile, spec.root), sha256: sha256(bytes) }],
+    // A frame set is recorded the way fetch records one: an output per frame,
+    // in order, each with its `frame-NN` role, so `plan` resolves the same paths.
+    outputs: frames?.length
+      ? frames.map((frame) => ({
+          path: portableOutputPath(frame.file, spec.root),
+          sha256: sha256(frame.bytes),
+          role: frame.role,
+          mediaType: MediaType.PNG,
+        }))
+      : [{ path: portableOutputPath(spec.outFile, spec.root), sha256: sha256(bytes) }],
     submittedAt: null,
     downloadedAt: at,
     cost: opts.cost ?? 0,
@@ -102,6 +113,47 @@ export function buildImportedEntry(
       importedAt: at,
     },
   }
+}
+
+/** One frame of a frame set found on disk beside the asset's stem. */
+export interface ImportFrame {
+  role: string
+  file: string
+  bytes: Buffer
+}
+
+const frameRole = (index: number) => `frame-${String(index).padStart(2, "0")}`
+
+/**
+ * The ordered frames written as `<stem>-frame-NN.png`, or why they cannot be
+ * recorded: a gap, or fewer than the spec asks for. Null when the spec has no
+ * frame files at all and does not expect any. A revision's `frames` count may
+ * land as `frames + 1` files when the resting pose is kept as frame 0.
+ */
+async function findFrames(spec: ResolvedSpec): Promise<{ files: { role: string; file: string }[] } | { missing: string[] } | null> {
+  const at = (index: number) => memberPath(spec.outFile, frameRole(index), 0, 2, MediaType.PNG)
+  const base = path.basename(at(0)).replace(/00\.png$/, "")
+  let names: string[] = []
+  try {
+    names = await readdir(path.dirname(spec.outFile))
+  } catch {
+    names = []
+  }
+  const found = new Set<number>()
+  for (const name of names) {
+    if (!name.startsWith(base)) continue
+    const match = /^(\d+)\.png$/i.exec(name.slice(base.length))
+    if (match) found.add(Number(match[1]))
+  }
+  const expected = spec.revision?.frames
+  const expectsFrames = expected !== undefined || spec.generator === "frames"
+  if (!found.size && !expectsFrames) return null
+  const highest = found.size ? Math.max(...found) : -1
+  const upTo = Math.max(highest + 1, expected ?? 0, expectsFrames ? 1 : 0)
+  const missing: string[] = []
+  for (let index = 0; index < upTo; index++) if (!found.has(index)) missing.push(at(index))
+  if (missing.length) return { missing }
+  return { files: Array.from({ length: upTo }, (_, index) => ({ role: frameRole(index), file: at(index) })) }
 }
 
 /** Why a spec cannot be recorded from its single PNG, or null when it can. */
@@ -149,9 +201,18 @@ export async function importLocal(
       skipped.push({ key, reason })
       continue
     }
+    let frameFiles: { role: string; file: string }[] | undefined
     if (!existsSync(spec.outFile)) {
-      skipped.push({ key, reason: `no file at ${spec.outFile}` })
-      continue
+      const frames = await findFrames(spec)
+      if (!frames) {
+        skipped.push({ key, reason: `no file at ${spec.outFile}` })
+        continue
+      }
+      if ("missing" in frames) {
+        skipped.push({ key, reason: `frame set is missing ${frames.missing.map((file) => path.basename(file)).join(", ")} (in ${path.dirname(spec.outFile)})` })
+        continue
+      }
+      frameFiles = frames.files
     }
     if (lock.entries[key] && !opts.force) {
       skipped.push({ key, reason: "already in the lockfile (use --force to replace it)" })
@@ -159,9 +220,13 @@ export async function importLocal(
     }
     let patch: EntryPatch
     let bytes: Buffer
+    let frames: ImportFrame[] | undefined
     try {
-      bytes = await readFile(spec.outFile)
-      patch = buildImportedEntry(spec, bytes, { ...opts, rawSha256 }, new Date())
+      frames = frameFiles
+        ? await Promise.all(frameFiles.map(async (frame) => ({ ...frame, bytes: await readFile(frame.file) })))
+        : undefined
+      bytes = frames ? frames[0]!.bytes : await readFile(spec.outFile)
+      patch = buildImportedEntry(spec, bytes, { ...opts, rawSha256 }, new Date(), frames)
     } catch (error) {
       skipped.push({ key, reason: `invalid PNG: ${error instanceof Error ? error.message : String(error)}` })
       continue
@@ -174,11 +239,14 @@ export async function importLocal(
     // into the content cache so `restore --generation` can bring either one
     // back with no provider: an import has no object to download again.
     const existing = lock.entries[key]
-    const history = existing?.outputs[0]?.sha256 === sha256(bytes)
+    const sameBytes = existing !== undefined &&
+      existing.outputs.length === patch.outputs!.length &&
+      existing.outputs.every((output, index) => output.sha256 === patch.outputs![index]!.sha256)
+    const history = sameBytes
       ? existing.history // the same bytes again is not a replacement
       : historyAfterReplacing(existing, opts.historyLimit ?? DEFAULT_HISTORY_LIMIT, patch.downloadedAt ?? new Date().toISOString())
     if (cacheDir) {
-      await cacheMedia(cacheDir, bytes, MediaType.PNG)
+      for (const member of frames ?? [{ bytes }]) await cacheMedia(cacheDir, member.bytes, MediaType.PNG)
       if (rawBytes) await cacheMedia(cacheDir, rawBytes, MediaType.PNG)
     }
     imported.push({ key, entry: upsert(lock, key, {

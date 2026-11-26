@@ -380,6 +380,14 @@ one asset. Entries already in the lockfile are skipped unless `--force`;
 `--dry-run` and `--json` show what would be written. Characters and effects
 are not imported this way.
 
+A frame set (an `animate` or `animate-pixminimax` revision, or any asset whose
+output is `<asset>-frame-00.png` onward) is imported from its frames: each is
+hashed in order into one entry with a `frame-NN` output per frame, the way
+`fetch` records a generated clip. The revision's `frames` count sets the
+minimum (a clip that keeps the resting pose as frame 0 has one more file). If a
+frame is missing, or the run has a gap, the asset is skipped and the message
+names each missing frame file.
+
 Art made through the PixelLab MCP is usually rolled interactively and then
 post-processed. Record that with `--tool` (the call that made it), `--prompt`
 (the prompt it was rolled with, kept as the entry's prompt), `--seed`, `--cost`

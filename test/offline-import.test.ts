@@ -109,3 +109,52 @@ describe("manifest diagnostics", () => {
     expect((error as Error).message).toMatch(/invalid entries: styles\.s, assets\.a/)
   })
 })
+
+describe("importLocal frame sets", () => {
+  async function framesProject(files: Record<string, Buffer>) {
+    await mkdir(path.join(dir, "out"), { recursive: true })
+    await writeFile(
+      path.join(dir, "m.json"),
+      JSON.stringify({
+        name: "t",
+        styles: { s: { generator: "imageProFlash", outDir: "out" } },
+        assets: {
+          anvil: { prompt: "anvil", width: 32, height: 32 },
+          spin: { prompt: "spin", width: 32, height: 32, revision: { mode: "animate-pixminimax", from: "anvil", frames: 4 } },
+        },
+      }),
+    )
+    for (const [name, bytes] of Object.entries({ "anvil.png": png(1), ...files })) await writeFile(path.join(dir, "out", name), bytes)
+    const loaded = await loadManifest(path.join(dir, "m.json"))
+    return { specs: await resolveSpecs(loaded), lockPath: path.join(dir, "lock.json") }
+  }
+
+  it("records every frame in order, the way fetch does, and the plan then calls it ok", async () => {
+    const frames = Object.fromEntries([0, 1, 2, 3, 4].map((i) => [`spin-frame-0${i}.png`, png(20 + i)]))
+    const { specs, lockPath } = await framesProject(frames)
+    const lock = await loadLock(lockPath)
+    await importLocal(specs.filter((s) => s.assetId === "anvil"), lock, lockPath, {})
+    const spin = specs.filter((s) => s.assetId === "spin")
+    const result = await importLocal(spin, lock, lockPath, { source: "mcp", cost: 2 })
+    expect(result.skipped).toEqual([])
+    const entry = (await loadLock(lockPath)).entries["s/spin"]!
+    expect(entry.outputs.map((o) => [o.path, o.role])).toEqual(
+      [0, 1, 2, 3, 4].map((i) => [`out/spin-frame-0${i}.png`, `frame-0${i}`]),
+    )
+    expect(new Set(entry.outputs.map((o) => o.sha256)).size).toBe(5)
+    const plan = await buildPlan(specs, await loadLock(lockPath))
+    expect(plan.items.find((i) => i.spec.assetId === "spin")?.state).toBe("ok")
+
+    // Same frames again under --force keep the history unchanged.
+    await importLocal(spin, lock, lockPath, { force: true })
+    expect((await loadLock(lockPath)).entries["s/spin"]!.history ?? []).toEqual([])
+  })
+
+  it("names the missing frame files instead of a single PNG", async () => {
+    const { specs, lockPath } = await framesProject({ "spin-frame-00.png": png(2), "spin-frame-02.png": png(3) })
+    const result = await importLocal(specs.filter((s) => s.assetId === "spin"), await loadLock(lockPath), lockPath, { dryRun: true })
+    expect(result.imported).toEqual([])
+    expect(result.skipped[0]!.reason).toMatch(/missing spin-frame-01\.png, spin-frame-03\.png/)
+    expect(result.skipped[0]!.reason).not.toMatch(/spin\.png/)
+  })
+})
