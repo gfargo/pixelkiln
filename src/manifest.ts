@@ -1296,6 +1296,22 @@ export async function resolveSpecs(
           // A state and its animations keep the base's own rotation count.
           directions: resolved.objectPro.kind === "base" ? resolved.objectPro.directions : parentSpec.objectPro.directions,
         }
+        const animation = resolved.objectPro.animation
+        if (animation?.mode === "pro") {
+          const canvas = Math.max(parentSpec.width, parentSpec.height)
+          const allowed = objectProAnimationFrames(canvas)
+          if (!allowed) {
+            throw new Error(`assets.${assetId}: a pro object animation needs a canvas of 170px or less; ${characterParent} is ${canvas}px, so use mode "v3"`)
+          }
+          if (asset.animation?.frames === undefined) {
+            resolved.objectPro = { ...resolved.objectPro, animation: { ...animation, frames: allowed[0]! } }
+          } else if (!allowed.includes(asset.animation.frames)) {
+            throw new Error(
+              `assets.${assetId}: a pro object animation on a ${canvas}px canvas takes ${allowed.join(", ")} frames, ` +
+                `got ${asset.animation.frames}; leave frames out to use ${allowed[0]}`,
+            )
+          }
+        }
       }
       if (asset.outfit) {
         // An outfit's dependency is the source loop's whole frame set, not a
@@ -2069,6 +2085,19 @@ async function resolveCharacterShape(
  * `shading`/`detail` set on an object's `animation` is rejected here rather
  * than silently dropped, since none of them reach the API for an object.
  */
+/**
+ * The frame counts PixelLab accepts for a `pro` object animation, by the
+ * object canvas's longest side (`/objects/{id}/animations`' OpenAPI
+ * description): 16 up to 64px; 4, 9 or 16 up to 128px; 9 up to 170px; none
+ * above. Any other count is refused with a 400 before anything is billed.
+ */
+export function objectProAnimationFrames(canvas: number): number[] | null {
+  if (canvas <= 64) return [16]
+  if (canvas <= 128) return [4, 9, 16]
+  if (canvas <= 170) return [9]
+  return null
+}
+
 async function resolveObjectProShape(
   assetId: string,
   asset: Asset,

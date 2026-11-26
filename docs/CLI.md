@@ -1731,12 +1731,13 @@ writes the same two files.
 - `--weight` is `Bold` or `Regular` (default); `--glyph-px` is the native glyph
   size, `8`, `16` (default), `32`, or `64`; `--name` sets the font family name
   (PixelLab otherwise uses the description plus the weight).
-- Costs PixelLab's documented 15 generations (25 before PixelLab's October
-  2026 Pro price cut), not yet confirmed against a live bill. The command prints that and asks first; `--yes` skips the
+- Costs 15 generations (25 before PixelLab's October 2026 Pro price cut); a
+  16px font billed exactly that in November 2026. The command prints that and asks first; `--yes` skips the
   question, `--budget <n>` refuses when `n` is below it, and `--dry-run` sends
   nothing.
-- It waits for the job (PixelLab documents 30-80 s) and then downloads both
-  files. Existing files are replaced only with `--force`.
+- It waits up to 15 minutes for the job and then downloads both files.
+  PixelLab documents 30-80 s, but a font in November 2026 took about 8
+  minutes. Existing files are replaced only with `--force`.
 
 A font is deliberately not a manifest generator: it has no style suffix to
 share, no prompt-per-asset, no candidates to pick, and its main output is not

@@ -129,6 +129,27 @@ describe("PixelLabClient: unzoom, interpolation, edit-animation, and font wire",
     })
     expect(new URL(String(calls[1]![0])).pathname).toBe("/v2/generate-font-pro/font-1")
   })
+
+  // Live, November 2026: the status route answered 423 "Job is still
+  // processing (0% complete). ETA: 479 seconds." and the command quit.
+  it("reads a 423 from the font status route as still processing", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ detail: "Job is still processing (0% complete). ETA: 479 seconds." }), { status: 423 })))
+    await expect(new PixelLabClient("key").getFontJob("font-1")).resolves.toEqual({ job_id: "font-1", status: "processing" })
+  })
+
+  // Live, November 2026: deleting an object a dismissed review had already
+  // removed answered 200 with success: false and "Object not found".
+  it("fails a delete whose 200 body says success: false", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const gone = String(input).includes("gone")
+      return new Response(JSON.stringify(gone ? { success: false, object_id: null, error: "Object not found" } : { success: true }), { status: 200 })
+    }))
+    const client = new PixelLabClient("key")
+    await expect(client.deleteObject("ok-1")).resolves.toEqual({ success: true })
+    await expect(client.deleteObject("gone-1")).rejects.toThrow(/success: false \(Object not found\)/)
+    await expect(client.deleteCharacter("gone-2")).rejects.toThrow(/DELETE \/characters\/gone-2 → 200 but success: false/)
+  })
 })
 
 describe("unzoomFile", () => {

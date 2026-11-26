@@ -91,6 +91,32 @@ describe("manifest resolution", () => {
     const [spec] = await resolveSpecs(loaded)
     expect(spec.objectPro).toMatchObject({ directions: 1, styleTraits: { palette: false } })
   })
+
+  // Live, November 2026: a pro animation on a 32px object sent 8 frames and
+  // PixelLab refused it ("Pro frame_count for a 32x32 canvas must be one of
+  // [16]"); left to the canvas rule it billed 10 and returned 16 frames.
+  it("gives a pro animation the frame count its canvas allows", async () => {
+    const { loadManifest, resolveSpecs, objectProAnimationFrames } = await import("../src/manifest.ts")
+    expect(objectProAnimationFrames(32)).toEqual([16])
+    expect(objectProAnimationFrames(64)).toEqual([16])
+    expect(objectProAnimationFrames(96)).toEqual([4, 9, 16])
+    expect(objectProAnimationFrames(170)).toEqual([9])
+    expect(objectProAnimationFrames(171)).toBeNull()
+    const pulse = (size: number, frames?: number) =>
+      writeManifest({
+        style: { size },
+        assets: {
+          rune: { prompt: "a rune" },
+          "rune.pulse": { prompt: "pulsing", animation: { of: "rune", mode: "pro", direction: "south", ...(frames ? { frames } : {}) } },
+        },
+      }).then(loadManifest).then(resolveSpecs)
+    const frames = async (size: number, count?: number) => (await pulse(size, count)).find((s) => s.assetId === "rune.pulse")!.objectPro!.animation!.frames
+    expect(await frames(32)).toBe(16)
+    expect(await frames(128)).toBe(4)
+    expect(await frames(128, 9)).toBe(9)
+    await expect(pulse(64, 8)).rejects.toThrow(/on a 64px canvas takes 16 frames, got 8/)
+    await expect(pulse(192)).rejects.toThrow(/170px or less/)
+  })
 })
 
 describe("provider", () => {

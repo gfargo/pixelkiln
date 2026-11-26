@@ -125,7 +125,8 @@ export async function generateFont(
   }
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
   const interval = opts.intervalMs ?? 5000
-  const timeout = opts.timeoutMs ?? 10 * 60_000
+  // PixelLab documents 30-80 s; a live font in November 2026 took about 8 minutes.
+  const timeout = opts.timeoutMs ?? 15 * 60_000
   const submitted = await client.generateFontPro({
     description: opts.description,
     weight: opts.weight,
