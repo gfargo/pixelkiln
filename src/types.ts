@@ -246,29 +246,30 @@ export function proTierCost(width: number, height: number): number {
 }
 
 /**
- * Cost of one `/animate-pixminimax` call. PixelLab's MCP table publishes
- * 64x64 at 4/8/16/40 frames = 1/1/2/6 generations (80x80 at 8 = 1, 32x32 at
- * 4 = 1), and a live 64x64 call billed 1 at 8 frames and 2 at 16.
+ * Cost of one PixMiniMax clip, as `/animate-pixminimax` (the revision) or
+ * `/animate-character` with `mode: "pixminimax"` (a character loop) runs it,
+ * per direction. PixelLab's published rule for both: the model works on an
+ * UPSCALED canvas, the longer side x4 up to 64px, x2 up to 128px, x1 above,
+ * so 64, 128 and 256 price identically, and at those sizes 4-8 frames = 1
+ * generation, 12-16 = 2, 20-24 = 3, 28 = 4, 32-36 = 5, 40 = 6 (the ceiling).
  *
- * Priced in 64x64-frame equivalents, f = width * height * frames / 4096,
- * through a piecewise-linear curve over those anchors, ceiled: 1 up to f=8,
- * then 1 -> 2 over 8..16, 2 -> 6 over 16..40. Above f=40 it extrapolates at
- * the last segment's slope (one generation per 6 equivalents) rather than
- * capping, so 256x256 at 40 frames reads 106: PixelLab says the model works
- * on an upscaled canvas and sizes just above 64 or 128 are cheaper than just
- * below, so area scaling is an over-read there, the safe direction for
- * `--budget`. It is monotonic in frames and canvas and lands exactly on every
- * published anchor (80x80 at 8 reads 2 against a published 1, a deliberate
- * over-read). `enhance_prompt` adds its documented 0.05.
+ * Read here as frames at the 256px reference: e = frames x (upscaled side /
+ * 256)^2, rounded up to the next multiple of 4 and looked up in that table.
+ * The upscaled side is the longer one, squared, so a non-square canvas reads
+ * as its bounding square, an over-read if anything. It lands on every
+ * published anchor (80x80 at 8 = 1, 132x132 at 40 = 2, 32px up to 28 frames
+ * = 1) and on every bill taken: 64x64 at 8 and 16 frames billed 1 and 2
+ * through the revision, and a 256px character loop at 16 frames billed 2
+ * through PixelLab's MCP. `enhance_prompt` adds its documented 0.05.
  */
+const PIXMINIMAX_STEPS: readonly number[] = [1, 1, 2, 2, 3, 3, 4, 5, 5, 6]
+
 export function pixMiniMaxCost(width: number, height: number, frames: number, enhancePrompt = false): number {
-  const f = (width * height * Math.max(1, frames)) / 4096
-  let units: number
-  if (f <= 8) units = 1
-  else if (f <= 16) units = 1 + (f - 8) / 8
-  else if (f <= 40) units = 2 + (f - 16) / 6
-  else units = 6 + (f - 40) / 6
-  const base = Math.max(1, Math.ceil(units - 1e-9))
+  const side = Math.max(1, width, height)
+  const upscaled = side * (side <= 64 ? 4 : side <= 128 ? 2 : 1)
+  const reference = (Math.max(1, frames) * upscaled * upscaled) / 65536
+  const step = Math.max(1, Math.ceil(reference / 4 - 1e-9))
+  const base = PIXMINIMAX_STEPS[Math.min(step, PIXMINIMAX_STEPS.length) - 1]!
   return enhancePrompt ? base + 0.05 : base
 }
 
@@ -491,9 +492,12 @@ export type CharacterProportions = z.infer<typeof CharacterProportionsSchema>
  * skeleton video model, which moves the character instead of redrawing it,
  * for steadier identity and colours (2-4 generations and 3-5 minutes per
  * direction; beta, Tier 1 subscriptions and up).
- * `v3`: frames drawn from the action text. `pro`: the sequential engine.
+ * `v3`: frames drawn from the action text. `pixminimax`: the same from text
+ * on PixelLab's PixMiniMax engine (beta), a multiple of 4 frames up to 40,
+ * priced by canvas and frames (`pixMiniMaxCost`); it keeps a prop drawn into
+ * `startFrame` where v3 bends or drops it. `pro`: the sequential engine.
  */
-export const CharacterAnimationModeSchema = z.enum(["template", "skeleton-v3", "v3", "pro"])
+export const CharacterAnimationModeSchema = z.enum(["template", "skeleton-v3", "v3", "pixminimax", "pro"])
 export type CharacterAnimationMode = z.infer<typeof CharacterAnimationModeSchema>
 
 /**
@@ -963,12 +967,13 @@ export const CharacterAnimationSchema = z
     motionFrom: z.string().min(1).optional(),
     /**
      * Frames to generate without a template. A v3 loop takes an even 4 to 16;
-     * a sentence loop (`mode: "skeleton-v3"` with no `template`) takes 3 to 15.
+     * a pixminimax loop a multiple of 4 from 4 to 40; a sentence loop
+     * (`mode: "skeleton-v3"` with no `template`) takes 3 to 15.
      */
-    frames: z.number().int().min(3).max(16).optional(),
+    frames: z.number().int().min(3).max(40).optional(),
     /** Playback rate recorded with the frames; PixelLab does not store one. */
     fps: z.number().int().min(1).max(60).default(8),
-    /** v3 only: keep the resting pose as frame 0, so `frames` generated frames land as `frames + 1` files. */
+    /** v3 and pixminimax: keep the resting pose as frame 0, so `frames` generated frames land as `frames + 1` files. */
     keepFirstFrame: z.boolean().default(true),
     /**
      * `character` loops: strip the ghost pixels an animation model leaves
@@ -982,28 +987,41 @@ export const CharacterAnimationSchema = z
      * `template` when a template is named, otherwise `v3`; `skeleton-v3`
      * poses a template with PixelLab's skeleton model instead, or, with no
      * template, animates the asset's prompt as a sentence written into one 3D
-     * motion (a v3 base; 3-15 `frames`); `pro` for the sequential
-     * high-quality engine.
+     * motion (a v3 base; 3-15 `frames`); `pixminimax` draws from the
+     * prompt on PixelLab's PixMiniMax engine (4 to 40 `frames`, a multiple
+     * of 4); `pro` for the sequential high-quality engine.
      */
     mode: CharacterAnimationModeSchema.optional(),
     /**
-     * v3 only: a manifest-relative image of the pose to start from, instead
-     * of the character's rotation for this direction. Up to 256px.
+     * v3 and pixminimax: a manifest-relative image of the pose to start from,
+     * instead of the character's rotation for this direction. Up to 256px.
      */
     startFrame: z.string().min(1).optional(),
     /**
-     * v3 only: a pose to animate toward. The loop then interpolates from the
-     * start frame (the rotation, or `startFrame`) to this image, which must
-     * be the same size as the start frame.
+     * v3 and pixminimax: a pose to animate toward. The loop then interpolates
+     * from the start frame (the rotation, or `startFrame`) to this image,
+     * which must be the same size as the start frame. The same image as
+     * `startFrame` closes a loop.
      */
     endFrame: z.string().min(1).optional(),
-    /** What is being animated, when the character's own description would mislead the model. */
+    /**
+     * What is being animated, when the character's own description would
+     * mislead the model. On a pixminimax loop it is PixelLab's
+     * `subject_description`, one noun phrase of up to 300 characters; left
+     * out, PixelLab reads it off the start frame.
+     */
     subject: z.string().min(1).optional(),
+    /**
+     * pixminimax only: the pose the start frame shows, up to 300 characters
+     * ("standing beside the pole, one hand on it"). Left out, PixelLab reads
+     * it off the image.
+     */
+    initialPose: z.string().min(1).max(300).optional(),
     /** Template mode only: style hints for this loop, over the character's own. */
     outline: z.string().min(1).optional(),
     shading: z.string().min(1).optional(),
     detail: z.string().min(1).optional(),
-    /** v3 text loops only: let PixelLab expand the action into a fuller motion description first. */
+    /** v3 and pixminimax text loops only: let PixelLab expand the action into a fuller motion description first. */
     enhancePrompt: z.boolean().optional(),
   })
   .strict()
@@ -1018,26 +1036,34 @@ export const CharacterAnimationSchema = z
       })
     }
     const sentence = animation.mode === "skeleton-v3" && !animation.template
+    const pixminimax = animation.mode === "pixminimax"
     // A sentence loop's frame count is PixelLab's own 3 to 15, odd allowed;
-    // the v3 engine draws an even 4 to 16. A pro object loop takes the
-    // counts its canvas allows (9 included), checked when the parent's size
-    // is known; a pro character loop sends no frame count at all.
-    if (animation.frames !== undefined && !sentence && animation.mode !== "pro") {
+    // the v3 engine draws an even 4 to 16; PixMiniMax a multiple of 4 up to
+    // 40. A pro object loop takes the counts its canvas allows (9 included),
+    // checked when the parent's size is known; a pro character loop sends no
+    // frame count at all.
+    if (animation.frames !== undefined && pixminimax) {
+      if (animation.frames % 4 !== 0 || animation.frames < 4) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "a pixminimax loop takes a multiple of 4 frames, 4 to 40", path: ["frames"] })
+      }
+    } else if (animation.frames !== undefined && !sentence && animation.mode !== "pro") {
       if (animation.frames % 2 !== 0) {
         context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be even", path: ["frames"] })
-      } else if (animation.frames < 4) {
-        context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be 4 to 16", path: ["frames"] })
+      } else if (animation.frames < 4 || animation.frames > 16) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be 4 to 16 (a pixminimax loop takes up to 40)", path: ["frames"] })
       }
+    } else if (animation.frames !== undefined && animation.mode === "pro" && animation.frames > 16) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "frames must be 16 or fewer", path: ["frames"] })
     }
     if (animation.frames !== undefined && sentence && animation.frames > 15) {
       context.addIssue({ code: z.ZodIssueCode.custom, message: "a skeleton-v3 loop from a sentence takes 3 to 15 frames", path: ["frames"] })
     }
     const mode = animation.mode ?? (animation.template ? "template" : "v3")
     for (const key of ["startFrame", "endFrame", "enhancePrompt"] as const) {
-      if (animation[key] !== undefined && mode !== "v3") {
+      if (animation[key] !== undefined && mode !== "v3" && mode !== "pixminimax") {
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `${key} is for v3 loops; a ${mode} loop ${mode === "template" || mode === "skeleton-v3" ? `starts from the character's rotation and ${animation.template ? "follows its template" : "animates its sentence"}` : "takes neither"}`,
+          message: `${key} is for v3 and pixminimax loops; a ${mode} loop ${mode === "template" || mode === "skeleton-v3" ? `starts from the character's rotation and ${animation.template ? "follows its template" : "animates its sentence"}` : "takes neither"}`,
           path: [key],
         })
       }
@@ -1046,6 +1072,12 @@ export const CharacterAnimationSchema = z
       if (animation[key] !== undefined && mode !== "template") {
         context.addIssue({ code: z.ZodIssueCode.custom, message: `${key} overrides apply to template loops only`, path: [key] })
       }
+    }
+    if (animation.initialPose !== undefined && mode !== "pixminimax") {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: `initialPose is for pixminimax loops; PixelLab's ${mode} engine takes no pose caption`, path: ["initialPose"] })
+    }
+    if (pixminimax && animation.subject !== undefined && animation.subject.length > 300) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "a pixminimax loop's subject is one noun phrase of up to 300 characters", path: ["subject"] })
     }
     if (animation.template && animation.mode && animation.mode !== "template" && animation.mode !== "skeleton-v3") {
       context.addIssue({
@@ -1182,10 +1214,12 @@ export interface ResolvedCharacter {
     keepFirstFrame: boolean
     /** Strip animation ghosts from each frame at download, judged against the parent's rotations. */
     clean?: boolean
-    /** v3: the pose to start from, and the pose to reach. */
+    /** v3 and pixminimax: the pose to start from, and the pose to reach. */
     startFrame?: ResolvedReferenceImage
     endFrame?: ResolvedReferenceImage
     subject?: string
+    /** pixminimax only: the pose the start frame shows. Absent on every other mode, so their spec hashes do not move. */
+    initialPose?: string
     /** Template mode: this loop's style hints. */
     outline?: string
     shading?: string

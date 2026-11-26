@@ -77,7 +77,8 @@ const NewAnimationSchema = z
     /** A PixelLab template id (`character` only; `objectPro` has no template concept). */
     template: z.string().min(1).optional(),
     direction: CharacterDirectionSchema.optional(),
-    frames: z.number().int().min(4).max(16).optional(),
+    /** 4 to 16; a pixminimax loop takes a multiple of 4 up to 40. The manifest's own schema checks the rest. */
+    frames: z.number().int().min(4).max(40).optional(),
     fps: z.number().int().min(1).max(60).optional(),
     /** One loop per named direction, plus free mirrors; expanded when the manifest loads. */
     directions: z.array(CharacterDirectionSchema).min(1).optional(),

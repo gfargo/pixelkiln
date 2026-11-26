@@ -1492,7 +1492,7 @@
                   "frames": {
                     "type": "integer",
                     "minimum": 3,
-                    "maximum": 16
+                    "maximum": 40
                   },
                   "fps": {
                     "type": "integer",
@@ -1513,6 +1513,7 @@
                       "template",
                       "skeleton-v3",
                       "v3",
+                      "pixminimax",
                       "pro"
                     ]
                   },
@@ -1527,6 +1528,11 @@
                   "subject": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "initialPose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
                   },
                   "outline": {
                     "type": "string",

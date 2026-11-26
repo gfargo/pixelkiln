@@ -102,6 +102,10 @@ export async function runAdopt(args: Args): Promise<void> {
     if (characters.written.length) log(`  ${dryRun ? "would write" : "wrote"} ${characters.written.length} file(s) that were not on disk`)
     if (dryRun) for (const file of characters.written) log(`    ${file}`)
     for (const file of characters.differing) log(`  differs from the account, left alone: ${file}`)
+    if (characters.engineMismatches.length) {
+      log(`\n  adopted loops whose record contradicts the declared mode (check animation.mode):`)
+      for (const line of characters.engineMismatches) log(`    ${line}`)
+    }
     if (characters.unmatched.length) {
       log(`\n  character assets not matched (${characters.unmatched.length}):`)
       for (const line of characters.unmatched.slice(0, 15)) log(`    ${line}`)
@@ -364,6 +368,7 @@ export async function runSalvage(args: Args): Promise<void> {
     const adopted = await adoptCharacters(provider, await resolve(), lock, args.lock, { onProgress: log, resolve })
     log(`  adopted ${adopted.matched} of ${assetIds.length} imported character asset(s)`)
     for (const line of adopted.unmatched) log(`    not adopted: ${line}`)
+    for (const line of adopted.engineMismatches) log(`    check mode: ${line}`)
   }
 
   const runOne = async (styleId: string, list: typeof orphans) => {

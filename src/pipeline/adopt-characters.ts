@@ -38,6 +38,12 @@ export interface AdoptCharactersResult {
   written: string[]
   /** Local files that differ from the account's bytes and were left alone. */
   differing: string[]
+  /**
+   * Adopted loops whose record contradicts the declared `mode` (a template
+   * loop declared as drawn from text, or the reverse). The record cannot
+   * tell v3 from pixminimax, so only that split is checked.
+   */
+  engineMismatches: string[]
 }
 
 export interface AdoptCharactersOptions {
@@ -66,7 +72,7 @@ export async function adoptCharacters(
   opts: AdoptCharactersOptions,
 ): Promise<AdoptCharactersResult> {
   const log = opts.onProgress ?? (() => {})
-  const result: AdoptCharactersResult = { scanned: 0, matched: 0, unmatched: [], remaining: [], written: [], differing: [] }
+  const result: AdoptCharactersResult = { scanned: 0, matched: 0, unmatched: [], remaining: [], written: [], differing: [], engineMismatches: [] }
   if (!provider.listCharacters || !provider.getCharacter) return result
   const wanted = specs.filter((spec) => spec.character && !spec.mirror)
   if (!wanted.length) return result
@@ -273,6 +279,21 @@ export async function adoptCharacters(
         }
       }
     }
+    // PixelLab's character record does not say which engine drew a loop:
+    // every custom loop, v3 and pixminimax alike, reads `animation_type:
+    // "custom-<the action's first words>"`, and a template loop its template
+    // id (measured, docs/ENDPOINTS.md). So the manifest's `mode` is recorded
+    // as the engine, and the one contradiction the record can show, a
+    // template loop declared as a custom one or the reverse, is reported.
+    // skeleton-v3 is left out: how a template posed by it reads is unmeasured.
+    const declaredCustom = animation.mode !== "template"
+    const remoteCustom = match.type.startsWith("custom")
+    if (animation.mode !== "skeleton-v3" && declaredCustom !== remoteCustom) {
+      result.engineMismatches.push(
+        `${key}: declared mode "${animation.mode}", but the account's record reads "${match.type}", ` +
+          (remoteCustom ? "a loop drawn from text, not a template" : "a template loop"),
+      )
+    }
     const sources: OutputSource[] = match.frames.map((url, index) => ({ url, role: `frame-${String(index).padStart(2, "0")}` }))
     const outputs = await materialize(spec, sources)
     const durable = sources.filter((source) => shouldPersistSourceUrl(source.url))
@@ -304,6 +325,10 @@ export async function adoptCharacters(
             animationGroupId: match.groupId,
             animationName: match.name,
             direction: animation.direction,
+            // The engine, taken from the manifest: the provider does not report it.
+            mode: animation.mode,
+            modeFrom: "manifest",
+            animationType: match.type,
             adopted: true,
           },
         },
