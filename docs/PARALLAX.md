@@ -300,7 +300,7 @@ the layer pictures it uses and a provenance record:
 | Format | What it writes |
 |---|---|
 | Tiled | A map (`.tmj`) with one image layer per parallax layer, `parallaxx` and `parallaxy` set to the speeds, `repeatx` on looping layers. Each layer's offset allows for where the camera starts, and the map's parallax origin stays at (0, 0). |
-| Godot 4.3+ | A scene (`.tscn`) with one `Parallax2D` per layer holding a `Sprite2D`, `scroll_scale` set to the speeds and `repeat_size` to the picture. Instance it next to a `Camera2D` whose top-left starts at `(0, climb)`. |
+| Godot 4.3+ | A scene (`.tscn`) with one `Parallax2D` per layer holding a `Sprite2D`, `scroll_scale` set to the speeds and `repeat_size` to the picture. Instance it next to a `Camera2D` whose top-left starts at `(0, climb)`. A set with `times` adds a shader for them (step 9). |
 | LDtk | A project (`.ldtk`) with one level the size of the view plus the camera's travel. LDtk has no image layer, so each layer is a Tiles layer over a picture of everything the camera can see of it, repeats included, with `parallaxFactorX` = 1 − speed and scaling off. |
 
 We checked the exports against the preview, pixel for pixel, at camera
@@ -458,35 +458,70 @@ of the [research note](./RESEARCH_PARALLAX.md) has the numbers.
 
 ## 9. A second time of day
 
-To show the same place at another time, recolour the finished set instead of
+To show the same place at another time, swap the set's palette instead of
 generating it again. A palette swap keeps every shape, so the two times line up
 when the game fades from one to the other, and it costs nothing.
 
-![Alpine at night, the dusk set above recoloured by script](../website/public/research/parallax/night/recoloured.webp)
+![Alpine at night, the dusk set above with its palette swapped](../website/public/research/parallax/night/recoloured.webp)
 
 1. Take a palette for the new time the way you took the first one. The night
    palette here is the 42 colours of PixelLab's mountain valley, sent again
    with the same prompt and seed and "at night" in place of "at dusk".
-2. Swap each finished piece onto it by luminance rank, the far range, layers,
-   landforms and tier copies alike:
+2. Name the time on the set. The set's `palette` is what it swaps from:
 
-   ```bash
-   $P recolour far.png far.night.png dusk.manifest.json night.manifest.json cool
+   ```jsonc
+   "alpine-dusk": {
+     "palette": "parallax-a",
+     "times": {
+       "night": { "palette": "night", "cool": true }   // a style id, or a list of colours
+     },
+     "layers": [ ... ]
+   }
    ```
 
-   `cool` leaves out the new palette's light colours, those whose red is above
-   their blue: lit windows, lamplight and the moon. Without it, pink-lit snow
-   turns orange.
-3. Draw the sky from the new palette.
+   Both palettes are sorted dark to light, and a colour a given share of the
+   way up the first becomes the colour the same share up the second. Every
+   layer goes through the same table, sky bands included. `cool` leaves out the
+   new palette's light colours, those whose red is above their blue: lit
+   windows, lamplight and the moon. Without it, pink-lit snow turns orange.
+3. Preview it. `pixelkiln parallax preview` writes a strip for each time
+   (`alpine-dusk.preview.night.png`), and the page has a menu to switch time.
+
+The exports carry every time:
+
+- **Godot** gets one scene with a shader on every layer (`<set>.gdshader`)
+  and a lookup picture (`<set>.colours.png`): row 0 is every colour the set
+  uses, and row n what each becomes at the n-th time. The layers share one
+  material, so one line recolours the whole set, and `blend` fades to another
+  time:
+
+  ```gdscript
+  var m = $Background/far/Sprite2D.material   # any layer: they share it
+  m.set_shader_parameter("time", 1)           # 0 as drawn; n is metadata/times[n - 1]
+  m.set_shader_parameter("blend_to", 0)       # fade back toward dusk...
+  m.set_shader_parameter("blend", 0.5)        # ...halfway
+  ```
+
+  The shader matches exact colours, so keep the pictures' import lossless
+  (Godot's default for 2D), the filter nearest (the export sets it) and
+  `modulate` white.
+- **Tiled and LDtk** have no shaders, so each time is a map of its own over
+  recoloured pictures: `alpine-dusk.night.tmj` and `alpine-dusk.night.ldtk`.
+
+Godot 4.7, Tiled's renderer and the LDtk drawing code each drew the alpine set
+at night the same as the night preview at seven camera positions, with no pixel
+different, and the swap matches the research script's `recolour` pixel for
+pixel.
 
 Generating the set again on the new palette also gives layers that agree, but
 in a different place. Every peak moves. "At night" in a prompt also brought a
 moon or stars into 7 of 9 pictures, two of them despite "no moon, no stars" in
-the prompt. Generate only
-what the new time adds, such as a moon, as its own sprite. A swap keeps the
-light where the first time put it, which suits dusk to night; light from
-another side needs new pictures. The manifests and build script are in
-[`benchmarks/parallax-night`](../benchmarks/parallax-night).
+the prompt. Generate only what the new time adds, such as a moon, as its own
+sprite. A swap keeps the light where the first time put it, which suits dusk to
+night; light from another side needs new pictures. The manifests and build
+script are in [`benchmarks/parallax-night`](../benchmarks/parallax-night), and
+[`benchmarks/parallax-refined/alpine`](../benchmarks/parallax-refined/alpine)
+has the dusk set with its night time.
 
 ## What this guide does not cover
 

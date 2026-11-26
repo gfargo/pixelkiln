@@ -64,8 +64,17 @@ export interface ResolvedParallaxSet {
   climb: number
   /** What tints snapped to, when the set names a palette. */
   palette?: string[]
+  /** Other times of day, each the set's palette swapped for its own. */
+  times?: ResolvedParallaxTime[]
   layers: ParallaxLayerImage[]
   warnings: string[]
+}
+
+export interface ResolvedParallaxTime {
+  name: string
+  /** The time's palette, before `cool` leaves any out. */
+  palette: string[]
+  cool: boolean
 }
 
 const BAYER4 = [
@@ -255,7 +264,14 @@ export async function resolveParallaxSet(
     }
     layers.push(image)
   }
-  return { id: setId, view: [viewW, viewH], travel, climb, ...(palette ? { palette } : {}), layers, warnings }
+  const times: ResolvedParallaxTime[] = Object.entries(set.times ?? {}).map(([name, time]) => {
+    const colours = typeof time.palette === "string" ? manifest.styles[time.palette]?.palette : time.palette
+    if (!colours?.length) throw new Error(`parallax ${setId}: time ${name}: style "${time.palette}" has no palette`)
+    const resolved = { name, palette: colours, cool: time.cool ?? false }
+    paletteSwap(palette!, resolved, `parallax ${setId}: time ${name}`) // fails early on a palette with nothing left to map onto
+    return resolved
+  })
+  return { id: setId, view: [viewW, viewH], travel, climb, ...(palette ? { palette } : {}), ...(times.length ? { times } : {}), layers, warnings }
 }
 
 export interface FinishOptions {
@@ -489,6 +505,109 @@ export function loopPicture(png: DecodedPng, method: ParallaxLoop, where = "pict
     for (let x = 0; x < w; x++) png.pixels.copy(pixels, (y * w * 2 + w + x) * 4, (y * w + w - 1 - x) * 4, (y * w + w - x) * 4)
   }
   return { png: { width: w * 2, height: h, pixels }, loop: { method, from: w } }
+}
+
+type Rgb = [number, number, number]
+
+const rgbKey = (r: number, g: number, b: number) => (r << 16) | (g << 8) | b
+
+function sortedRgb(hexes: string[]): Rgb[] {
+  const seen = new Map<number, Rgb>()
+  for (const hex of hexes) {
+    const { r, g, b } = parseHex(hex)
+    seen.set(rgbKey(r, g, b), [r, g, b])
+  }
+  return [...seen.values()].sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
+}
+
+const luminance = (c: Rgb) => c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722
+
+/**
+ * The table of research/scripts/parallax.py `recolour`, step 20 of the
+ * research: both palettes sorted dark to light, and the colour r of n up the
+ * first mapped to the colour round(r / (n - 1) x (m - 1)) up the second.
+ * With `cool`, only target colours whose blue is at least their red count.
+ * Ties in luminance keep the palettes' sorted order, as the script's stable
+ * sort does, and a half rounds to even, as Python's round does.
+ */
+export function paletteSwap(from: string[], time: Pick<ResolvedParallaxTime, "palette" | "cool">, where = "palette swap"): { source: Rgb[]; table: Map<number, Rgb> } {
+  const source = sortedRgb(from)
+  let target = sortedRgb(time.palette)
+  if (time.cool) target = target.filter((c) => c[2] >= c[0])
+  if (!target.length) throw new Error(`${where}: no colour of the palette has blue at least its red, so cool leaves nothing to map onto`)
+  const rank = (colours: Rgb[]) => colours.map((c, i) => [i, luminance(c)] as const).sort((a, b) => a[1] - b[1] || a[0] - b[0]).map(([i]) => i)
+  const fromOrder = rank(source)
+  const toOrder = rank(target)
+  const table = new Map<number, Rgb>()
+  fromOrder.forEach((i, r) => {
+    const c = source[i]!
+    table.set(rgbKey(c[0], c[1], c[2]), target[toOrder[roundHalfEven((r / Math.max(fromOrder.length - 1, 1)) * (toOrder.length - 1))]!]!)
+  })
+  return { source, table }
+}
+
+/** The nearest colour by squared RGB distance; the first of equals in `colours`' order. */
+function nearestRgb(colours: Rgb[], r: number, g: number, b: number): Rgb {
+  let best = colours[0]!
+  let bestDistance = Infinity
+  for (const c of colours) {
+    const d = (r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2
+    if (d < bestDistance) {
+      bestDistance = d
+      best = c
+    }
+  }
+  return best
+}
+
+/** Every opaque pixel snapped to the swap's source palette, then put through its table. */
+export function recolourPicture(png: DecodedPng, swap: ReturnType<typeof paletteSwap>): DecodedPng {
+  const pixels = Buffer.from(png.pixels)
+  const done = new Map<number, Rgb>()
+  for (let p = 0; p < pixels.length; p += 4) {
+    if (pixels[p + 3] === 0) continue
+    const key = rgbKey(pixels[p]!, pixels[p + 1]!, pixels[p + 2]!)
+    let out = done.get(key)
+    if (!out) {
+      const snapped = nearestRgb(swap.source, pixels[p]!, pixels[p + 1]!, pixels[p + 2]!)
+      out = swap.table.get(rgbKey(snapped[0], snapped[1], snapped[2]))!
+      done.set(key, out)
+    }
+    pixels[p] = out[0]
+    pixels[p + 1] = out[1]
+    pixels[p + 2] = out[2]
+  }
+  return { width: png.width, height: png.height, pixels }
+}
+
+/** The set as it looks at one of its times: every layer recoloured, nothing moved. */
+export function setAtTime(set: ResolvedParallaxSet, time: string): ResolvedParallaxSet {
+  const spec = set.times?.find((t) => t.name === time)
+  if (!spec) throw new Error(`parallax ${set.id}: no time "${time}". ${set.times?.length ? `Known: ${set.times.map((t) => t.name).join(", ")}` : "The set has no times."}`)
+  const swap = paletteSwap(set.palette!, spec)
+  return { ...set, id: `${set.id}.${time}`, times: undefined, layers: set.layers.map((layer) => ({ ...layer, png: recolourPicture(layer.png, swap) })) }
+}
+
+/**
+ * The lookup texture the Godot shader reads: one column for every colour
+ * the set's pictures use, sorted. Row 0 holds the colours as drawn, and row
+ * t the colour each becomes at the t-th time. Alpha is 255 throughout.
+ */
+export function timeColours(set: ResolvedParallaxSet): DecodedPng {
+  const used = new Map<number, Rgb>()
+  for (const layer of set.layers) {
+    const px = layer.png.pixels
+    for (let p = 0; p < px.length; p += 4) if (px[p + 3] !== 0) used.set(rgbKey(px[p]!, px[p + 1]!, px[p + 2]!), [px[p]!, px[p + 1]!, px[p + 2]!])
+  }
+  const columns = [...used.values()].sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
+  const rows = [columns, ...(set.times ?? []).map((time) => {
+    const swap = paletteSwap(set.palette!, time)
+    return columns.map((c) => swap.table.get(rgbKey(...nearestRgb(swap.source, c[0], c[1], c[2])))!)
+  })]
+  const width = Math.max(1, columns.length)
+  const pixels = Buffer.alloc(width * rows.length * 4)
+  rows.forEach((row, y) => row.forEach((c, x) => pixels.set([c[0], c[1], c[2], 255], (y * width + x) * 4)))
+  return { width, height: rows.length, pixels }
 }
 
 async function readPicture(
@@ -762,11 +881,24 @@ function godotNumber(value: number): string {
 export function exportGodot(set: ResolvedParallaxSet, base: string): ParallaxExport {
   const [vw, vh] = set.view
   const pictures = layerPngs(set, base)
-  const lines: string[] = [`[gd_scene load_steps=${pictures.length + 1} format=3]`, ""]
+  const name = path.basename(base)
+  const times = set.times ?? []
+  const lines: string[] = [`[gd_scene load_steps=${pictures.length + 1 + (times.length ? 3 : 0)} format=3]`, ""]
   pictures.forEach(({ file }, index) => {
     lines.push(`[ext_resource type="Texture2D" path=${JSON.stringify(`./${file}`)} id="${index + 1}_layer"]`)
   })
-  lines.push("", `[node name=${JSON.stringify(path.basename(base))} type="Node2D"]`, "texture_filter = 1")
+  const extra: ParallaxExport["files"] = []
+  if (times.length) {
+    // One material on every sprite, so setting its time recolours the whole set.
+    const colours = timeColours(set)
+    extra.push({ path: `${base}.colours.png`, data: encodeRgbaPng(colours.width, colours.height, colours.pixels) })
+    extra.push({ path: `${base}.gdshader`, data: GODOT_TIMES_SHADER })
+    lines.push(`[ext_resource type="Shader" path=${JSON.stringify(`./${name}.gdshader`)} id="times_shader"]`)
+    lines.push(`[ext_resource type="Texture2D" path=${JSON.stringify(`./${name}.colours.png`)} id="times_colours"]`)
+    lines.push("", '[sub_resource type="ShaderMaterial" id="times"]', 'shader = ExtResource("times_shader")', 'shader_parameter/colours = ExtResource("times_colours")')
+  }
+  lines.push("", `[node name=${JSON.stringify(name)} type="Node2D"]`, "texture_filter = 1")
+  if (times.length) lines.push(`metadata/times = PackedStringArray(${times.map((t) => JSON.stringify(t.name)).join(", ")})`)
   pictures.forEach(({ layer }, index) => {
     lines.push("", `[node name=${JSON.stringify(layer.name)} type="Parallax2D" parent="."]`)
     lines.push(`scroll_scale = Vector2(${godotNumber(layer.speed)}, ${godotNumber(layer.speedY)})`)
@@ -783,14 +915,15 @@ export function exportGodot(set: ResolvedParallaxSet, base: string): ParallaxExp
     }
     lines.push("", `[node name="Sprite2D" type="Sprite2D" parent=${JSON.stringify(layer.name)}]`)
     lines.push(`texture = ExtResource("${index + 1}_layer")`, "centered = false")
+    if (times.length) lines.push('material = SubResource("times")')
     const mod = (value: number, size: number) => ((value % size) + size) % size
     const px = layer.repeat ? mod(layer.x, layer.png.width) : layer.x
     const py = layer.repeatY ? mod(layer.y + set.climb, layer.png.height) : layer.y + set.climb
     lines.push(`position = Vector2(${px}, ${py})`)
   })
   return {
-    files: [{ path: `${base}.tscn`, data: lines.join("\n") + "\n" }, ...pictures.map((p) => ({ path: path.join(path.dirname(base), p.file), data: p.png }))],
-    options: { format: "godot", start: [0, set.climb] },
+    files: [{ path: `${base}.tscn`, data: lines.join("\n") + "\n" }, ...pictures.map((p) => ({ path: path.join(path.dirname(base), p.file), data: p.png })), ...extra],
+    options: { format: "godot", start: [0, set.climb], ...(times.length ? { shader: `${name}.gdshader` } : {}) },
   }
 }
 
@@ -1059,10 +1192,55 @@ function tileEmpty(png: DecodedPng, x0: number, y0: number, grid: number): boole
 }
 
 export function exportParallax(set: ResolvedParallaxSet, format: ParallaxFormat, base: string): ParallaxExport {
-  if (format === "tiled") return exportTiled(set, base)
   if (format === "godot") return exportGodot(set, base)
-  return exportLdtk(set, base)
+  const one = (s: ResolvedParallaxSet, b: string) => (format === "tiled" ? exportTiled(s, b) : exportLdtk(s, b))
+  const result = one({ ...set, times: undefined }, base)
+  if (!set.times?.length) return result
+  // Neither has shaders, so each time is a map of its own over its own pictures.
+  for (const time of set.times) {
+    const timed = one(setAtTime(set, time.name), `${base}.${time.name}`)
+    result.files.push(...timed.files)
+    for (const warning of (timed.options.warnings as string[] | undefined) ?? []) {
+      const warnings = ((result.options.warnings as string[] | undefined) ?? [])
+      if (!warnings.includes(warning)) result.options.warnings = [...warnings, warning]
+    }
+  }
+  result.options.maps = [path.basename(result.files[0]!.path), ...set.times.map((t) => `${path.basename(base)}.${t.name}${path.extname(result.files[0]!.path)}`)]
+  return result
 }
+
+/**
+ * The shader a Godot export puts on every layer of a set with times. It
+ * finds each pixel's colour in row 0 of the lookup texture and draws the
+ * same column of row `time`: 0 is the set as drawn, n its n-th time in the
+ * scene's metadata/times. `blend` mixes toward `blend_to`, to fade from one
+ * time to another.
+ */
+export const GODOT_TIMES_SHADER = `// Written by pixelkiln parallax export. Recolours the set to one of its times of day.
+// time = 0 draws the pictures as they are; time = n draws them at the n-th name in the
+// scene root's metadata/times. blend (0 to 1) mixes toward blend_to, for a fade between
+// two times. Every layer shares one material, so setting a parameter on it sets all of them.
+shader_type canvas_item;
+
+uniform sampler2D colours : filter_nearest, repeat_disable;
+uniform int time = 0;
+uniform int blend_to = 0;
+uniform float blend : hint_range(0.0, 1.0) = 0.0;
+
+void fragment() {
+	vec4 drawn = texture(TEXTURE, UV);
+	COLOR = drawn;
+	int columns = textureSize(colours, 0).x;
+	for (int i = 0; i < columns; i++) {
+		if (all(lessThan(abs(texelFetch(colours, ivec2(i, 0), 0).rgb - drawn.rgb), vec3(0.5 / 255.0)))) {
+			vec3 now = texelFetch(colours, ivec2(i, time), 0).rgb;
+			vec3 next = texelFetch(colours, ivec2(i, blend_to), 0).rgb;
+			COLOR = vec4(mix(now, next, blend), drawn.a);
+			break;
+		}
+	}
+}
+`
 
 /**
  * A page that scrolls the set in a browser, the same way the frames above are
@@ -1071,9 +1249,11 @@ export function exportParallax(set: ResolvedParallaxSet, format: ParallaxFormat,
  */
 export function previewHtml(set: ResolvedParallaxSet, scale = 3): string {
   const [vw, vh] = set.view
-  const layers = set.layers.map((layer) => ({
+  // Each layer's picture at every time, the set as drawn first.
+  const timed = [set, ...(set.times ?? []).map((time) => setAtTime(set, time.name))]
+  const layers = set.layers.map((layer, index) => ({
     name: layer.name,
-    src: `data:image/png;base64,${encodeRgbaPng(layer.png.width, layer.png.height, layer.png.pixels).toString("base64")}`,
+    srcs: timed.map((s) => `data:image/png;base64,${encodeRgbaPng(s.layers[index]!.png.width, s.layers[index]!.png.height, s.layers[index]!.png.pixels).toString("base64")}`),
     w: layer.png.width,
     h: layer.png.height,
     x: layer.x,
@@ -1083,7 +1263,8 @@ export function previewHtml(set: ResolvedParallaxSet, scale = 3): string {
     repeat: layer.repeat,
     repeatY: layer.repeatY,
   }))
-  const data = JSON.stringify({ view: [vw, vh], travel: set.travel, climb: set.climb, layers }).replace(/</g, "\\u003c")
+  const times = ["as drawn", ...(set.times ?? []).map((time) => time.name)]
+  const data = JSON.stringify({ view: [vw, vh], travel: set.travel, climb: set.climb, times, layers }).replace(/</g, "\\u003c")
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -1105,13 +1286,17 @@ export function previewHtml(set: ResolvedParallaxSet, scale = 3): string {
 <main>
   <canvas id="view" width="${vw}" height="${vh}"></canvas>
   <label><button id="play" type="button">Pause</button> camera <input id="cam" type="range" min="0" max="1000" value="0"> <output id="pos"></output></label>
+  <label id="times" hidden>time <select id="time"></select></label>
   <table><thead><tr><th>Layer</th><th>speed</th><th>speedY</th><th>repeat</th></tr></thead><tbody id="rows"></tbody></table>
 </main>
 <script>
 const set = ${data};
 const ctx = document.getElementById("view").getContext("2d");
 ctx.imageSmoothingEnabled = false;
-const images = set.layers.map((layer) => Object.assign(new Image(), { src: layer.src }));
+const images = set.layers.map((layer) => layer.srcs.map((src) => Object.assign(new Image(), { src })));
+const pick = document.getElementById("time");
+set.times.forEach((name, i) => pick.add(new Option(name, i)));
+document.getElementById("times").hidden = set.times.length < 2;
 const rows = document.getElementById("rows");
 for (const layer of set.layers) {
   const tr = rows.insertRow();
@@ -1140,7 +1325,7 @@ function draw(u) {
     if (layer.repeat) for (let x = ((left % layer.w) + layer.w) % layer.w - layer.w; x < set.view[0]; x += layer.w) xs.push(x);
     const ys = layer.repeatY ? [] : [top];
     if (layer.repeatY) for (let y = ((top % layer.h) + layer.h) % layer.h - layer.h; y < set.view[1]; y += layer.h) ys.push(y);
-    for (const y of ys) for (const x of xs) ctx.drawImage(images[i], x, y);
+    for (const y of ys) for (const x of xs) ctx.drawImage(images[i][pick.value | 0], x, y);
   });
 }
 function frame(now) {
@@ -1152,7 +1337,7 @@ function frame(now) {
   draw(slider.value / 1000);
   requestAnimationFrame(frame);
 }
-Promise.all(images.map((image) => image.decode())).then(() => requestAnimationFrame(frame));
+Promise.all(images.flat().map((image) => image.decode())).then(() => requestAnimationFrame(frame));
 </script>
 </body>
 </html>

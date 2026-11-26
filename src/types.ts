@@ -2685,6 +2685,23 @@ export const ParallaxLayerSchema = z
     }
   })
 
+/**
+ * A time of day: the set's palette swapped for this one by luminance rank,
+ * each palette sorted dark to light and a colour a given share of the way up
+ * the first becoming the colour the same share up this one.
+ */
+export const ParallaxTimeSchema = z
+  .object({
+    /** A style id, for that style's palette, or a list of colours. */
+    palette: z.union([z.string().min(1), z.array(HexColorSchema).min(2).max(256)]),
+    /** Map only onto colours whose blue is at least their red, which leaves out a night palette's lamps and moon. */
+    cool: z.boolean().optional(),
+  })
+  .strict()
+
+/** A time's name keys a shader row and a file name, so it keeps to letters, digits, - and _. */
+export const ParallaxTimeIdSchema = z.string().regex(/^[A-Za-z][A-Za-z0-9_-]{0,31}$/, "a time is letters, digits, - and _, starting with a letter")
+
 /** A parallax background: layers far to near over one view, and how far the camera travels. */
 export const ParallaxSetSchema = z
   .object({
@@ -2700,9 +2717,23 @@ export const ParallaxSetSchema = z
      * the picture, so it adds none.
      */
     palette: z.union([z.string().min(1), z.array(HexColorSchema).min(2).max(256)]).optional(),
+    /**
+     * Other times of day for the same set, by name: each swaps the set's
+     * `palette` for another by luminance rank. Godot exports carry them in
+     * one shader; Tiled and LDtk get a map per time.
+     */
+    times: z.record(ParallaxTimeIdSchema, ParallaxTimeSchema).optional(),
     layers: z.array(ParallaxLayerSchema).min(1).max(32),
   })
   .strict()
+  .superRefine((set, ctx) => {
+    if (set.times && Object.keys(set.times).length && set.palette === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["times"], message: "times swap the set's palette, so the set needs a palette" })
+    }
+    if (set.times && Object.keys(set.times).length > 15) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["times"], message: "at most 15 times" })
+    }
+  })
 
 /** A set id names output folders and a Godot node, so it keeps to letters, digits, - and _. */
 export const ParallaxSetIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/, "a set id is letters, digits, - and _, starting with a letter or digit")
@@ -2711,6 +2742,7 @@ export type ParallaxLayer = z.infer<typeof ParallaxLayerSchema>
 export type ParallaxRunSprite = z.infer<typeof ParallaxRunSpriteSchema>
 export type ParallaxTint = z.infer<typeof ParallaxTintSchema>
 export type ParallaxSet = z.infer<typeof ParallaxSetSchema>
+export type ParallaxTime = z.infer<typeof ParallaxTimeSchema>
 
 export const ManifestSchema = z
   .object({

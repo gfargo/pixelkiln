@@ -8,6 +8,7 @@ import {
   PARALLAX_FORMATS,
   previewHtml,
   resolveParallaxSet,
+  setAtTime,
   type ParallaxFormat,
   type ResolvedParallaxSet,
 } from "../../pipeline/parallax.ts"
@@ -56,27 +57,30 @@ export async function runParallax(args: Args): Promise<void> {
           sources,
           options: { set: id, ...describe, ...result.options },
         }, { force: args.force })
-        log(`  ${id} (${format}): ${path.relative(process.cwd(), result.files[0]!.path)} + ${result.files.length - 1} picture(s)`)
+        log(`  ${id} (${format}): ${path.relative(process.cwd(), result.files[0]!.path)} + ${result.files.length - 1} more file(s)`)
         for (const warning of (result.options.warnings as string[] | undefined) ?? []) log(`    warning: ${warning}`)
       }
     } else {
       const frames = args.frames ?? 3
-      const strip = joinStripPng(
-        cameraPath(set, frames).map(([x, y]) => {
-            const frame = composeParallaxFrame(set, x, y)
+      const strip = (s: ResolvedParallaxSet) => joinStripPng(
+        cameraPath(s, frames).map(([x, y]) => {
+            const frame = composeParallaxFrame(s, x, y)
             return encodeRgbaPng(frame.width, frame.height, frame.pixels)
           }),
       )
       const base = path.join(root, `${id}.preview`)
       await writeManagedArtifactBundle(`${base}.pixelkiln.json`, [
         { path: `${base}.html`, data: Buffer.from(previewHtml(set)) },
-        { path: `${base}.png`, data: strip },
+        { path: `${base}.png`, data: strip(set) },
+        // A strip for each time of day too, the same frames recoloured.
+        ...(set.times ?? []).map((time) => ({ path: `${base}.${time.name}.png`, data: strip(setAtTime(set, time.name)) })),
       ], {
         kind: "parallax",
         sources,
         options: { set: id, ...describe, preview: { frames } },
       }, { force: args.force })
       log(`  ${id}: ${path.relative(process.cwd(), base)}.html (scrolls in a browser) + .png (${frames} frames, start to end)`)
+      if (set.times?.length) log(`    times: ${set.times.map((time) => `${time.name} (${path.basename(base)}.${time.name}.png)`).join(", ")}`)
     }
     for (const layer of set.layers) {
       const seam = (layer.seamRatio === undefined ? "" : `, seam ${layer.seamRatio.toFixed(1)}`) +
@@ -106,5 +110,6 @@ function setOptions(set: ResolvedParallaxSet): Record<string, unknown> {
       ...(layer.finish ?? {}),
     })),
     ...(set.palette ? { palette: set.palette } : {}),
+    ...(set.times ? { times: Object.fromEntries(set.times.map((time) => [time.name, { palette: time.palette, cool: time.cool }])) } : {}),
   }
 }

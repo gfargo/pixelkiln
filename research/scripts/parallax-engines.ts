@@ -2,12 +2,14 @@
  * Checks a manifest's parallax set in real engines against `pixelkiln
  * parallax preview`'s own frames, pixel for pixel.
  *
- *   npx tsx research/scripts/parallax-engines.ts <manifest> <set> <x,y> [<x,y> ...] [--snap]
+ *   npx tsx research/scripts/parallax-engines.ts <manifest> <set> <x,y> [<x,y> ...] [--snap] [--time <name>]
  *
  * Godot: exports the set with `--format godot`, puts the scene in a small
  * Godot project with a Camera2D, renders each camera position with Movie
  * Maker (`--write-movie`, which opens a window) and compares the frames.
- * `--snap` turns on Rendering > 2D > Snap 2D Transforms to Pixel.
+ * `--snap` turns on Rendering > 2D > Snap 2D Transforms to Pixel. `--time`
+ * renders one of the set's times of day: Godot through the export's shader,
+ * Tiled and LDtk from that time's own map, each against the preview recoloured.
  *
  * Tiled: exports with `--format tiled`, bakes Tiled's parallax offset for
  * each camera position into a copy of the map and renders it with Tiled's
@@ -31,13 +33,15 @@ import { promisify } from "node:util"
 import { main } from "../../src/cli/main.ts"
 import { loadLock } from "../../src/lock.ts"
 import { loadManifest } from "../../src/manifest.ts"
-import { composeParallaxFrame, resolveParallaxSet } from "../../src/pipeline/parallax.ts"
+import { composeParallaxFrame, resolveParallaxSet, setAtTime } from "../../src/pipeline/parallax.ts"
 import { decodePng, type DecodedPng } from "../../src/png.ts"
 
 const run = promisify(execFile)
 const argv = process.argv.slice(2)
 const snap = argv.includes("--snap")
-const [manifestArg, setId, ...rest] = argv.filter((arg) => arg !== "--snap")
+const timeAt = argv.indexOf("--time")
+const time = timeAt >= 0 ? argv[timeAt + 1] : undefined
+const [manifestArg, setId, ...rest] = argv.filter((arg, i) => arg !== "--snap" && (timeAt < 0 || (i !== timeAt && i !== timeAt + 1)))
 if (!manifestArg || !setId || !rest.length) {
   console.error("usage: parallax-engines.ts <manifest> <set> <x,y> [<x,y> ...] [--snap]")
   process.exit(2)
@@ -46,7 +50,10 @@ const positions = rest.map((pair) => pair.split(",").map(Number) as [number, num
 const manifestPath = path.resolve(manifestArg)
 const lockPath = path.join(path.dirname(manifestPath), "pixelkiln.lock.json")
 const loaded = await loadManifest(manifestPath)
-const set = await resolveParallaxSet(loaded.manifest, path.dirname(manifestPath), await loadLock(lockPath), setId)
+const drawn = await resolveParallaxSet(loaded.manifest, path.dirname(manifestPath), await loadLock(lockPath), setId)
+// The frames to match: the set as drawn, or recoloured to the time asked for.
+const set = time ? setAtTime(drawn, time) : drawn
+const timeIndex = time ? drawn.times!.findIndex((t) => t.name === time) + 1 : 0
 const [vw, vh] = set.view
 const work = await mkdtemp(path.join(tmpdir(), "pixelkiln-parallax-engines-"))
 const cli = (format: string) =>
@@ -74,7 +81,7 @@ if (!godot) {
   await mkdir(path.join(project, "out"), { recursive: true })
   const exported = path.join(work, "export", "godot")
   for (const file of await readdir(exported)) {
-    if (file.endsWith(".png") || file.endsWith(".tscn")) await writeFile(path.join(project, file), await readFile(path.join(exported, file)))
+    if (file.endsWith(".png") || file.endsWith(".tscn") || file.endsWith(".gdshader")) await writeFile(path.join(project, file), await readFile(path.join(exported, file)))
   }
   const hold = 4
   await writeFile(path.join(project, "project.godot"), [
@@ -100,6 +107,7 @@ if (!godot) {
     `var hold := ${hold}`,
     "var frame := 0",
     "func _ready():",
+    ...(timeIndex ? [`\t$background.get_child(0).get_node("Sprite2D").material.set_shader_parameter("time", ${timeIndex})`] : []),
     "\t_place()",
     "func _place():",
     "\tvar p = positions[min(frame / hold, positions.size() - 1)]",
@@ -130,7 +138,7 @@ if (!godot) {
   await run(godot, ["--headless", "--path", project, "--import"]).catch(() => undefined)
   await run(godot, ["--path", project, "--write-movie", "out/f.png", "--fixed-fps", "30"], { timeout: 180_000 })
   const { stdout } = await run(godot, ["--version"])
-  console.log(`godot ${stdout.trim()}${snap ? ", snap 2D transforms to pixel" : ""}`)
+  console.log(`godot ${stdout.trim()}${snap ? ", snap 2D transforms to pixel" : ""}${time ? `, time ${time} through the shader` : ""}`)
   for (const [i, [x, y]] of positions.entries()) {
     const frame = (i + 1) * hold - 2
     const got = decodePng(await readFile(path.join(project, "out", `f${String(frame).padStart(8, "0")}.png`)))
@@ -151,9 +159,9 @@ if (!rasterizer) {
   console.log("tiled: no tmxrasterizer found; set TMXRASTERIZER")
 } else {
   await cli("tiled")
-  const tmj = path.join(work, "export", "tiled", `${setId}.tmj`)
+  const tmj = path.join(work, "export", "tiled", `${setId}${time ? `.${time}` : ""}.tmj`)
   const map = JSON.parse(await readFile(tmj, "utf8"))
-  console.log("tiled (rendered by tmxrasterizer)")
+  console.log(`tiled (rendered by tmxrasterizer)${time ? `, the ${time} map` : ""}`)
   for (const [camX, camY] of positions) {
     const cx = vw / 2 + camX
     const cy = set.climb + vh / 2 - camY
@@ -183,10 +191,10 @@ if (!rasterizer) {
 
 // LDtk -------------------------------------------------------------------
 await cli("ldtk")
-const ldtkFile = path.join(work, "export", "ldtk", `${setId}.ldtk`)
+const ldtkFile = path.join(work, "export", "ldtk", `${setId}${time ? `.${time}` : ""}.ldtk`)
 const project = JSON.parse(await readFile(ldtkFile, "utf8"))
 const level = project.levels[0]
-console.log(`ldtk (drawn as LDtk ${project.jsonVersion}'s editor draws it)`)
+console.log(`ldtk (drawn as LDtk ${project.jsonVersion}'s editor draws it)${time ? `, the ${time} level` : ""}`)
 for (const [camX, camY] of positions) {
   const cx = vw / 2 + camX
   const cy = level.pxHei - vh / 2 - camY
