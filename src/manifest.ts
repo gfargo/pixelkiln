@@ -2072,6 +2072,8 @@ async function resolveCharacterShape(
       ...(asset.animation.startFrame ? { startFrame: await pose(asset.animation.startFrame, "Animation start frame") } : {}),
       ...(asset.animation.endFrame ? { endFrame: await pose(asset.animation.endFrame, "Animation end frame") } : {}),
       ...(asset.animation.subject ? { subject: asset.animation.subject } : {}),
+      // Set only on a pixminimax loop (the schema refuses it elsewhere), so no other spec's hash moves.
+      ...(asset.animation.initialPose ? { initialPose: asset.animation.initialPose } : {}),
       ...(asset.animation.outline ? { outline: asset.animation.outline } : {}),
       ...(asset.animation.shading ? { shading: asset.animation.shading } : {}),
       ...(asset.animation.detail ? { detail: asset.animation.detail } : {}),
@@ -2136,6 +2138,7 @@ async function resolveObjectProShape(
     for (const [field, value] of Object.entries({
       template: asset.animation.template,
       subject: asset.animation.subject,
+      initialPose: asset.animation.initialPose,
       outline: asset.animation.outline,
       shading: asset.animation.shading,
       detail: asset.animation.detail,
@@ -2150,7 +2153,8 @@ async function resolveObjectProShape(
     if (asset.animation.clean !== undefined) {
       throw new Error(`assets.${assetId}: animation.clean applies to character loops; objectPro loops are not cleaned`)
     }
-    if (asset.animation.mode === "template" || asset.animation.mode === "skeleton-v3") {
+    // /objects/{id}/animations takes v3 and pro; PixMiniMax is wired for character loops only.
+    if (asset.animation.mode === "template" || asset.animation.mode === "skeleton-v3" || asset.animation.mode === "pixminimax") {
       throw new Error(`assets.${assetId}: objectPro animations have no "${asset.animation.mode}" mode; use "v3" or "pro"`)
     }
     const pose = async (rel: string, what: string): Promise<ResolvedReferenceImage> => {

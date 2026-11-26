@@ -109,6 +109,43 @@ describe("adoptCharacters", () => {
     expect(again).toMatchObject({ matched: 0, written: [], unmatched: [] })
   })
 
+  it("records a loop's engine from the manifest, since the record cannot tell pixminimax from v3, and reports a contradiction it can see", async () => {
+    // Measured: PixelLab's record of a custom loop reads "custom-<the action's first words>"
+    // whichever engine drew it, and a template loop its template id.
+    provider.characters.set("char-hero", character("char-hero", {
+      width: 256,
+      height: 256,
+      animationCount: 2,
+      animations: [
+        { groupId: "grp-pole", name: "pole_spin", type: "custom-grabs the vertical pole beside", direction: "south", frames: Array.from({ length: 17 }, (_, i) => `fake://char-hero/animations/anim-p/south/${i}.png`) },
+        { groupId: "grp-walk", name: null, type: "walk", direction: "south", frames: Array.from({ length: 6 }, (_, i) => `fake://char-hero/animations/anim-w/south/${i}.png`) },
+      ],
+    }))
+    const manifestPath = await project({
+      hero: { prompt: "a hero", remoteId: "char-hero" },
+      "hero.pole": { prompt: "grabs the vertical pole beside her and spins", animation: { of: "hero", mode: "pixminimax", frames: 16 }, remoteId: "char-hero#grp-pole" },
+      "hero.stroll": { prompt: "strolling", animation: { of: "hero" }, remoteId: "char-hero#grp-walk" },
+    })
+    const p = await openProject(manifestPath, { env: false })
+    const result = await adoptCharacters(provider, p.specs, p.lock, p.lockPath, { resolve: () => resolveSpecs(p.loaded), noCache: true })
+    expect(result).toMatchObject({ matched: 3, unmatched: [] })
+    expect(result.engineMismatches).toEqual([
+      'cast/hero.stroll: declared mode "v3", but the account\'s record reads "walk", a template loop',
+    ])
+    const fresh = await openProject(manifestPath, { env: false })
+    const pole = fresh.lock.entries["cast/hero.pole"]!
+    expect(pole.objectId).toBe("char-hero#grp-pole")
+    expect(pole.providerMetadata.fake).toMatchObject({
+      frameSet: { count: 17 },
+      character: { mode: "pixminimax", modeFrom: "manifest", animationType: "custom-grabs the vertical pole beside", animationGroupId: "grp-pole" },
+    })
+    // Adopted under the pixminimax spec, so plan leaves it alone instead of redrawing it with another engine.
+    const spec = fresh.specs.find((s) => s.assetId === "hero.pole")!
+    expect(pole.specHash).toBe(spec.specHash)
+    const plan = await fresh.plan()
+    expect(plan.items.find((i) => i.key === "cast/hero.pole")!.state).toBe("ok")
+  })
+
   it("matches a base by the bytes of its south file, reports what it cannot match, and lists what is left", async () => {
     provider.characters.set("char-a", character("char-a", { name: "a" }))
     provider.characters.set("char-b", character("char-b", { name: "b", groupId: "grp-b" }))

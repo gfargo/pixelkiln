@@ -327,6 +327,61 @@ at submit time, like a base's `reference`.
 }
 ```
 
+### PixMiniMax loops
+
+`mode: "pixminimax"` draws the loop from the prompt on PixelLab's PixMiniMax
+engine (beta, every plan), through `/animate-character` like a v3 loop. It
+takes a multiple of 4 `frames` from 4 to 40 (default 8) at any size up to
+256px, and the same `startFrame`, `endFrame`, `keepFirstFrame` and
+`enhancePrompt` as v3. Two captions describe the start frame: `subject`
+(sent as `subject_description`, one noun phrase up to 300 characters) and
+`initialPose` (pixminimax only, up to 300 characters). PixelLab reads
+either off the image when it is left out, and can decline a job it cannot
+caption; fill them in if that happens. Template style hints, `template`
+and `motionFrom` are refused, and so is the mode on an `objectPro`.
+
+It is the engine for a character moving around a prop. PixelLab cannot
+hold a prop in a loop, so the prop is drawn into `startFrame`, and
+`endFrame` pins the loop back to it. Measured on a 256px side-view
+character beside a full-height pole: a v3 loop (8 generations) bent the
+pole into a stick she carried; a hand-posed `skeleton-v3` loop clamped her
+feet and cropped her head; PixMiniMax at 16 frames with the same start and
+end frame turned her a full 360° around a straight pole and looped cleanly,
+for 2 generations.
+
+```json
+"mira.pole_spin": {
+  "prompt": "grabs the vertical pole beside her and swings all the way around it",
+  "animation": {
+    "of": "mira", "direction": "south", "mode": "pixminimax", "frames": 16,
+    "startFrame": "poses/mira-at-pole.png", "endFrame": "poses/mira-at-pole.png",
+    "subject": "a young woman in a hoodie", "initialPose": "standing beside the pole, one hand on it"
+  }
+}
+```
+
+**Cost** follows PixelLab's published table. The model works on an
+upscaled canvas (the longer side ×4 up to 64px, ×2 up to 128px, ×1 above),
+so 64, 128 and 256px price the same, and there 4–8 frames cost 1, 12–16
+cost 2, 20–24 cost 3, 28 costs 4, 32–36 cost 5 and 40 costs 6, the
+ceiling. Just past a step is cheaper: 132px stays at 1 up to 28 frames.
+`plan` prices the dearer of the base's size and the start frame's. The
+`animate-pixminimax` revision uses the same table. The 256px, 16-frame
+figure is a bill taken through PixelLab's MCP; PixelKiln itself has not yet
+sent this request, so treat the plan as unmeasured
+([validation ledger](./ENDPOINTS.md#validation-ledger)). `keepFirstFrame`
+works as on v3: 16 frames land as 17 files.
+
+**Adopting one.** PixelLab's character record does not say which engine
+drew a loop (a PixMiniMax loop and a v3 loop both read
+`custom-<the action's first words>`), so `adopt` takes the engine from the
+manifest. Declare a loop made elsewhere with PixMiniMax as
+`"mode": "pixminimax"` and its `remoteId` (`<character>#<group>`); the lock
+records `mode: "pixminimax"` with `modeFrom: "manifest"`, and the entry
+carries the pixminimax spec's identity, so a later `gen` does not redraw it
+with v3. `adopt` reports a template loop declared as a text loop, or the
+reverse, the one mix-up the record shows.
+
 ### Cleaning a loop's frames
 
 An animation model leaves ghost pixels around a moving figure: pale arcs

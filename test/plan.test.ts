@@ -81,29 +81,33 @@ describe("cost model", () => {
     for (const [size, count] of tiers) expect(uiElementCandidateCount(size)).toBe(count)
   })
 
-  it("prices animate-pixminimax at or above every published point, monotonic in frames and canvas", () => {
-    // PixelLab's MCP table (64x64 at 4/8/16/40 frames = 1/1/2/6; 80x80 at 8 = 1; 32x32 at 4 = 1).
-    const published: Array<[number, number, number]> = [[64, 4, 1], [64, 8, 1], [64, 16, 2], [64, 40, 6], [80, 8, 1], [32, 4, 1]]
-    for (const [side, frames, billed] of published) {
-      expect(pixMiniMaxCost(side, side, frames)).toBeGreaterThanOrEqual(billed)
+  it("prices PixMiniMax on PixelLab's upscaled-canvas table, exact at every published and billed point", () => {
+    // PixelLab's published table at 64, 128 and 256px (the upscaled canvas is the same 256px):
+    // 4-8 frames = 1, 12-16 = 2, 20-24 = 3, 28 = 4, 32-36 = 5, 40 = 6.
+    const table = [1, 1, 2, 2, 3, 3, 4, 5, 5, 6]
+    for (const side of [64, 128, 256]) {
+      expect([4, 8, 12, 16, 20, 24, 28, 32, 36, 40].map((f) => pixMiniMaxCost(side, side, f))).toEqual(table)
     }
-    // The 64px points are exact; only 80x80 reads over.
-    expect([4, 8, 16, 40].map((f) => pixMiniMaxCost(64, 64, f))).toEqual([1, 1, 2, 6])
-    expect(pixMiniMaxCost(80, 80, 8)).toBe(2)
+    // Published points off the step sizes: 80x80 at 8 = 1, 32x32 at 4 = 1,
+    // 32px and 132px stay 1 up to 28 frames, 132x132 at 40 = 2.
+    expect(pixMiniMaxCost(80, 80, 8)).toBe(1)
+    expect(pixMiniMaxCost(32, 32, 4)).toBe(1)
+    expect(pixMiniMaxCost(32, 32, 28)).toBe(1)
+    expect(pixMiniMaxCost(132, 132, 28)).toBe(1)
+    expect(pixMiniMaxCost(132, 132, 40)).toBe(2)
+    // Bills: 64x64 at 8 and 16 frames (revision), 256px at 16 frames (a character loop).
+    expect(pixMiniMaxCost(64, 64, 8)).toBe(1)
+    expect(pixMiniMaxCost(64, 64, 16)).toBe(2)
+    expect(pixMiniMaxCost(256, 256, 16)).toBe(2)
+    // A non-square canvas reads as its bounding square; 6 is the ceiling.
+    expect(pixMiniMaxCost(64, 256, 40)).toBe(6)
     expect(pixMiniMaxCost(64, 64, 8, true)).toBeCloseTo(1.05)
     let previous = 0
     for (let frames = 4; frames <= 40; frames += 4) {
-      const cost = pixMiniMaxCost(64, 64, frames)
+      const cost = pixMiniMaxCost(100, 100, frames)
       expect(cost).toBeGreaterThanOrEqual(previous)
       previous = cost
     }
-    previous = 0
-    for (let side = 16; side <= 256; side += 16) {
-      const cost = pixMiniMaxCost(side, side, 16)
-      expect(cost).toBeGreaterThanOrEqual(previous)
-      previous = cost
-    }
-    expect(pixMiniMaxCost(256, 256, 40)).toBe(106)
   })
 })
 

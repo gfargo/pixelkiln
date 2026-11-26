@@ -1940,8 +1940,11 @@ export class PixelLabClient {
    * One animation of one character. Template mode costs a generation per
    * direction and fixes the frame count; skeleton-v3 poses the same template
    * with the skeleton video model (2-4 generations per direction); v3 draws
-   * `frameCount` frames from the action text; pro is the sequential engine.
-   * One job per direction.
+   * `frameCount` frames from the action text; pixminimax does the same on
+   * PixelLab's PixMiniMax engine (a multiple of 4 frames up to 40, the same
+   * start/end frames, `keep_first_frame` and `enhance_prompt`, plus its own
+   * `subject_description` and `initial_pose` captions); pro is the
+   * sequential engine. One job per direction.
    *
    * Every mode but skeleton-v3 goes to `/animate-character`, the path whose
    * shapes were measured live. skeleton-v3 is documented only on
@@ -1959,7 +1962,7 @@ export class PixelLabClient {
     animationName: string
     actionDescription?: string
     template?: string
-    mode: "template" | "skeleton-v3" | "v3" | "pro"
+    mode: "template" | "skeleton-v3" | "v3" | "pixminimax" | "pro"
     frameCount?: number
     keepFirstFrame?: boolean
     directions: string[]
@@ -1969,21 +1972,26 @@ export class PixelLabClient {
     isometric?: boolean
     /** skeleton-v3 only: add these directions to this existing animation instead of making a new one. */
     animationGroupId?: string
-    /** v3 only: a pose to start from and a pose to reach. */
+    /** v3 and pixminimax: a pose to start from and a pose to reach. */
     startFrame?: Base64Image
     endFrame?: Base64Image
     /** What is being animated, over the character's own description. */
     description?: string
+    /** pixminimax only: one noun phrase for what the start frame shows, and the pose it is in. Read off the image when omitted. */
+    subjectDescription?: string
+    initialPose?: string
     /** Template mode only. */
     outline?: string
     shading?: string
     detail?: string
-    /** v3 only. */
+    /** v3 and pixminimax. */
     enhancePrompt?: boolean
     paletteSwatchBase64?: string
   }): Promise<{ background_job_ids: string[]; directions: string[]; animation_group_id?: string | null; usage?: PixelLabUsage | null }> {
     const encode = (image: Base64Image) => ({ type: "base64", base64: image.base64, format: image.format })
     const endpoint = args.mode === "skeleton-v3" ? "/characters/animations" : "/animate-character"
+    // The two text engines that take start/end frames, keep_first_frame and enhance_prompt.
+    const custom = args.mode === "v3" || args.mode === "pixminimax"
     const raw = await this.request<unknown>(endpoint, {
       method: "POST",
       body: JSON.stringify({
@@ -1995,12 +2003,14 @@ export class PixelLabClient {
         ...(args.template ? { template_animation_id: args.template } : {}),
         ...(args.actionDescription ? { action_description: args.actionDescription } : {}),
         ...(args.description ? { description: args.description } : {}),
-        // A template fixes its own frame count; v3 and a skeleton-v3 sentence take one.
-        ...((args.mode === "v3" || (args.mode === "skeleton-v3" && !args.template)) && args.frameCount ? { frame_count: args.frameCount } : {}),
-        ...(args.mode === "v3" && args.keepFirstFrame === false ? { keep_first_frame: false } : {}),
-        ...(args.mode === "v3" && args.startFrame ? { custom_start_frame: encode(args.startFrame) } : {}),
-        ...(args.mode === "v3" && args.endFrame ? { end_frame: encode(args.endFrame) } : {}),
-        ...(args.mode === "v3" && args.enhancePrompt ? { enhance_prompt: true } : {}),
+        // A template fixes its own frame count; v3, pixminimax and a skeleton-v3 sentence take one.
+        ...((custom || (args.mode === "skeleton-v3" && !args.template)) && args.frameCount ? { frame_count: args.frameCount } : {}),
+        ...(custom && args.keepFirstFrame === false ? { keep_first_frame: false } : {}),
+        ...(custom && args.startFrame ? { custom_start_frame: encode(args.startFrame) } : {}),
+        ...(custom && args.endFrame ? { end_frame: encode(args.endFrame) } : {}),
+        ...(custom && args.enhancePrompt ? { enhance_prompt: true } : {}),
+        ...(args.mode === "pixminimax" && args.subjectDescription ? { subject_description: args.subjectDescription } : {}),
+        ...(args.mode === "pixminimax" && args.initialPose ? { initial_pose: args.initialPose } : {}),
         ...(args.mode === "template" && args.textGuidanceScale !== undefined ? { text_guidance_scale: args.textGuidanceScale } : {}),
         ...(args.mode === "template" && args.outline ? { outline: args.outline } : {}),
         ...(args.mode === "template" && args.shading ? { shading: args.shading } : {}),

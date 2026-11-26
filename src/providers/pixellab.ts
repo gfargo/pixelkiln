@@ -155,7 +155,10 @@ function billedFromUsage(usage: PixelLabUsage | null | undefined): BilledAmount 
  * the floor, so this reports the tier the canvas lands in (a 16px portrait billed exactly the then 20-generation
  * floor live; docs/ENDPOINTS.md, "Characters, measured"). A template
  * animation is 1 per direction; a v3 animation scales with canvas and
- * frames, `ceil(w*h*frames / 65536)`; a pro animation is the same Pro tier.
+ * frames, `ceil(w*h*frames / 65536)`; a pixminimax animation follows
+ * PixelLab's published PixMiniMax table through `pixMiniMaxCost`, the same
+ * table the `animate-pixminimax` revision is priced by; a pro animation is
+ * the same Pro tier.
  */
 export function characterCost(spec: ResolvedSpec): number {
   const character = spec.character
@@ -170,6 +173,20 @@ export function characterCost(spec: ResolvedSpec): number {
     // it keeps the same ceiling.
     if (animation.mode === "skeleton-v3") return 4
     if (animation.mode === "v3") return Math.max(1, Math.ceil((px * animation.frames) / 65536))
+    // PixelLab prices this route and `/animate-pixminimax` by the same
+    // upscaled-canvas table. Not yet billed through PixelKiln on this route;
+    // a 256px, 16-frame loop made through PixelLab's MCP cost 2, which the
+    // table reads exactly (docs/ENDPOINTS.md).
+    if (animation.mode === "pixminimax") {
+      // The clip is drawn on the start frame's canvas when one is given. The
+      // table is not monotonic in size (just above a step is cheaper), so the
+      // dearer of the two readings keeps --budget a ceiling.
+      const start = animation.startFrame
+      return Math.max(
+        pixMiniMaxCost(spec.width, spec.height, animation.frames, animation.enhancePrompt),
+        start ? pixMiniMaxCost(start.width, start.height, animation.frames, animation.enhancePrompt) : 0,
+      )
+    }
     return proCharacterTierCost(spec.width, spec.height)
   }
   if (character.kind === "state" || character.kind === "portrait") return proCharacterTierCost(spec.width, spec.height)
@@ -1283,7 +1300,7 @@ export class PixelLabProvider implements Provider {
       const { startFrame, endFrame } = character.animation
       for (const [name, image] of [["start frame", startFrame], ["end frame", endFrame]] as const) {
         if (image && (image.width > 256 || image.height > 256)) {
-          throw new Error(`${label}: ${name} is ${image.width}x${image.height}; PixelLab v3 takes up to 256px`)
+          throw new Error(`${label}: ${name} is ${image.width}x${image.height}; PixelLab ${character.animation.mode} takes up to 256px`)
         }
       }
       if (endFrame) {
@@ -1421,6 +1438,9 @@ export class PixelLabProvider implements Provider {
           `${spec.styleId}/${spec.assetId} needs a prompt describing the motion, or a template` +
             (sentence ? ' (a skeleton-v3 loop with no template animates its prompt, e.g. "swinging a sword in a wide arc")' : ""),
         )
+      }
+      if (character.animation.mode === "pixminimax" && (character.animation.frames % 4 !== 0 || character.animation.frames < 4 || character.animation.frames > 40)) {
+        throw new Error(`${spec.styleId}/${spec.assetId}: a pixminimax loop takes a multiple of 4 frames, 4 to 40; ${character.animation.frames} is not one`)
       }
       if (sentence && (character.animation.frames < 3 || character.animation.frames > 15)) {
         throw new Error(`${spec.styleId}/${spec.assetId}: a skeleton-v3 loop from a sentence takes 3 to 15 frames; ${character.animation.frames} is out of range`)
@@ -1781,7 +1801,11 @@ export class PixelLabProvider implements Provider {
       isometric: character.isometric,
       startFrame: animation.startFrame ? readPose(spec, "start frame", animation.startFrame) : undefined,
       endFrame: animation.endFrame ? readPose(spec, "end frame", animation.endFrame) : undefined,
-      description: animation.subject,
+      // PixMiniMax captions its start frame with its own two fields; the
+      // other engines take `subject` as the general `description`.
+      ...(animation.mode === "pixminimax"
+        ? { subjectDescription: animation.subject, initialPose: animation.initialPose }
+        : { description: animation.subject }),
       outline: animation.outline,
       shading: animation.shading,
       detail: animation.detail,

@@ -225,9 +225,9 @@ describe("character controls", () => {
     expect(plain.find((s) => s.assetId === "mira.leap")!.specHash).toBe("f9d73e753105691f1fdbff7a1f8fe911b820e93eeb23da7b81cd7bc2977e5d3d")
 
     const refused = async (animation: Record<string, unknown>, style: Record<string, unknown> = {}) => resolveSpecs(await loadManifest(await loop(animation, style)))
-    await expect(refused({ template: "walk", startFrame: "start.png" })).rejects.toThrow(/startFrame is for v3 loops; a template loop starts from the character's rotation/)
-    await expect(refused({ mode: "pro", endFrame: "end.png" })).rejects.toThrow(/endFrame is for v3 loops; a pro loop takes neither/)
-    await expect(refused({ template: "walk", enhancePrompt: true })).rejects.toThrow(/enhancePrompt is for v3 loops/)
+    await expect(refused({ template: "walk", startFrame: "start.png" })).rejects.toThrow(/startFrame is for v3 and pixminimax loops; a template loop starts from the character's rotation/)
+    await expect(refused({ mode: "pro", endFrame: "end.png" })).rejects.toThrow(/endFrame is for v3 and pixminimax loops; a pro loop takes neither/)
+    await expect(refused({ template: "walk", enhancePrompt: true })).rejects.toThrow(/enhancePrompt is for v3 and pixminimax loops/)
     await expect(refused({ outline: "lineless" })).rejects.toThrow(/outline overrides apply to template loops only/)
     await expect(refused({ startFrame: "start.png", endFrame: "end64.png" })).rejects.toThrow(/end frame is 64x64 but the start frame is 92x92/)
     await expect(refused({ startFrame: "big.png" })).rejects.toThrow(/start frame is 300x300; PixelLab v3 takes up to 256px/)
@@ -469,7 +469,7 @@ describe("skeleton-v3 loops from a sentence", () => {
     expect(issues({ mode: "skeleton-v3", frames: 16 })).toEqual(["a skeleton-v3 loop from a sentence takes 3 to 15 frames"])
     // The even 4 to 16 rule is unchanged for everything else.
     expect(issues({ frames: 7 })).toEqual(["frames must be even"])
-    expect(issues({ frames: 2 })).toContain("frames must be 4 to 16")
+    expect(issues({ frames: 2 })).toContain("frames must be 4 to 16 (a pixminimax loop takes up to 40)")
     // A pro loop is checked against its canvas instead (objects) or sends no count (characters).
     expect(issues({ mode: "pro", frames: 9 })).toEqual([])
     expect(issues({ frames: 16 })).toEqual([])
@@ -484,9 +484,9 @@ describe("skeleton-v3 loops from a sentence", () => {
       const result = CharacterAnimationSchema.safeParse({ of: "mira", mode: "skeleton-v3", ...animation })
       return result.success ? [] : result.error.issues.map((issue) => issue.message)
     }
-    expect(issues({ startFrame: "a.png" })).toEqual(["startFrame is for v3 loops; a skeleton-v3 loop starts from the character's rotation and animates its sentence"])
-    expect(issues({ endFrame: "a.png" })[0]).toMatch(/endFrame is for v3 loops/)
-    expect(issues({ enhancePrompt: true })[0]).toMatch(/enhancePrompt is for v3 loops/)
+    expect(issues({ startFrame: "a.png" })).toEqual(["startFrame is for v3 and pixminimax loops; a skeleton-v3 loop starts from the character's rotation and animates its sentence"])
+    expect(issues({ endFrame: "a.png" })[0]).toMatch(/endFrame is for v3 and pixminimax loops/)
+    expect(issues({ enhancePrompt: true })[0]).toMatch(/enhancePrompt is for v3 and pixminimax loops/)
     expect(issues({ outline: "lineless" })).toEqual(["outline overrides apply to template loops only"])
     expect(issues({ subject: "a frog" })[0]).toMatch(/subject does not apply to a skeleton-v3 loop from a sentence/)
   })
@@ -640,6 +640,119 @@ describe("skeleton-v3 loops from a sentence", () => {
   })
 })
 
+describe("pixminimax loops", () => {
+  const issues = async (animation: Record<string, unknown>) => {
+    const { CharacterAnimationSchema } = await import("../src/types.ts")
+    const result = CharacterAnimationSchema.safeParse({ of: "mira", mode: "pixminimax", ...animation })
+    return result.success ? [] : result.error.issues.map((issue) => issue.message)
+  }
+
+  it("take a multiple of 4 frames up to 40, the v3 pose frames, and PixMiniMax's two captions", async () => {
+    for (const frames of [4, 8, 16, 28, 40]) expect(await issues({ frames })).toEqual([])
+    expect(await issues({ frames: 6 })).toEqual(["a pixminimax loop takes a multiple of 4 frames, 4 to 40"])
+    expect((await issues({ frames: 44 }))[0]).toMatch(/less than or equal to 40/)
+    expect(await issues({ startFrame: "a.png", endFrame: "a.png", subject: "a woman beside a pole", initialPose: "one hand on the pole", enhancePrompt: true, keepFirstFrame: false })).toEqual([])
+    expect(await issues({ subject: "x".repeat(301) })).toEqual(["a pixminimax loop's subject is one noun phrase of up to 300 characters"])
+    expect(await issues({ template: "walk" })).toContain('a template animation cannot use mode "pixminimax"; use "template" or "skeleton-v3"')
+    expect(await issues({ outline: "lineless" })).toEqual(["outline overrides apply to template loops only"])
+    // Every other loop keeps its own count and refuses the pose caption.
+    const { CharacterAnimationSchema } = await import("../src/types.ts")
+    const other = (animation: Record<string, unknown>) => {
+      const result = CharacterAnimationSchema.safeParse({ of: "mira", ...animation })
+      return result.success ? [] : result.error.issues.map((issue) => issue.message)
+    }
+    expect(other({ frames: 20 })).toEqual(["frames must be 4 to 16 (a pixminimax loop takes up to 40)"])
+    expect(other({ mode: "pro", frames: 20 })).toEqual(["frames must be 16 or fewer"])
+    expect(other({ initialPose: "standing" })).toEqual(["initialPose is for pixminimax loops; PixelLab's v3 engine takes no pose caption"])
+  })
+
+  it("resolve their captions and pose frames into the identity, and leave every other loop's hash alone", async () => {
+    await writeFile(path.join(dir, "start.png"), px(256, 10))
+    const loop = (animation: Record<string, unknown>) =>
+      writeManifest({ style: { mode: "v3", size: 256 }, assets: { mira: { prompt: "mira" }, "mira.pole": { prompt: "walks around the pole", animation: { of: "mira", ...animation } } } })
+    const resolveLoop = async (animation: Record<string, unknown>) =>
+      (await resolveSpecs(await loadManifest(await loop(animation)))).find((s) => s.assetId === "mira.pole")!
+    const pole = await resolveLoop({ mode: "pixminimax", frames: 16, startFrame: "start.png", endFrame: "start.png", subject: "a woman", initialPose: "beside the pole" })
+    expect(pole.character!.animation).toMatchObject({
+      mode: "pixminimax", frames: 16, subject: "a woman", initialPose: "beside the pole",
+      startFrame: { width: 256, height: 256 }, endFrame: { width: 256, height: 256 },
+    })
+    // Measured through PixelLab's MCP: 16 frames at 256px billed 2.
+    expect(pole.cost).toBe(2)
+    const v3 = await resolveLoop({ frames: 16, startFrame: "start.png", endFrame: "start.png", subject: "a woman" })
+    expect(v3.specHash).not.toBe(pole.specHash)
+    expect(v3.character!.animation).not.toHaveProperty("initialPose")
+    const posed = await resolveLoop({ mode: "pixminimax", frames: 16, startFrame: "start.png", endFrame: "start.png", subject: "a woman", initialPose: "holding the pole" })
+    expect(posed.specHash).not.toBe(pole.specHash)
+    // The template loop pinned against v0.43.0 above keeps that hash.
+    const plain = await resolveSpecs(await loadManifest(await writeManifest({ assets: { mira: { prompt: "mira" }, "mira.leap": { prompt: "leaping", animation: { of: "mira", template: "walk" } } } })))
+    expect(plain.find((s) => s.assetId === "mira.leap")!.specHash).toBe("f9d73e753105691f1fdbff7a1f8fe911b820e93eeb23da7b81cd7bc2977e5d3d")
+  })
+
+  it("need a prompt, and are refused on an object", async () => {
+    const loops = (prompt: string) => writeManifest({ assets: { mira: { prompt: "mira" }, "mira.pole": { prompt, animation: { of: "mira", mode: "pixminimax" } } } })
+    await expect(resolveSpecs(await loadManifest(await loops("")))).rejects.toThrow(/needs a prompt describing the motion/)
+    await expect(
+      resolveSpecs(await loadManifest(await writeManifest({
+        style: { generator: "objectPro" },
+        assets: { crate: { prompt: "a crate" }, "crate.spin": { prompt: "spinning", animation: { of: "crate", mode: "pixminimax", direction: "south" } } },
+      }))),
+    ).rejects.toThrow(/objectPro animations have no "pixminimax" mode/)
+  })
+
+  it("submit through the provider with subject as subject_description, not description", async () => {
+    await writeFile(path.join(dir, "start.png"), px(92, 10))
+    const file = await writeManifest({
+      assets: {
+        mira: { prompt: "mira" },
+        "mira.pole": { prompt: "walks around the pole", animation: { of: "mira", mode: "pixminimax", frames: 16, startFrame: "start.png", endFrame: "start.png", subject: "a woman", initialPose: "beside the pole" } },
+      },
+    })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.complete("char-1", 10)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    expect(client.animated[0]).toMatchObject({
+      mode: "pixminimax", frameCount: 16, keepFirstFrame: true, subjectDescription: "a woman", initialPose: "beside the pole",
+      startFrame: { base64: px(92, 10).toString("base64"), format: "png" },
+      endFrame: { base64: px(92, 10).toString("base64"), format: "png" },
+    })
+    expect(client.animated[0]!.description).toBeUndefined()
+    expect(p.lock.entries["cast/mira.pole"]!.providerMetadata.pixellab).toMatchObject({ character: { mode: "pixminimax" } })
+  })
+
+  it("go to /animate-character with PixMiniMax's fields, which no other mode sends", async () => {
+    const sent: Record<string, unknown>[] = []
+    const paths: string[] = []
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      paths.push(new URL(String(input)).pathname)
+      sent.push(init?.body ? JSON.parse(String(init.body)) : {})
+      return new Response(JSON.stringify({ background_job_ids: ["job-p"], directions: ["south"] }), { status: 200 })
+    }))
+    const client = new PixelLabClient("key")
+    const start = { base64: "U1RBUlQ=", format: "png" as const }
+    await client.animateCharacter({
+      characterId: "c", animationName: "n", actionDescription: "walks around the pole", mode: "pixminimax", directions: ["south"],
+      frameCount: 16, keepFirstFrame: false, startFrame: start, endFrame: start, subjectDescription: "a woman", initialPose: "beside the pole", enhancePrompt: true,
+    })
+    await client.animateCharacter({ characterId: "c", animationName: "n", actionDescription: "leap", mode: "v3", directions: ["south"], subjectDescription: "a woman", initialPose: "crouched" })
+    expect(paths[0]).toBe("/v2/animate-character")
+    expect(sent[0]).toEqual({
+      character_id: "c", animation_name: "n", mode: "pixminimax", directions: ["south"], action_description: "walks around the pole",
+      frame_count: 16, keep_first_frame: false,
+      custom_start_frame: { type: "base64", base64: "U1RBUlQ=", format: "png" }, end_frame: { type: "base64", base64: "U1RBUlQ=", format: "png" },
+      enhance_prompt: true, subject_description: "a woman", initial_pose: "beside the pole",
+    })
+    expect(sent[1]).not.toHaveProperty("subject_description")
+    expect(sent[1]).not.toHaveProperty("initial_pose")
+  })
+})
+
 describe("characterCost", () => {
   const spec = (character: Partial<ResolvedSpec["character"]>, size = 64) =>
     ({ width: size, height: size, character: { kind: "base", mode: "standard", directions: 8, template: "mannequin", ...character } } as unknown as ResolvedSpec)
@@ -689,6 +802,13 @@ describe("characterCost", () => {
     expect(characterCost(anim("v3", 160, 16))).toBe(7)
     expect(characterCost(anim("pro", 64))).toBe(10)
     expect(characterCost(anim("pro", 128))).toBe(25)
+    // PixMiniMax: PixelLab's upscaled-canvas table, 1 for any 4- or 8-frame clip, 6 at most.
+    const pmm = (size: number, frames: number) =>
+      spec({ kind: "animation", animation: { mode: "pixminimax", direction: "south", frames, fps: 8, keepFirstFrame: true } }, size)
+    expect(characterCost(pmm(256, 8))).toBe(1)
+    expect(characterCost(pmm(256, 16))).toBe(2)
+    expect(characterCost(pmm(64, 40))).toBe(6)
+    expect(characterCost(pmm(132, 28))).toBe(1)
   })
 
   it("is what plan reports before any spend", async () => {
