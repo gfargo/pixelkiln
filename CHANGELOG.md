@@ -1,3 +1,10 @@
+# [0.146.0](https://github.com/gfargo/pixelkiln/compare/v0.145.0...v0.146.0) (2026-11-26)
+
+
+### Features
+
+* **recipes:** bundle the ComfyUI pose frame-set recipe ([e78c4bd](https://github.com/gfargo/pixelkiln/commit/e78c4bd698af6a17244d3109cf978fe8ef8cf6e0)), closes [#79](https://github.com/gfargo/pixelkiln/issues/79)
+
 # [0.145.0](https://github.com/gfargo/pixelkiln/compare/v0.144.2...v0.145.0) (2026-11-26)
 
 
