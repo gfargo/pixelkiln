@@ -27,7 +27,7 @@ import {
 import { resolveProject, type WorkspaceProject } from "../../workspace.ts"
 import { runSalvage as runSalvageServer } from "../../pick/salvage-server.ts"
 import { openProject, openAccountProject, providerCache, specsByRecordedProvider, accountProviderId, requireCompleteWorkspaceClaims } from "../project.ts"
-import { log, confirm } from "../io.ts"
+import { log, log as logLine, confirm } from "../io.ts"
 import type { Args } from "../args.ts"
 
 export async function runBalance(args: Args): Promise<void> {
@@ -82,18 +82,25 @@ export async function runAdopt(args: Args): Promise<void> {
   const { loaded, specs, lock, accountProvider } = await openAccountProject(args)
   const providerFor = providerCache("online")
   const provider = providerFor(accountProvider)
+  const dryRun = args.dryRun
+  // --dry-run --json keeps stdout for the JSON report; every human line goes to stderr.
+  const log = dryRun && args.json ? (msg = "") => console.error(msg) : logLine
+  const verb = dryRun ? "would adopt" : "adopted"
   log(`\n  Reconciling account objects against files already on disk…`)
-  const res = await adopt(provider, specs.filter((spec) => spec.generator !== "character"), lock, args.lock, { onProgress: log })
-  log(`\n  scanned ${res.scanned} remote object(s), adopted ${res.matched}`)
+  const res = await adopt(provider, specs.filter((spec) => spec.generator !== "character"), lock, args.lock, { onProgress: log, dryRun })
+  log(`\n  scanned ${res.scanned} remote object(s), ${verb} ${res.matched}`)
+  let characters: Awaited<ReturnType<typeof adoptCharacters>> | null = null
   if (specs.some((spec) => spec.character) && provider.listCharacters) {
     log(`\n  Reconciling account characters against the manifest's character assets…`)
-    const characters = await adoptCharacters(provider, specs, lock, args.lock, {
+    characters = await adoptCharacters(provider, specs, lock, args.lock, {
       onProgress: log,
+      dryRun,
       resolve: async () => (await resolveSpecs(loaded, { styles: args.styles, assets: args.assets }))
         .filter((spec) => spec.provider === accountProvider),
     })
-    log(`\n  scanned ${characters.scanned} character(s), adopted ${characters.matched}`)
-    if (characters.written.length) log(`  wrote ${characters.written.length} file(s) that were not on disk`)
+    log(`\n  scanned ${characters.scanned} character(s), ${verb} ${characters.matched}`)
+    if (characters.written.length) log(`  ${dryRun ? "would write" : "wrote"} ${characters.written.length} file(s) that were not on disk`)
+    if (dryRun) for (const file of characters.written) log(`    ${file}`)
     for (const file of characters.differing) log(`  differs from the account, left alone: ${file}`)
     if (characters.unmatched.length) {
       log(`\n  character assets not matched (${characters.unmatched.length}):`)
@@ -125,6 +132,26 @@ export async function runAdopt(args: Args): Promise<void> {
         `  it. Run adopt from each project first, then \`pixelkiln salvage\` to\n` +
         `  triage what is left over.`,
     )
+  }
+  if (dryRun) {
+    if (args.tag) log(`\n  --tag skipped: --dry-run pushes nothing upstream`)
+    if (args.writePrompts) log(`  --write-prompts skipped: --dry-run leaves the manifest alone`)
+    log(`\n  dry run: nothing written to disk, lockfile untouched (${args.lock})`)
+    if (args.json) {
+      console.log(JSON.stringify({
+        dryRun: true,
+        objects: { scanned: res.scanned, matched: res.matched, ambiguous: res.ambiguous, unmatchedLocal: res.unmatchedLocal, unmatchedRemote: res.unmatchedRemote.length },
+        characters: characters && {
+          scanned: characters.scanned,
+          matched: characters.matched,
+          wouldWrite: characters.written,
+          differing: characters.differing,
+          unmatched: characters.unmatched,
+          remaining: characters.remaining.map((c) => c.id),
+        },
+      }, null, 2))
+    }
+    return
   }
   if (args.tag) {
     const n = await tagAdopted(provider, specs, lock, { onProgress: log })
