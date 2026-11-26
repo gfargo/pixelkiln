@@ -136,10 +136,10 @@ npx pixelkiln plan
 npx pixelkiln gen --budget 120
 ```
 
-`gen` submits, polls, opens the candidate-review sheet when necessary,
-downloads validated output, populates the recovery cache, and updates
-`pixelkiln.lock.json`. Commit the manifest, lockfile, generated art, and any
-derived artifact companions. Do not commit credentials or `.pixelkiln/`.
+`gen` submits, polls, opens the candidate-review sheet when necessary (or
+takes each first candidate with `--accept-first`), downloads validated output,
+populates the recovery cache, and updates `pixelkiln.lock.json`. Commit the
+manifest, lockfile, art, and derived companions, never credentials or `.pixelkiln/`.
 
 For an existing art tree:
 
