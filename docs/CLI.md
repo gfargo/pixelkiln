@@ -1306,7 +1306,8 @@ See [derived artifacts](./ARTIFACTS.md) and [tiles](./TILES.md).
 
 Preview or export a set from the manifest's `parallax` section: layers far to
 near, each a generated asset, a finished file, sky bands, or a run of
-silhouettes laid by seed, with an optional loop, dithered foot and tint. Offline;
+silhouettes laid by seed, with an optional loop, dithered foot and tint, and
+other times of day by palette swap. Offline;
 spends nothing.
 
 ```bash
@@ -1319,7 +1320,9 @@ pixelkiln parallax export dusk --format godot --out game/bg
 Without a set id the command runs every set, and `--out` then needs one. Output goes to
 `parallax/<set>/` beside the manifest, or `--out`; each export format gets its
 own folder with the layer pictures it uses and a `.pixelkiln.json` provenance
-record, which `--force` overwrites. The command prints each layer's size,
+record, which `--force` overwrites. A set with `times` gets a preview strip per
+time, a Godot shader that switches between them, and a Tiled map and LDtk
+project per time. The command prints each layer's size,
 position, speeds and seam ratio, and warns about a looping layer whose join is
 more than twice as rough as its inside, a backdrop that does not reach the
 camera's far end or the top of the climb, and (on export) LDtk tiles past the

@@ -2548,6 +2548,41 @@
                   }
                 ]
               },
+              "times": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "palette": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^#?[0-9a-f]{6}$"
+                          },
+                          "minItems": 2,
+                          "maxItems": 256
+                        }
+                      ]
+                    },
+                    "cool": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "palette"
+                  ],
+                  "additionalProperties": false
+                },
+                "propertyNames": {
+                  "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,31}$"
+                }
+              },
               "layers": {
                 "type": "array",
                 "items": {

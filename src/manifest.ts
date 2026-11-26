@@ -339,6 +339,12 @@ async function loadExpanded(abs: string, expansion: Expansion): Promise<LoadedMa
       if (!style) unknownReferences.push(`parallax.${setId}.palette: unknown style "${set.palette}"`)
       else if (style.palette.length < 2) unknownReferences.push(`parallax.${setId}.palette: style "${set.palette}" has no palette`)
     }
+    for (const [time, spec] of Object.entries(set.times ?? {})) {
+      if (typeof spec.palette !== "string") continue
+      const style = parsed.data.styles[spec.palette]
+      if (!style) unknownReferences.push(`parallax.${setId}.times.${time}.palette: unknown style "${spec.palette}"`)
+      else if (style.palette.length < 2) unknownReferences.push(`parallax.${setId}.times.${time}.palette: style "${spec.palette}" has no palette`)
+    }
     set.layers.forEach((layer, index) => {
       const at = `parallax.${setId}.layers.${index}`
       const checkAsset = (where: string, ref: { asset?: string; style?: string }) => {

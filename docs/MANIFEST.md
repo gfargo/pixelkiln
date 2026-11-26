@@ -756,7 +756,8 @@ letters, digits, `-` and `_`, since it names folders and a Godot node. The
 | `view` | yes | The game's view in pixels, `[width, height]`. |
 | `travel` | no | How far the camera moves sideways across the level. Defaults to twice the view's width. |
 | `climb` | no | How far the camera climbs. Defaults to 0. |
-| `palette` | no | What a layer's `tint` snaps to: a style id, for that style's `palette`, or a list of colours. Without it, a tint snaps to the colours already in the picture. |
+| `palette` | no | What a layer's `tint` snaps to: a style id, for that style's `palette`, or a list of colours. Without it, a tint snaps to the colours already in the picture. It is also what `times` swap from. |
+| `times` | no | Other times of day, by name (letters, digits, `-` and `_`, up to 15): `{ "night": { "palette": "night", "cool": true } }`. Each swaps the set's `palette` for its own by luminance rank. `palette` is a style id or a list of colours; `cool` maps only onto colours whose blue is at least their red. Needs the set's `palette`. Godot exports carry the times in a shader; Tiled and LDtk get a map per time. |
 | `layers` | yes | 1 to 32 layers, far first. |
 
 | Layer field | Required | Meaning |
@@ -801,7 +802,8 @@ The manifest refuses an `asset` it does not declare, in a layer or a run, a
 `style` the asset is not generated under, a layer name used twice, the run
 fields on a layer that is not a run, `foot` or `tint` on a `sky` layer, `foot`
 with `extend`, `loop` on a `sky` layer, a run or a layer that does not repeat,
-and a `palette` style that does not exist or has no palette.
+`times` on a set without a `palette`, and a set or time `palette` style that
+does not exist or has no palette.
 
 ## Validation and editor setup
 

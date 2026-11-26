@@ -14,12 +14,16 @@ import {
   finishPicture,
   layRun,
   loopPicture,
+  paletteSwap,
+  recolourPicture,
   resolveParallaxSet,
+  setAtTime,
+  timeColours,
   seamRatio,
   skyBands,
   type ResolvedParallaxSet,
 } from "../src/pipeline/parallax.ts"
-import { ParallaxLayerSchema, type Lock } from "../src/types.ts"
+import { ParallaxLayerSchema, ParallaxSetSchema, type Lock } from "../src/types.ts"
 import { main } from "../src/cli/main.ts"
 
 let dir: string
@@ -206,6 +210,41 @@ describe("parallax layers", () => {
     }
     expect(seamRatio(mirror.png)).toBe(0)
     expect(() => loopPicture(striped(6, 4, 1), "cut", "far")).toThrow(/far: 6 px wide is too narrow to loop/)
+  })
+
+  it("takes times of day only on a set with a palette", () => {
+    const base = { view: [64, 48], layers: [{ file: "a.png", speed: 1 }] }
+    const night = { palette: ["#000010", "#202060"], cool: true }
+    expect(ParallaxSetSchema.safeParse({ ...base, palette: "s", times: { night } }).success).toBe(true)
+    expect(ParallaxSetSchema.safeParse({ ...base, times: { night } }).error?.issues[0]?.message).toMatch(/needs a palette/)
+    expect(ParallaxSetSchema.safeParse({ ...base, palette: "s", times: { "2am": night } }).success).toBe(false)
+    expect(ParallaxSetSchema.safeParse({ ...base, palette: "s", times: { night: { palette: ["#000000"] } } }).success).toBe(false)
+  })
+
+  it("swaps a palette by luminance rank, rounding halves to even, as the script does", () => {
+    // Five source colours dark to light onto three: ranks 0..4 land on round(r / 4 x 2) = 0, 0, 1, 2, 2.
+    const from = ["#000000", "#404040", "#808080", "#c0c0c0", "#ffffff"]
+    const swap = paletteSwap(from, { palette: ["#ffff00", "#000080", "#0000ff"], cool: false })
+    const at = (hex: string) => swap.table.get(parseInt(hex.slice(1), 16))!.map((v) => v.toString(16).padStart(2, "0")).join("")
+    expect(from.map(at)).toEqual(["000080", "000080", "0000ff", "ffff00", "ffff00"])
+    // cool leaves out the yellow, whose red is above its blue: 0..4 land on round(r / 4) = 0, 0, 0, 1, 1.
+    const cool = paletteSwap(from, { palette: ["#ffff00", "#000080", "#0000ff"], cool: true })
+    expect([...cool.table.values()].map((c) => c.join())).toEqual(["0,0,128", "0,0,128", "0,0,128", "0,0,255", "0,0,255"])
+    expect(() => paletteSwap(from, { palette: ["#ff0000", "#ffff00"], cool: true }, "night")).toThrow(/night: no colour .* blue at least its red/)
+    // A colour off the source palette snaps to it first; a clear pixel is left alone.
+    const png: DecodedPng = { width: 3, height: 1, pixels: Buffer.from([0x3e, 0x40, 0x40, 255, 0xf0, 0xf0, 0xf0, 255, 9, 9, 9, 0]) }
+    expect([...recolourPicture(png, swap).pixels]).toEqual([0, 0, 0x80, 255, 0xff, 0xff, 0, 255, 9, 9, 9, 0])
+  })
+
+  it("lays out the shader's lookup: the colours as drawn, then each time's", () => {
+    const png: DecodedPng = { width: 3, height: 1, pixels: Buffer.from([0xff, 0xff, 0xff, 255, 0, 0, 0, 255, 0x80, 0x80, 0x80, 0]) }
+    const resolved = set([layer(png)], { palette: ["#000000", "#ffffff"], times: [{ name: "night", palette: ["#000010", "#202060"], cool: false }] })
+    const lookup = timeColours(resolved)
+    // Two columns (the clear pixel's colour is not one), two rows.
+    expect([lookup.width, lookup.height]).toEqual([2, 2])
+    expect([...lookup.pixels]).toEqual([0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0x10, 255, 0x20, 0x20, 0x60, 255])
+    expect([...setAtTime(resolved, "night").layers[0]!.png.pixels.subarray(0, 8)]).toEqual([0x20, 0x20, 0x60, 255, 0, 0, 0x10, 255])
+    expect(() => setAtTime(resolved, "noon")).toThrow(/no time "noon"\. Known: night/)
   })
 
   it("trims a picture and thins its foot out with an ordered dither", () => {
@@ -544,6 +583,49 @@ describe("pixelkiln parallax", () => {
     await main(["parallax", "export", "dusk", "--format", "tiled", "--manifest", manifestPath, "--lock", lockPath])
     const record = JSON.parse(await readFile(path.join(dir, "parallax", "dusk", "tiled", "dusk.pixelkiln.json"), "utf8"))
     expect(record.options.layers[0]).toMatchObject({ loop: { method: "cut", from: 40, columns: [2, 30] }, tint: { color: "#936090", amount: 1 } })
+  })
+
+  it("previews and exports a set's times of day: one shader for Godot, a map a time for Tiled and LDtk", async () => {
+    await writeFile(path.join(dir, "far.png"), encodeRgbaPng(40, 20, striped(40, 20, 7).pixels))
+    const manifestPath = path.join(dir, "pixelkiln.manifest.json")
+    const lockPath = path.join(dir, "pixelkiln.lock.json")
+    const write = (times: object) =>
+      writeFile(manifestPath, JSON.stringify({
+        name: "p",
+        styles: { dusk: { palette: ["#000000", "#808080", "#ffffff"], outDir: "out" }, night: { palette: ["#000010", "#404080", "#a0a0ff"], outDir: "out" }, bare: { outDir: "out" } },
+        assets: {},
+        parallax: { dusk: { view: [64, 48], travel: 96, palette: "dusk", times, layers: [{ name: "sky", sky: ["#808080"], speed: 0 }, { name: "far", file: "far.png", bottom: 30, speed: 0.25 }] } },
+      }))
+    await write({ night: { palette: "night", cool: true } })
+    await writeFile(lockPath, JSON.stringify({ version: 2, entries: {} }))
+    const args = ["--manifest", manifestPath, "--lock", lockPath]
+
+    await main(["parallax", "preview", ...args])
+    const out = path.join(dir, "parallax", "dusk")
+    const night = decodePng(await readFile(path.join(out, "dusk.preview.night.png")))
+    // The sky's grey is the middle of three, so at night it is the middle night colour.
+    expect([...night.pixels.subarray(0, 4)]).toEqual([0x40, 0x40, 0x80, 255])
+    expect(await readFile(path.join(out, "dusk.preview.html"), "utf8")).toContain('"times":["as drawn","night"]')
+
+    await main(["parallax", "export", ...args])
+    const scene = await readFile(path.join(out, "godot", "dusk.tscn"), "utf8")
+    expect(scene).toContain('[ext_resource type="Shader" path="./dusk.gdshader" id="times_shader"]')
+    expect(scene).toContain('metadata/times = PackedStringArray("night")')
+    expect(scene.match(/material = SubResource\("times"\)/g)).toHaveLength(2)
+    expect(await readFile(path.join(out, "godot", "dusk.gdshader"), "utf8")).toContain("shader_type canvas_item;")
+    expect(decodePng(await readFile(path.join(out, "godot", "dusk.colours.png"))).height).toBe(2)
+    const nightMap = JSON.parse(await readFile(path.join(out, "tiled", "dusk.night.tmj"), "utf8"))
+    expect(nightMap.layers.map((l: { image: string }) => l.image)).toEqual(["dusk.night-sky.png", "dusk.night-far.png"])
+    expect(JSON.parse(await readFile(path.join(out, "ldtk", "dusk.night.ldtk"), "utf8")).levels).toHaveLength(1)
+    const record = JSON.parse(await readFile(path.join(out, "godot", "dusk.pixelkiln.json"), "utf8"))
+    expect(record.options).toMatchObject({ shader: "dusk.gdshader", times: { night: { palette: ["#000010", "#404080", "#a0a0ff"], cool: true } } })
+    const tiledRecord = JSON.parse(await readFile(path.join(out, "tiled", "dusk.pixelkiln.json"), "utf8"))
+    expect(tiledRecord.options.maps).toEqual(["dusk.tmj", "dusk.night.tmj"])
+
+    await write({ night: { palette: "bare" } })
+    await expect(loadManifest(manifestPath)).rejects.toThrow(/parallax\.dusk\.times\.night\.palette: style "bare" has no palette/)
+    await write({ night: { palette: "nope" } })
+    await expect(loadManifest(manifestPath)).rejects.toThrow(/parallax\.dusk\.times\.night\.palette: unknown style "nope"/)
   })
 
   it("rejects a run sprite whose asset is not in the manifest", async () => {
