@@ -5,8 +5,8 @@ ComfyUI recipe that turns an ordered set of pose maps into a pixel-art frame
 set, and a benchmark that shows where it works and where it fails. This folder
 holds the model audit, the pose maps, the generation graph, a two-frame smoke
 test, and the first full run (lanes A and B, two characters) with a lane D
-trial on its 0.75 frames. The rubric has not been scored yet, so no quality
-claim or recipe exists.
+trial on its 0.75 frames. The rubric has not been scored yet. The graph ships
+as a `composition-source` recipe; see [What is left](#what-is-left).
 
 ## Model audit
 
@@ -686,16 +686,14 @@ The machine-level notes are in
 
 ## What is left
 
-Done in run 1: lanes A and B for two characters, the strength sweep, the
-byte-for-byte repeat, and a lane D trial (grid recovery works).
+The graph ships as the bundled recipe
+[`comfyui/pixel-art-pose-frames@1.0.0`](../../../recipes/comfyui/pixel-art-pose-frames/1.0.0)
+at `composition-source`: lane B (pose ControlNet at 0.75, fixed seed), with no
+character LoRA. No lane met #79's bar for a production candidate. For a full
+attack with a consistent look, PixelLab skeleton animation (above) is the
+stronger route.
 
-1. **Human scores:** the 1x rubric in #79, by a person, on run 1's sheets and
-   native frames.
-2. **Run 2:** lane A with the motion in its prompt, a no-shadow prompt, and a
-   fix for prop drift: a prop joint in the pose map, or **lane C** (an identity
-   or prop reference; not chosen yet).
-3. **Lane D in full:** a background-removal step in the graph, the figure
-   rendered at the target size, then `refine` as a frame set, approval and
-   packing. `refine` could also take a frame set's grid from its confident
-   frames, so one unsure frame does not block the set.
-4. The recipe (`comfyui/pixel-art-pose-frames@1.0.0`), docs, skill and site.
+Still open, tracked outside #79:
+
+1. **Human scores:** the 1x rubric, by a person, on the result sheets.
+2. **Website gallery:** a frame-set example linked to this benchmark.

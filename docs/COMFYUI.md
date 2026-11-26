@@ -168,6 +168,8 @@ of the asset spec hash, so changing one correctly makes that asset stale.
 Use `frames` when one asset is a short sequence of still renders controlled by
 one changing workflow input. This is intended for pose images, expression
 labels, or another explicit per-frame control. It is not video diffusion.
+The bundled `comfyui/pixel-art-pose-frames@1.0.0` recipe is a ready style of
+this kind for OpenPose maps; see [Versioned recipes](RECIPES.md).
 
 ```jsonc
 {

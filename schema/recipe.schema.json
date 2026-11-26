@@ -830,6 +830,39 @@
               "required": [
                 "prompt"
               ],
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "nodeId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "input": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "nodeId",
+                  "input"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "frames": {
+              "type": "object",
+              "properties": {
+                "vary": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "seedStep": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "vary"
+              ],
               "additionalProperties": false
             }
           },
