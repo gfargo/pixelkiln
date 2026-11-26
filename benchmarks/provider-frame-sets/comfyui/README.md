@@ -574,6 +574,14 @@ club, cocks it back, smashes into a crouch, follows through and settles to
 idle. No hand fixes were needed. PixelLab drew the club as a motion smear on
 the two fastest frames.
 
+Walk and idle cycles followed for both characters, in the `walk/` and `idle/`
+subfolders of each result. Each is one 8-frame looping pass (3 generations,
+12 in all). These poses were not set by hand. PixelLab wrote them from a
+short action description (`write_motion_frames`). The goblin's sprite hides
+its far leg, so its rig ([`rig.json`](results/pixellab-goblin/rig.json))
+gained a back leg, which lets the walk step with both legs. The joints the old
+rig called the far leg follow the tail, so they were renamed `tail_*`.
+
 ## Findings log
 
 What each run taught us about running this graph, newest first. Quality
