@@ -1,3 +1,16 @@
+# [0.148.0](https://github.com/gfargo/pixelkiln/compare/v0.147.0...v0.148.0) (2026-11-26)
+
+
+### Bug Fixes
+
+* adopt --dry-run writes nothing online ([f080c4e](https://github.com/gfargo/pixelkiln/commit/f080c4e7a27396c8655484cce724a681546c4413)), closes [#407](https://github.com/gfargo/pixelkiln/issues/407)
+* adopt --local records frame sets from their ordered frames ([37494d3](https://github.com/gfargo/pixelkiln/commit/37494d3419b7461c4d79c9ef443c5f0216652201)), closes [#408](https://github.com/gfargo/pixelkiln/issues/408)
+
+
+### Features
+
+* pixminimax mode for character animations ([8c28c01](https://github.com/gfargo/pixelkiln/commit/8c28c01e987c0f3dfd3f70933b8d702d40c2ffab)), closes [#409](https://github.com/gfargo/pixelkiln/issues/409)
+
 # [0.147.0](https://github.com/gfargo/pixelkiln/compare/v0.146.0...v0.147.0) (2026-11-26)
 
 
