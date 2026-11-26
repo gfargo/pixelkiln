@@ -18,6 +18,8 @@ export interface Args {
   /** export: write each group of connected terrain sets as one tileset. */
   mergeConnected: boolean
   yes: boolean
+  /** gen/pick: take every asset's first candidate instead of opening the review page. */
+  acceptFirst: boolean
   budget?: number
   /** Repeatable provider-keyed budgets used by a mixed-provider run. */
   providerBudgets: Record<string, number>
@@ -257,7 +259,7 @@ const VALUE_FLAGS = [
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend", "--sprites", "--pose",
 ] as const
 const BOOL_FLAGS = [
-  "--force", "--yes", "-y", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune", "--merge-connected",
+  "--force", "--yes", "-y", "--accept-first", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune", "--merge-connected",
   "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro", "--replace", "--custom",
 ] as const
 
@@ -608,6 +610,7 @@ export function parseArgs(argv: string[]): Args {
     force: rest.includes("--force"),
     mergeConnected: rest.includes("--merge-connected"),
     yes: rest.includes("--yes") || rest.includes("-y"),
+    acceptFirst: rest.includes("--accept-first"),
     budget,
     providerBudgets,
     dryRun: rest.includes("--dry-run"),

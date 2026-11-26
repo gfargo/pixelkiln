@@ -212,6 +212,7 @@ async function runLifecycle(args: Args, wave: number, spent: Map<string, number>
         onProgress: log,
         onReady: announceReviewReady,
         autoAcceptSingle: args.yes,
+        acceptFirst: args.acceptFirst,
         // A reroll from the page is `gen --force` for that one asset, inside
         // this run: same plan, same budget ceiling, same submit and poll.
         reroll: args.command === "gen" ? async (key) => {

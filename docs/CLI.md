@@ -172,7 +172,13 @@ what is left of the same budget, asking the same "Spend ...?" question each
 time unless `--yes`. With `--yes`, an asset whose only option is a single
 candidate or one ordered frame set (an animation clip) is accepted as `index: 0`
 without waiting on the pick page; assets with two or more candidates still
-open it. It stops when a wave finds nothing new, when a wave
+open it. `--accept-first` takes the first candidate of every asset instead,
+so no page opens at all. That is the provider's first, not a judged best one;
+check the art afterwards in `gallery`. A run nobody is watching needs both:
+
+```bash
+pixelkiln gen --budget 40 --yes --accept-first
+``` It stops when a wave finds nothing new, when a wave
 submits nothing, or when the remaining budget cannot cover the next wave; in
 that last case the earlier waves' work is saved and the message says to run
 `gen` again with a budget for the rest. `--force` applies to the first wave
@@ -232,7 +238,8 @@ the candidate cache (`.pixelkiln/review-state.json`), so a refresh or a
 restarted run reopens the page where it was left. Frames and candidates are
 served from that local cache by the review server itself, each frame requested
 once. Only assets accepted when you press **Apply** are written to the
-lockfile; closing the window applies nothing. See the
+lockfile; closing the window applies nothing. `--accept-first` serves no page:
+it applies the first candidate (or the frame set) of every asset in review. See the
 [Getting started guide](GETTING_STARTED.md#start-a-new-project) for a
 screenshot of the interface.
 

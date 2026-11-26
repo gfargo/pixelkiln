@@ -152,6 +152,11 @@ The sheet is served only on localhost and selection remains human-controlled.
 Only assets accepted when you press **Apply** are recorded; unresolved ones can
 be reopened later with [`pixelkiln pick`](CLI.md#pick).
 
+For a run nobody is watching, `gen --budget 40 --yes --accept-first` skips both
+stops: `--yes` the spend question, and `--accept-first` the sheet, by taking
+each asset's first candidate. The first is the provider's order, not the best
+one, so look through the results in `pixelkiln gallery` afterwards.
+
 If a run stops between stages, rerun `plan`. It points `processing` work to
 `poll`, `review` work to `pick`, and `selected` or `download-failed` work to
 `fetch`; these resume existing paid work without another submission.
