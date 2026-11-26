@@ -611,6 +611,13 @@ export async function runPicker(
      * the rest. `gen --yes` sets this so an unattended run cannot block.
      */
     autoAcceptSingle?: boolean
+    /**
+     * Apply `index: 0` for every asset in review, several candidates or one,
+     * and serve no page at all. `--accept-first` sets this for a run nobody
+     * is watching; the first candidate is the provider's first, not a judged
+     * best one.
+     */
+    acceptFirst?: boolean
     /** Regenerates one asset from the page; without it the page offers no reroll. */
     reroll?: RerollAsset
   } = {},
@@ -624,12 +631,16 @@ export async function runPicker(
   })
   if (!session) return { selected: 0, skipped: 0 }
   let autoSelected = 0
-  if (opts.autoAcceptSingle) {
-    const singles = session.groups.filter((g) => g.mode === "frame-set" || g.frameUrls.length === 1)
+  if (opts.acceptFirst || opts.autoAcceptSingle) {
+    const singles = opts.acceptFirst
+      ? session.groups
+      : session.groups.filter((g) => g.mode === "frame-set" || g.frameUrls.length === 1)
     if (singles.length) {
       const res = await session.apply({ selections: singles.map((g) => ({ key: g.key, index: 0 })) }, lockPath)
       autoSelected = res.selected
-      log(`  --yes: accepted ${res.selected} single-candidate asset(s)`)
+      log(opts.acceptFirst
+        ? `  --accept-first: accepted the first candidate of ${res.selected} asset(s)`
+        : `  --yes: accepted ${res.selected} single-candidate asset(s)`)
       const rest = session.groups.filter((g) => !singles.includes(g)).map((g) => g.key)
       session = rest.length
         ? await prepareReview(provider, lock, { onProgress: log, keys: rest, specs: opts.specs, lockPath })

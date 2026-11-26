@@ -104,6 +104,26 @@ describe("runPicker", () => {
     expect(await picked).toEqual({ selected: 1, skipped: 0 })
   })
 
+  it("acceptFirst takes the first of several candidates without serving a page", async () => {
+    const { provider, lock } = await projectInReview(3)
+    const key = lockKey("base", "anvil")
+    const onReady = vi.fn()
+    const logs: string[] = []
+    const res = await runPicker(provider, lock, lockPath, {
+      open: false,
+      acceptFirst: true,
+      onReady,
+      onProgress: (msg) => logs.push(msg),
+    })
+    expect(res).toEqual({ selected: 1, skipped: 0 })
+    expect(onReady).not.toHaveBeenCalled()
+    expect(lock.entries[key]!.status).toBe("selected")
+    expect(lock.entries[key]!.candidateIndex).toBe(0)
+    const onDisk = JSON.parse(await readFile(lockPath, "utf8")) as Lock
+    expect(onDisk.entries[key]!.status).toBe("selected")
+    expect(logs.join("\n")).toContain("--accept-first: accepted the first candidate of 1 asset(s)")
+  })
+
   it("promotes the chosen candidate and persists it to the lockfile", async () => {
     const { provider, lock } = await projectInReview(4)
     const key = lockKey("base", "anvil")
