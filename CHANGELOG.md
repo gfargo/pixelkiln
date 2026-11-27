@@ -1,3 +1,12 @@
+# [0.150.0](https://github.com/gfargo/pixelkiln/compare/v0.149.0...v0.150.0) (2026-11-27)
+
+
+### Features
+
+* check a paperdoll layer's sheet fit at plan time and remove frames a shorter loop leaves behind ([76e2246](https://github.com/gfargo/pixelkiln/commit/76e224681efd5ee9ff0e223da108f4e778812a7b)), closes [#415](https://github.com/gfargo/pixelkiln/issues/415)
+* layer.anchor continues a split paperdoll outfit from a layer already made ([2bdcfc2](https://github.com/gfargo/pixelkiln/commit/2bdcfc2e5762e66a4ab37b898ab0c1fe9b9f8338)), closes [#415](https://github.com/gfargo/pixelkiln/issues/415)
+* trim the bare fringe under a paperdoll layer, flatten layers into the frames, and preview them as GIFs ([74f597c](https://github.com/gfargo/pixelkiln/commit/74f597cc9109d8b27a649937e0db432272d1477a)), closes [#415](https://github.com/gfargo/pixelkiln/issues/415) [#417](https://github.com/gfargo/pixelkiln/issues/417)
+
 # [0.149.0](https://github.com/gfargo/pixelkiln/compare/v0.148.1...v0.149.0) (2026-11-27)
 
 
