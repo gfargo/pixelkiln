@@ -22,7 +22,7 @@ import {
   type MediaType as MediaKind,
 } from "../media.ts"
 import { shouldPersistSourceUrl } from "../source-url.ts"
-import { applyPostprocess, postprocessCurrent, postprocessFor } from "./postprocess.ts"
+import { applyPostprocess, CLEAN_DAMAGE_SHARE, postprocessCurrent, postprocessFor } from "./postprocess.ts"
 
 export interface FetchResult {
   downloaded: number
@@ -346,6 +346,9 @@ export async function fetchAssets(
             if (processed.changed) rawHash = sha256(raw!)
             if (processed.moved?.clipped) log(`  moved   ${path.relative(process.cwd(), target)}: ${processed.moved.clipped} pixels fell off the canvas; raise layer.padding to keep them`)
             if (processed.removed) log(`  cleaned ${path.relative(process.cwd(), target)} (${processed.removed} ghost pixels)`)
+            if (processed.removed && processed.opaque && processed.removed > processed.opaque * CLEAN_DAMAGE_SHARE) {
+              log(`  warning: cleaning took ${processed.removed} of ${processed.opaque} opaque pixels (${(100 * processed.removed / processed.opaque).toFixed(1)}%) from ${path.relative(process.cwd(), target)}; check the frame for holes, and set clean: false then fetch to restore the provider's bytes`)
+            }
             if (processed.snapped) log(`  snapped ${path.relative(process.cwd(), target)} to ${wanted!.palette!.colors.length} colours`)
           }
           if (cacheDir) await cacheMedia(cacheDir, buf, mediaType)

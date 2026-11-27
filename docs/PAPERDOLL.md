@@ -720,6 +720,24 @@ downloaded shows in `plan` as `recoverable`, and `pixelkiln fetch`
 re-processes the frames at no cost. Do it before generating layers: a loop
 the cleaning changed makes a layer over it `stale`.
 
+**Dark clothing.** A base in black or near-black underwear is mostly below
+the outline threshold, and a loop often lifts its sheen a shade or two from
+the rotations. Until this fix that shade read as foreign, the patch was erased,
+and the outline sweep that follows an erasure ran on through the dark cloth:
+one 256px idle lost 2,563 pixels from a frame and four of eight frames came
+back with holes through the briefs. Now dark shades are vouched for by the
+rotations' dark pixels too, a strange-coloured patch bigger than a ghost gets
+is kept whether it is sealed or reaches the edge of the silhouette, and the
+sweep never takes a connected stretch of dark bigger than that. Loops that
+were cleaned before can come out with different bytes on their next
+`pixelkiln fetch`; no spec hash changes.
+
+**Check the frames after cleaning, before generating layers.** `fetch` warns
+when cleaning takes more than 3% of a frame's opaque pixels, which is damage
+rather than ghosts. If a frame has holes, set `"clean": false` on the loop and
+run `pixelkiln fetch`: the provider's original bytes come back from the cache
+at no cost.
+
 More in [Characters](./CHARACTERS.md#cleaning-a-loops-frames).
 
 ## Cost and limits
