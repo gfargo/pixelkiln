@@ -24,6 +24,7 @@ import { runRefine } from "./commands/refine.ts"
 import { runAnchors } from "./commands/anchors.ts"
 import { runParallax } from "./commands/parallax.ts"
 import { runRedraw } from "./commands/redraw.ts"
+import { runLayer } from "./commands/layer.ts"
 import { runEstimateSkeleton, runSkeletonPreview } from "./commands/skeleton.ts"
 import { runTools } from "./commands/tools.ts"
 import { runWorkspace } from "./commands/workspace.ts"
@@ -95,6 +96,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   "estimate-skeleton": runEstimateSkeleton,
   anchors: runAnchors,
   redraw: runRedraw,
+  layer: runLayer,
   "skeleton-preview": runSkeletonPreview,
   unzoom: runUnzoom,
   pixelate: runPixelate,

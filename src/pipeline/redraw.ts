@@ -137,6 +137,7 @@ export async function redrawLayerFrames(spec: ResolvedSpec, lock: Lock, painter:
     padding: layer.padding,
     key: layer.key,
     skin: layer.skin,
+    cover: layer.cover,
     reference: layer.clean ? stills : [],
   })
   // The layer as it stands over each guide, with the recorded nudge taken back off.

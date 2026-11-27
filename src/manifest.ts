@@ -1437,6 +1437,7 @@ export async function resolveSpecs(
             ...(keyed ? { keyed } : {}),
             ...(asset.layer.skin ? { skin: asset.layer.skin } : {}),
             ...(asset.layer.key ? { key: asset.layer.key } : {}),
+            ...(asset.layer.cover ? { cover: true as const } : {}),
             clean: asset.layer.clean ?? true,
             ...(asset.layer.columns ? { columns: asset.layer.columns } : {}),
             region: asset.layer.region ?? "body",

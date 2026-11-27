@@ -266,7 +266,7 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "edit", "model", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw",
+  "gallery", "edit", "model", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw", "layer",
   "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "parallax", "help", "--help", "-h", "--version", "-v",
 ] as const
 
@@ -284,6 +284,7 @@ const TALK_SUBCOMMANDS = ["visemes", "gif", "plan"] as const
 const ASSET_SUBCOMMANDS = ["canvas", "mirror", "import", "save", "expand", "review", "export"] as const
 const UI_SUBCOMMANDS = ["show", "split", "states", "nine-slice", "pull"] as const
 const PARALLAX_SUBCOMMANDS = ["preview", "export"] as const
+const LAYER_SUBCOMMANDS = ["preview"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -396,6 +397,18 @@ export function parseArgs(argv: string[]): Args {
   } else if (command === "redraw") {
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
     if (target === undefined) throw new UsageError("redraw needs a layer's asset id: pixelkiln redraw <asset> --frame <name>")
+    rest = rest.slice(1)
+  } else if (command === "layer") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new UsageError(`layer needs a subcommand: ${LAYER_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(LAYER_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown layer subcommand "${subcommand}". Known: ${LAYER_SUBCOMMANDS.join(", ")}`)
+    }
+    rest = rest.slice(1)
+    target = rest[0]?.startsWith("-") ? undefined : rest[0]
+    if (target === undefined) throw new UsageError("layer preview needs a layer's asset id: pixelkiln layer preview <asset>")
     rest = rest.slice(1)
   } else if (command === "skeleton-preview") {
     target = rest[0]?.startsWith("-") ? undefined : rest[0]

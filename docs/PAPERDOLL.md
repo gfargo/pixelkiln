@@ -40,7 +40,8 @@ A layer avoids the problem by painting the item onto the body's own frames:
    cut to the one box that holds them all, and laid on a single sheet.
 3. **Mask.** White where the provider may paint, black where it may not.
 4. **Key.** Inside the mask, skin is repainted cyan, keeping its shading.
-   Outside it the frame keeps its own colours.
+   Outside it the frame keeps its own colours. With `cover`, everything
+   inside the mask is keyed, whatever its colour.
 5. **Inpaint.** One masked inpaint over the whole sheet.
 6. **Cut.** Pixels the provider repainted, that are not still cyan, are the
    layer. It is split back into one PNG per source frame.
@@ -174,6 +175,28 @@ tried it).
 ```json
 "layer": { "of": ["mira", "mira.walk.south"], "skin": ["#f6b58a", "#e58a62", "#f2a076", "#d87855"] }
 ```
+
+### A base that cannot be bare
+
+Some characters cannot be generated bare. PixelLab's character state edit
+refused "no clothes" on an adult-proportioned figure (`character generation
+failed upstream`, not billed) and accepted plain underwear. Make the
+underwear part of the base itself, generated with it, and treat it as body:
+
+```json
+"layer": { "of": ["mira", "mira.idle.east"], "cover": true }
+```
+
+`cover` keys every opaque pixel inside the mask, whatever its colour, so the
+provider sees the underwear as skin to dress over. Without it, the default
+keys skin only: dark underwear went to the provider as existing clothing, and
+on a 256px side-view base 5 of 8 frames came back with the underwear kept and
+the outfit drawn around it. Keyed by hand, all 8 came back fully dressed.
+
+Layers over such a base are additive only: a garment narrower than the
+underwear leaves it showing, and nothing removes it. The head and hair stay
+outside the mask, as on any outfit. `skin` has the opposite goal (key only
+the skin, keep the clothes) and is not needed with `cover`.
 
 ### One piece at a time
 
@@ -665,13 +688,53 @@ Every step's file is kept in `.pixelkiln/layers/<style>/<asset>/`:
 | `result.png` | What it returned. |
 | `layout.json` | Which cell is which frame, and the sheet's size. |
 
-When a step produces the wrong thing, replace its file. The computed mask
-finds each neck as the narrowest row in the upper part of the figure. That
-holds for a bald base with its arms down, and fails for hair wider than the
-head or an arm raised beside it. To fix it:
+### How the mask finds the neck
 
-1. Run the layer once.
-2. Open `mask.png` from the work folder in any pixel editor.
+The computed mask finds the head on every frame, then puts the neck a fixed
+distance below the top of it:
+
+- **The distance** is the median, over the sheet's frames, of what the
+  narrowest row in the upper part of each figure says. One frame whose
+  narrowest row is somewhere else (a shoulder in shadow, an elbow tucked in)
+  takes its neck from the others. On a 256px 8-frame idle, the narrowest-row
+  rule alone put the neck 30 rows low on 2 frames, and those came back as a
+  tube top with detached sleeves.
+- **The top of the head** is the first row of the frame at least half as wide
+  as a head, so a hand raised above it is passed over. A head that moves down
+  the cell, as in a sit-down loop, takes the neck with it.
+- **Above the neck**, an arm raised clear of the head's columns is part of
+  the mask and gets its sleeve. The head, and anything joined to it, is not.
+- **Pinholes**: on a bare base, a dark pixel (a tattoo, deep shading) with
+  keyed skin no more than 3px away on both sides of its row is keyed too.
+  Left in its own colour it comes back unchanged and leaves a speck-sized hole
+  in the garment.
+
+Generating a layer prints each frame's neck row, and names the frames whose
+own narrowest row was overruled.
+
+### Previewing before paying
+
+```bash
+pixelkiln layer preview hero.leather
+```
+
+Builds the sheet, keyed sheet and mask exactly as `gen` would send them, and
+writes them to `.pixelkiln/layers/<style>/<asset>/preview/` without calling
+the provider: `sheet.png`, `keyed.png`, `mask.png`, `overlay.png` (the mask in
+magenta over the frames) and `frames/`, each frame's own keyed input and
+mask. It prints every frame's neck row and the inpaint's price at that sheet
+size. It is free, needs no API key, and leaves the plan as it was. Look at
+`overlay.png` before the first `gen` of a layer over a new base or a new loop.
+
+### Replacing a step's file
+
+When a step produces the wrong thing, replace its file. The computed mask
+still assumes the head is on top and roughly upright: hair wider than the
+shoulders, long hair over them, or limbs across the head need a mask of their
+own. To make one:
+
+1. Run `pixelkiln layer preview <asset>` (or the layer once).
+2. Open `mask.png` from the preview (or work) folder in any pixel editor.
 3. Paint white where the layer may go and black everywhere else. Pure white
    and pure black only.
 4. Save it into the project (the work folder is git-ignored) and name it:
@@ -792,7 +855,7 @@ stated when the job was submitted.
   tried and left 3 of 18 frames undressed and erased props in others.
 
 Not tested: sizes other than 64px, quadrupeds, more than 56 frames,
-attack animations (where limbs cross the head and the neck detection is
+attack animations (where limbs cross the head and the head detection is
 weakest), hair, capes, shields, and two held items at once. For placed
 items: `tilt` and `lean` through the pipeline (they were tried in a script),
 a `place` correction, `grasp` on the left hand's far side or with a `radius`
@@ -814,6 +877,7 @@ A `layer` asset needs a `prompt` and a `layer` object. It takes no
 | `mask` | computed | A black-and-white PNG the size of the sheet. |
 | `keyed` | computed | A PNG the size of the sheet, sent instead of the keyed sheet. |
 | `skin` | all but outline | The colours that are skin, for a character that is not bare. |
+| `cover` | `false` | Key everything inside the mask, not only skin: for a base that wears underwear. |
 | `key` | `#00ffff` | The stand-in colour. Change it for an item that is itself cyan. |
 | `clean` | `true` | Clean loop frames against the stills among `of` before sheeting them. |
 | `offset` | none | `[x, y]` pixels to move every frame by, or `{ "<of asset>": [x, y], "*": [x, y] }`. Free to change on a drawn layer. |
@@ -951,7 +1015,8 @@ That one was not tried.
 | Hair covers the face, or a pack is on the chest, in some frames | The model read a front view as a back view. | Give each loop its own sheet row with `columns` and say in the prompt which way each row faces. See [Field notes](#field-notes). |
 | Part of an arm or leg is missing after cleaning | It was shaded in a colour the rotations do not use. | Regenerate the loop (`gen --force --only <loop>`), or turn `clean` off for it. |
 | Pale specks around the dressed character | The loop's own files were never cleaned; the layer is fine. | Set `"clean": true` on the loop and run `pixelkiln fetch`. |
-| Sleeves or collar missing where an arm is raised | The computed mask put the neck in the wrong row for that frame. | Supply a `mask`. |
+| Sleeves or collar missing on some frames | The computed mask left the chest or a raised arm out on those frames. | Check `pixelkiln layer preview <asset>` and its `overlay.png`; supply a `mask` if a frame is still wrong. |
+| Underwear kept, the outfit drawn around it | The base wears underwear and only skin was keyed. | Set `"cover": true`. |
 | The outfit differs between two loops | They were dressed by two layers. | Put both loops in one layer's `of`. |
 | Old clothes show at the edges | The base is not bare. | Use a bare base, or accept it. |
 | A fringe in the key colour at wrists or collar | Shades of the key the cut did not recognise. | Change `key` to a colour further from the outfit's, or open an issue with `result.png`. |

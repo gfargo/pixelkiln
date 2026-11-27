@@ -7,7 +7,7 @@ pixelkiln <command> [options]
 Unknown commands, positional arguments, and flags are errors. The only
 positional words accepted are a command's own subcommands (`refine approve`,
 `workspace add <manifest>`, and the like), `estimate-skeleton`'s one image
-path, `anchors`'s and `redraw`'s asset id, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
+path, `anchors`'s, `redraw`'s and `layer preview`'s asset id, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
 accumulate; comma-separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
@@ -61,6 +61,7 @@ Which command:
 | start an `animate-skeleton` keypoints file from an image | `pixelkiln estimate-skeleton poses/hero.png --out poses/hero-swing.json` |
 | find the hands in every frame so a held item can be pinned to one | `pixelkiln anchors hero.sword` |
 | draw one wrong frame of a paperdoll layer again, not the whole layer | `pixelkiln redraw hero.robe --frame walk.south.frame-05` |
+| see a paperdoll layer's mask and keyed input for every frame before paying | `pixelkiln layer preview hero.robe` |
 | see a keypoints file's poses over the source before paying | `pixelkiln skeleton-preview hero-swing` |
 | work across several projects | `pixelkiln workspace add ../other/pixelkiln.manifest.json`, then `--workspace` on `gallery` and `salvage` |
 
@@ -2168,6 +2169,23 @@ layer's entry. Assets derived from the layer become `stale`. The layer must
 be downloaded and unchanged in the manifest since; a held item is refused.
 
 See [Redrawing one frame](./PAPERDOLL.md#redrawing-one-frame).
+
+### `layer`
+
+```bash
+pixelkiln layer preview <layer> [--style <id>]
+```
+
+Builds a drawn paperdoll layer's sheet, keyed sheet and mask exactly as `gen`
+would send them, and writes them to `.pixelkiln/layers/<style>/<layer>/preview/`
+without calling any provider: `sheet.png`, `keyed.png`, `mask.png`,
+`overlay.png` (the mask over the frames) and `frames/`, each frame's keyed
+input and mask. It prints each frame's neck row, the frames whose own
+narrowest row was overruled, and what the inpaint would cost at that sheet
+size. Free, offline, and outside the plan; the sources must be downloaded. A
+held item is refused, since it is placed rather than inpainted.
+
+See [Previewing before paying](./PAPERDOLL.md#previewing-before-paying).
 
 ## Utility commands
 
