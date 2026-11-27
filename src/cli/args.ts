@@ -68,6 +68,10 @@ export interface Args {
   format?: TilesetFormat | SheetFormat
   outputRoles: string[]
   primaryOnly: boolean
+  /** pack: draw the layers onto the frames they go over, trim applied; --only picks the layers. */
+  flatten: boolean
+  /** layer preview: write an animated GIF of each dressed loop instead of a strip. */
+  gif: boolean
   prune: boolean
   maxDistance?: number
   minTransparency?: number
@@ -259,7 +263,7 @@ const VALUE_FLAGS = [
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend", "--sprites", "--pose",
 ] as const
 const BOOL_FLAGS = [
-  "--force", "--yes", "-y", "--accept-first", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune", "--merge-connected",
+  "--force", "--yes", "-y", "--accept-first", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune", "--merge-connected", "--flatten", "--gif",
   "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro", "--replace", "--custom",
 ] as const
 
@@ -267,7 +271,7 @@ export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
   "gallery", "edit", "model", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw",
-  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "parallax", "help", "--help", "-h", "--version", "-v",
+  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "parallax", "layer", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -284,6 +288,7 @@ const TALK_SUBCOMMANDS = ["visemes", "gif", "plan"] as const
 const ASSET_SUBCOMMANDS = ["canvas", "mirror", "import", "save", "expand", "review", "export"] as const
 const UI_SUBCOMMANDS = ["show", "split", "states", "nine-slice", "pull"] as const
 const PARALLAX_SUBCOMMANDS = ["preview", "export"] as const
+const LAYER_SUBCOMMANDS = ["preview"] as const
 
 /**
  * Strict parsing. Unknown flags are a hard error rather than being ignored,
@@ -449,6 +454,18 @@ export function parseArgs(argv: string[]): Args {
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
     // The set id; optional when the manifest has one set.
+    target = rest[0]?.startsWith("-") ? undefined : rest[0]
+    if (target !== undefined) rest = rest.slice(1)
+  } else if (command === "layer") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new UsageError(`layer needs a subcommand: ${LAYER_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(LAYER_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown layer subcommand "${subcommand}". Known: ${LAYER_SUBCOMMANDS.join(", ")}`)
+    }
+    rest = rest.slice(1)
+    // The layer's asset id; every layer when omitted.
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
     if (target !== undefined) rest = rest.slice(1)
   } else if (command === "refine") {
@@ -646,6 +663,8 @@ export function parseArgs(argv: string[]): Args {
     format: rawFormat as TilesetFormat | SheetFormat | undefined,
     outputRoles: list("--output-role"),
     primaryOnly: rest.includes("--primary-only"),
+    flatten: rest.includes("--flatten"),
+    gif: rest.includes("--gif"),
     prune: rest.includes("--prune"),
     maxDistance: numberOption("--max-distance", { min: 0 }),
     minTransparency: numberOption("--min-transparency", { min: 0, max: 1 }),

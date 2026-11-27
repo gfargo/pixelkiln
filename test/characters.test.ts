@@ -19,6 +19,7 @@ import { sha256File } from "../src/hash.ts"
 import { CHARACTER_DIRECTIONS_8, lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
 import { writeAnchors } from "../src/pipeline/attach.ts"
 import { redrawLayerFrames } from "../src/pipeline/redraw.ts"
+import { dressLayer, dressedGif, dressedStrip } from "../src/pipeline/layer-preview.ts"
 import { SKELETON_LABELS } from "../src/skeleton.ts"
 
 /** The directions a held item needs files for: every one its base faces. */
@@ -2107,6 +2108,57 @@ describe("paperdoll layer", () => {
     // A padded layer shares its frame's centre, so it is drawn that much up and to the left.
     expect(packStyle(p.lock, "cast", dir, { pivot: "bottom-center" }).atlas.layers![0]!.frames[0]).toMatchObject({ over: "mira/south", dx: -4, dy: -4 })
     expect(openProject(await layeredManifest({ region: "around" }), { env: false }).then((q) => q.specs.find((s) => s.assetId === "mira.armor")!.character!.layer!.padding)).resolves.toBe(8)
+  })
+
+  it("trims the bare fringe under a layer in the atlas, flattens it into the frames, and previews it, without touching the spec's identity", async () => {
+    const plainSpec = (await openProject(await layeredManifest(), { env: false })).specs.find((s) => s.assetId === "mira.armor")!
+    const file = await layeredManifest({ trim: true })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(file, client, provider)
+    const spec = p.specs.find((s) => s.assetId === "mira.armor")!
+    expect(spec.character!.layer!.trim).toEqual({ run: 4, island: 45 })
+    expect(spec.specHash).toBe(plainSpec.specHash)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    // The provider's clothes one pixel short of the body's left edge on every frame: the fringe.
+    for (const output of p.lock.entries["cast/mira.armor"]!.outputs) {
+      const frame = path.resolve(dir, output.path)
+      const image = decodePng(await readFile(frame))
+      for (let y = 0; y < image.height; y++) {
+        const x = [...Array(image.width).keys()].find((column) => image.pixels[(y * image.width + column) * 4 + 3]! > 0)
+        if (x !== undefined) image.pixels.fill(0, (y * image.width + x) * 4, (y * image.width + x) * 4 + 4)
+      }
+      await writeFile(frame, encodeRgbaPng(image.width, image.height, image.pixels))
+    }
+    const trim = { "mira.armor": spec.character!.layer!.trim! }
+    const atlas = packStyle(p.lock, "cast", dir, { pivot: "bottom-center", trim }).atlas
+    const south = atlas.layers![0]!.frames.find((frame) => frame.over === "mira/south")!
+    expect(south.cut!.length).toBeGreaterThan(0)
+    expect(south.cut!.every(([, , length]) => length >= 1 && length <= 4)).toBe(true)
+    expect(packStyle(p.lock, "cast", dir, { pivot: "bottom-center" }).atlas.layers![0]!.frames[0]!.cut).toBeUndefined()
+
+    const flat = packStyle(p.lock, "cast", dir, { pivot: "bottom-center", trim, flatten: true })
+    expect(flat.atlas.layers).toBeUndefined()
+    expect(flat.atlas.frames.some((frame) => frame.id.startsWith("mira.armor"))).toBe(false)
+    expect(flat.atlas.sets?.some((set) => set.id === "mira.armor")).toBeFalsy()
+    expect(flat.sources.some((source) => source.id === "mira.armor/mira.south")).toBe(true)
+    // The dressed south frame shows leather where the bare base showed skin.
+    const bare = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+    const sheet = decodePng(flat.png)
+    const at = flat.atlas.frames.find((frame) => frame.id === "mira/south")!
+    const placedAt = ((at.y + bare.height - 1) * sheet.width + at.x + Math.floor(bare.width / 2)) * 4
+    expect([...sheet.pixels.subarray(placedAt, placedAt + 4)]).toEqual(LEATHER)
+    expect(() => packStyle(p.lock, "cast", dir, { flatten: ["mira.walk"] })).toThrow(/--flatten names mira.walk, which is not a layer/)
+
+    const dressed = dressLayer(spec, p.lock)
+    expect(dressed.map((source) => [source.assetId, source.still, source.frames.length])).toEqual([["mira", true, 8], ["mira.walk", false, 4]])
+    expect(dressed[1]!.cut).toBeGreaterThan(0)
+    expect(dressedGif(dressed[1]!).subarray(0, 6).toString("latin1")).toBe("GIF89a")
+    expect(decodePng(dressedStrip(dressed[0]!)).width).toBe(decodePng(dressed[0]!.frames[0]!.png).width * 8)
   })
 
   it("goes stale when any source is regenerated", async () => {

@@ -1130,3 +1130,183 @@ export function redrawSheet(
     mask: encodeRgbaPng(mask.width, mask.height, mask.pixels),
   }
 }
+
+/** How much of the base a layer's trim may hide: runs across a row, and islands left after them. */
+export interface TrimOptions {
+  /** The widest run of bare base, between the layer and empty space on one row, that is hidden. Default 4. */
+  run: number
+  /** The largest island of bare base touching both the layer and empty space that is hidden. Default 45. */
+  island: number
+}
+
+export const DEFAULT_TRIM: TrimOptions = { run: 4, island: 45 }
+
+/** One base frame's trim: which of its pixels to hide while the layers are worn. */
+export interface BaseCut {
+  width: number
+  height: number
+  /** One byte per base pixel, 1 where it is hidden. */
+  mask: Uint8Array
+  pixels: number
+}
+
+/** Where a layer canvas's corner falls on its base frame: they share a centre, so a padded layer starts up and to the left. */
+function layerOrigin(base: DecodedPng, layer: DecodedPng): { x: number; y: number } {
+  return { x: Math.round((base.width - layer.width) / 2), y: Math.round((base.height - layer.height) / 2) }
+}
+
+/**
+ * The fringe a layer leaves uncovered. A provider draws a layer's clothes in
+ * nearly the same place on every frame of a sheet, so where the figure sways
+ * a strip of the base one to three pixels wide stays bare along one edge,
+ * with small islands at the shoulders and elbows. Below the neck only:
+ *
+ * 1. on each row, a run of base pixels no layer covers, at most `run` wide,
+ *    with empty space at one end and a layer at the other, is hidden;
+ * 2. then any island of uncovered base pixels left, at most `island` pixels,
+ *    that touches both a layer and empty space is hidden, unless it reaches
+ *    up to the neck row (it is then the neck).
+ *
+ * Nothing is painted, so the silhouette follows the clothes. Hands, the
+ * neck and the face are bigger than either limit and stay.
+ */
+export function trimBase(base: Buffer, layers: Buffer[], options: Partial<TrimOptions> = {}): BaseCut {
+  const image = decodePng(base)
+  const { width, height } = image
+  const run = options.run ?? DEFAULT_TRIM.run
+  const island = options.island ?? DEFAULT_TRIM.island
+  const cloth = new Uint8Array(width * height)
+  for (const png of layers) {
+    const layer = decodePng(png)
+    const origin = layerOrigin(image, layer)
+    for (let y = 0; y < layer.height; y++) {
+      for (let x = 0; x < layer.width; x++) {
+        const bx = x + origin.x
+        const by = y + origin.y
+        if (bx < 0 || by < 0 || bx >= width || by >= height || !opaque(layer, x, y)) continue
+        cloth[by * width + bx] = 1
+      }
+    }
+  }
+  const mask = new Uint8Array(width * height)
+  const neck = neckRow(image)
+  if (neck === null) return { width, height, mask, pixels: 0 }
+  const body = (x: number, y: number) => opaque(image, x, y)
+  const bare = (x: number, y: number) => body(x, y) && !cloth[y * width + x]
+  let pixels = 0
+
+  for (let y = neck; y < height; y++) {
+    for (let x = 0; x < width;) {
+      if (!bare(x, y)) {
+        x++
+        continue
+      }
+      let end = x
+      while (end < width && bare(end, y)) end++
+      const openLeft = x === 0 || !body(x - 1, y)
+      const openRight = end >= width || !body(end, y)
+      const clothLeft = x > 0 && cloth[y * width + x - 1] === 1
+      const clothRight = end < width && cloth[y * width + end] === 1
+      if (end - x <= run && ((openLeft && clothRight) || (openRight && clothLeft))) {
+        for (let k = x; k < end; k++) mask[y * width + k] = 1
+        pixels += end - x
+      }
+      x = end
+    }
+  }
+
+  const left = (x: number, y: number) => bare(x, y) && !mask[y * width + x]
+  const seen = new Uint8Array(width * height)
+  for (let y0 = neck; y0 < height; y0++) {
+    for (let x0 = 0; x0 < width; x0++) {
+      if (seen[y0 * width + x0] || !left(x0, y0)) continue
+      const part: Array<[number, number]> = [[x0, y0]]
+      seen[y0 * width + x0] = 1
+      let air = false
+      let covered = false
+      // An island that reaches the neck row is the neck itself, however small the stretch below that row is.
+      let neckline = false
+      for (let n = 0; n < part.length; n++) {
+        const [px, py] = part[n]!
+        if (py === neck) neckline = true
+        for (const [dx, dy] of STEPS) {
+          const nx = px + dx
+          const ny = py + dy
+          if (nx < 0 || nx >= width || ny < neck || ny >= height) continue
+          if (cloth[ny * width + nx]) covered = true
+          else if (!body(nx, ny) || mask[ny * width + nx]) air = true
+          else if (!seen[ny * width + nx]) {
+            seen[ny * width + nx] = 1
+            part.push([nx, ny])
+          }
+        }
+      }
+      if (air && covered && !neckline && part.length <= island) {
+        for (const [px, py] of part) mask[py * width + px] = 1
+        pixels += part.length
+      }
+    }
+  }
+  return { width, height, mask, pixels }
+}
+
+/** A cut as rows of hidden pixels, `[x, y, length]` in the base frame's own pixels: what an engine applies. */
+export function cutRuns(cut: BaseCut): Array<[number, number, number]> {
+  const runs: Array<[number, number, number]> = []
+  for (let y = 0; y < cut.height; y++) {
+    for (let x = 0; x < cut.width;) {
+      if (!cut.mask[y * cut.width + x]) {
+        x++
+        continue
+      }
+      let end = x
+      while (end < cut.width && cut.mask[y * cut.width + end]) end++
+      runs.push([x, y, end - x])
+      x = end
+    }
+  }
+  return runs
+}
+
+/**
+ * One dressed frame: the base with its cut hidden, then each layer drawn over
+ * it in order. The canvas is the largest of them, every image centred on it,
+ * so a padded layer (a hat above the head) keeps the room it was drawn with.
+ */
+export function dressFrame(base: Buffer, layers: Buffer[], cut?: BaseCut): Buffer {
+  const under = decodePng(base)
+  const over = layers.map((png) => decodePng(png))
+  const width = Math.max(under.width, ...over.map((image) => image.width))
+  const height = Math.max(under.height, ...over.map((image) => image.height))
+  const out: DecodedPng = { width, height, pixels: Buffer.alloc(width * height * 4) }
+  const draw = (image: DecodedPng, hidden?: Uint8Array) => {
+    const ox = Math.round((width - image.width) / 2)
+    const oy = Math.round((height - image.height) / 2)
+    for (let y = 0; y < image.height; y++) {
+      for (let x = 0; x < image.width; x++) {
+        const from = at(image, x, y)
+        const alpha = image.pixels[from + 3]!
+        if (!alpha || hidden?.[y * image.width + x]) continue
+        const to = at(out, x + ox, y + oy)
+        if (alpha === 255 || out.pixels[to + 3] === 0) {
+          image.pixels.copy(out.pixels, to, from, from + 4)
+          continue
+        }
+        // Source-over for the odd soft pixel; pixel art is almost always all or nothing.
+        const a = alpha / 255
+        const b = out.pixels[to + 3]! / 255
+        const total = a + b * (1 - a)
+        for (let c = 0; c < 3; c++) {
+          out.pixels[to + c] = Math.round((image.pixels[from + c]! * a + out.pixels[to + c]! * b * (1 - a)) / total)
+        }
+        out.pixels[to + 3] = Math.round(total * 255)
+      }
+    }
+  }
+  if (cut && (cut.width !== under.width || cut.height !== under.height)) {
+    throw new Error(`the cut is ${cut.width}x${cut.height}; the base frame is ${under.width}x${under.height}`)
+  }
+  draw(under, cut?.mask)
+  for (const image of over) draw(image)
+  return encodeRgbaPng(width, height, out.pixels)
+}

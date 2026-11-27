@@ -1,3 +1,4 @@
+import { DEFAULT_TRIM } from "./paperdoll.ts"
 import { isHeldItem } from "./attach.ts"
 import { SET_DERIVES } from "./pipeline/derive.ts"
 import { readFile } from "node:fs/promises"
@@ -1442,6 +1443,9 @@ export async function resolveSpecs(
             region: asset.layer.region ?? "body",
             padding: asset.layer.padding ?? (attach ? 12 : (asset.layer.region ?? "body") === "body" ? 0 : 8),
             ...(offset ? { offset } : {}),
+            ...(asset.layer.trim
+              ? { trim: { ...DEFAULT_TRIM, ...(asset.layer.trim === true ? {} : asset.layer.trim) } }
+              : {}),
             ...(attach ? { attach } : {}),
           },
         }

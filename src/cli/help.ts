@@ -38,6 +38,9 @@ Commands
             that scrolls the set and a strip of frames; parallax export [set]
             writes a Tiled map, a Godot scene and an LDtk project (or one,
             with --format) with the layer pictures. Offline.
+  layer     Paperdoll layers. layer preview [layer] draws each one over the
+            frames it dresses, trim applied, as a strip per source, or with
+            --gif an animated GIF per loop. Offline.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
   prune     Drop lock entries the manifest no longer declares. Offline; asks
             first. Local art is untouched.
@@ -149,6 +152,9 @@ Options
                       parallax export: tiled, godot, or ldtk (default: all three)
   --output-role <r>   pack: include only this output role (repeatable)
   --primary-only      pack: include only unambiguous primary/single outputs
+  --flatten           pack: draw the layers onto the frames they go over, trim
+                      applied, and leave their own frames off; --only picks layers
+  --gif               layer preview: an animated GIF per loop instead of a strip
   --max-distance <n>  audit: maximum palette distance
   --min-transparency <0..1>  audit: minimum transparent canvas share
   --max-colors <n>    audit: maximum distinct opaque colors

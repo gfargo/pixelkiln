@@ -1877,6 +1877,29 @@
                       }
                     ]
                   },
+                  "trim": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "run": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 16
+                          },
+                          "island": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 4096
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
                   "attach": {
                     "type": "object",
                     "properties": {

@@ -23,6 +23,7 @@ import { runRecipe } from "./commands/recipe.ts"
 import { runRefine } from "./commands/refine.ts"
 import { runAnchors } from "./commands/anchors.ts"
 import { runParallax } from "./commands/parallax.ts"
+import { runLayer } from "./commands/layer.ts"
 import { runRedraw } from "./commands/redraw.ts"
 import { runEstimateSkeleton, runSkeletonPreview } from "./commands/skeleton.ts"
 import { runTools } from "./commands/tools.ts"
@@ -107,6 +108,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   asset: runAsset,
   talk: runTalk,
   parallax: runParallax,
+  layer: runLayer,
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {

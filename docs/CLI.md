@@ -111,6 +111,14 @@ all-or-nothing failure. Commands that spend (`gen`, `submit`, and the rest)
 always fail on an invalid manifest. A problem in the manifest's own top-level
 fields still fails every command.
 
+A paperdoll layer is also measured against the one sheet its inpaint is
+drawn on: once its sources are downloaded the reason says how the sheet will
+be laid out ("14 frames, 4 columns of 38x62 on a 152x248 sheet, room for
+104"). A layer whose frames cannot fit is planned as `invalid`, with the most
+frames that fit and the count to regenerate its loops at, and priced at
+nothing; `gen` leaves it alone. See
+[Paperdoll layers](./PAPERDOLL.md#cost-and-limits).
+
 `--check` exits nonzero unless every selected entry is current. For styles with
 `quality`, current raw output is not enough: each derived PNG must also have a
 current named approval.
@@ -279,6 +287,13 @@ After a stale spec is deliberately regenerated, `fetch` replaces the prior file
 only if its hash still proves PixelKiln wrote it. A changed or untracked
 destination is refused; inspect it, then pass `fetch --force` only when the new
 provider result should take ownership. `gen --force` applies the same rule.
+
+A regeneration with fewer outputs than the one it replaced (a loop drawn
+again at 8 frames instead of 9) would leave the old high-numbered files on
+disk, where anything that globs the folder picks them up. `fetch` removes
+each one that still holds the bytes PixelKiln wrote, caching them first so
+`history` can still show them, and names any that was changed by hand
+instead of deleting it.
 
 ### `restore`
 
@@ -1303,6 +1318,21 @@ pixelkiln pack --style hero --format godot      # hero-sheet.png + hero-sheet.tr
 One document per run, like `export`; the sheet PNG is identical whichever
 format is chosen, and the `.pixelkiln.json` companion records the format.
 
+A character style's paperdoll layers are on the sheet beside the frames they
+go over, and the generic atlas's `layers` section pairs them up. A layer with
+`trim` adds a `cut` to each frame: the base pixels to hide while that layer is
+worn, as `[x, y, length]` rows in the base frame's pixels.
+
+`--flatten` draws the layers onto the frames instead, trim applied, and
+leaves the layers' own frames off the sheet: one dressed sheet per run, for a
+game that swaps whole sheets per outfit. With `--only` it draws only the
+layers named, in that order; without it every layer, in id order. The
+companion records which.
+
+```bash
+pixelkiln pack --style hero --flatten --only underwear,shirt --out dist/hero-shirt
+```
+
 ### `mount`
 
 Write sprites into manifest-declared cells, optionally over an existing base
@@ -1351,6 +1381,25 @@ camera's far end or the top of the climb, and (on export) LDtk tiles past the
 level's edge. See
 [parallax backgrounds](./PARALLAX.md) for the manifest fields and engine
 setup.
+
+### `layer`
+
+Look at paperdoll layers without packing them. `layer preview [layer]` draws
+each layer over every frame it dresses, the way `pack --flatten` does (the
+layer's `trim` applied), and writes one strip per source asset to
+`.pixelkiln/previews/<style>/<layer>/`, or to `--out` when one layer is named.
+`--gif` writes each loop as an animated GIF at the loop's own rate instead;
+rotations stay a strip. It prints how many base pixels the trim hid. Offline;
+spends nothing.
+
+```bash
+pixelkiln layer preview hero.shirt --gif
+pixelkiln layer preview --style hero           # every layer in the style
+```
+
+A fringe of bare base beside the clothes, or a seam where two loops' layers
+meet, is easier to judge moving than on a still sheet. See
+[Paperdoll layers](./PAPERDOLL.md#composing-layers-in-a-game).
 
 ## PixelLab utilities
 
@@ -2243,6 +2292,8 @@ Print the package version. `-v` is an alias.
 | `--format <name>` | export, pack, mount | `export`: `generic` (default), `tiled`, `godot` (TileSet), or `ldtk` (project with auto-rules). `pack` and `mount`: `generic` (default), `aseprite` (sheet JSON), or `godot` (SpriteFrames). |
 | `--output-role <role>` | pack | Include named structural roles; repeatable. |
 | `--primary-only` | pack | Include only unambiguous primary/single outputs. |
+| `--flatten` | pack | Draw paperdoll layers onto the frames they go over, trim applied, and leave their own frames off the sheet; `--only` picks the layers and their order. |
+| `--gif` | layer preview | Write each dressed loop as an animated GIF instead of a strip. |
 | `--max-distance <n>` | audit | Absolute palette-distance ceiling. |
 | `--min-transparency <0..1>` | audit/refine | Minimum transparent canvas share. |
 | `--max-colors <n>` | audit | Maximum distinct opaque colors. |

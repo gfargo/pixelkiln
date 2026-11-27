@@ -918,6 +918,23 @@ export const CharacterLayerSchema = z
      */
     offset: z.union([LayerOffsetPairSchema, z.record(z.string().min(1), LayerOffsetPairSchema)]).optional(),
     /**
+     * Hide the fringe of base the layer leaves bare. A provider draws the
+     * clothes in nearly the same place on every frame, so where the figure
+     * sways a strip of the body 1 to 3 pixels wide stays uncovered along one
+     * edge. `true` hides, below the neck, runs of bare base up to 4 pixels
+     * wide between the layer and empty space, then islands of up to 45
+     * pixels that touch both; `{ "run": 4, "island": 45 }` sets the limits.
+     * The layer's own frames are untouched: `pack` records each frame's cut
+     * in the atlas, and `pack --flatten` and `layer preview` apply it. Free,
+     * and changing it never makes the layer stale.
+     */
+    trim: z
+      .union([
+        z.boolean(),
+        z.object({ run: z.number().int().min(0).max(16).optional(), island: z.number().int().min(0).max(4096).optional() }).strict(),
+      ])
+      .optional(),
+    /**
      * Make this layer a held item instead of an inpaint: a sprite you already
      * have, pinned to a hand in every frame. Free and local. See
      * CharacterAttachSchema.
@@ -927,7 +944,7 @@ export const CharacterLayerSchema = z
   .strict()
   .superRefine((layer, context) => {
     if (!layer.attach) return
-    for (const field of ["mask", "keyed", "skin", "key", "clean", "region"] as const) {
+    for (const field of ["mask", "keyed", "skin", "key", "clean", "region", "trim"] as const) {
       if (layer[field] !== undefined) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -1190,6 +1207,8 @@ export interface ResolvedCharacter {
     padding: number
     /** Pixels the layer's frames are moved by; absent when none are. */
     offset?: LayerOffset
+    /** How much bare base to hide under it at compose time; absent unless `trim` is set. Not part of the spec's identity. */
+    trim?: { run: number; island: number }
     /** For a held item: its files, the anchors file, and how it is turned. Hashes are null while a file does not exist. */
     attach?: {
       item: Array<{ direction: CharacterDirection; path: string; sha256: string | null }>
