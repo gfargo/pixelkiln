@@ -321,6 +321,58 @@ describe("layer sheets", () => {
     expect(pixel(cleaned.png, 10, 10)).toEqual(SKIN)
   })
 
+  describe("dark clothing on the figure (#414)", () => {
+    const W = 44, H = 64
+    const paint = (rects: Array<[number, number, number, number, Pixel]>) => {
+      const buf = Buffer.alloc(W * H * 4)
+      for (const [x0, y0, x1, y1, colour] of rects) {
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) Buffer.from(colour).copy(buf, (y * W + x) * 4)
+      }
+      return encodeRgbaPng(W, H, buf)
+    }
+    const CLOTH: Pixel = [34, 31, 38, 255]       // dark briefs: darker than the outline threshold
+    const SHEEN: Pixel = [52, 50, 58, 255]       // their highlight in the rotations, also below it
+    // A 36x58 body; briefs as a band across its full width, over the outline, with a highlight stripe.
+    const body: Array<[number, number, number, number, Pixel]> = [[2, 2, 39, 61, INK], [3, 3, 38, 60, SKIN]]
+    const briefs = (sheen: Pixel): Array<[number, number, number, number, Pixel]> => [[2, 30, 39, 39, CLOTH], [6, 34, 25, 35, sheen]]
+    const still = paint([...body, ...briefs(SHEEN)])
+    const opaque = (png: Buffer) => decodePng(png).pixels.filter((v, i) => i % 4 === 3 && v > 0).length
+
+    it("keeps briefs whose highlight came back a shade lighter than the rotations draw it", () => {
+      // The loop shifts the sheen by a shade: now above the outline threshold, so the body's own colours do not include it.
+      const frame = paint([...body, ...briefs([66, 64, 72, 255])])
+      const cleaned = despeckle(frame, { reference: [still] })
+      expect(cleaned.removed).toBe(0)
+      expect(opaque(cleaned.png)).toBe(opaque(frame))
+    })
+
+    it("never follows an erased speck into a mass of dark cloth", () => {
+      // A sheen nothing in the rotations is near: the stripe itself may go, the briefs around it must not.
+      const frame = paint([...body, ...briefs([95, 92, 108, 255])])
+      const cleaned = despeckle(frame, { reference: [still] })
+      expect(cleaned.removed).toBeLessThanOrEqual(40)
+      expect(pixel(cleaned.png, 20, 32)).toEqual(CLOTH)
+      expect(pixel(cleaned.png, 4, 37)).toEqual(CLOTH)
+      expect(pixel(cleaned.png, 20, 20)).toEqual(SKIN)
+    })
+
+    it("keeps a large strange-coloured part that reaches the silhouette's edge", () => {
+      // A forearm shaded in a colour the rotations never use, hanging off the body into the open.
+      const ARM: Pixel = [120, 60, 150, 255]
+      const frame = paint([...body, [40, 5, 43, 58, ARM]])
+      const cleaned = despeckle(frame, { reference: [still] })
+      expect(pixel(cleaned.png, 41, 20)).toEqual(ARM)
+      expect(pixel(cleaned.png, 42, 25)).toEqual(ARM)
+    })
+
+    it("still clears a small pale ghost beside the figure", () => {
+      const frame = paint([...body, [41, 5, 42, 8, HAZE]])
+      const cleaned = despeckle(frame, { reference: [still] })
+      expect(pixel(cleaned.png, 41, 6)).toEqual(CLEAR)
+      expect(cleaned.removed).toBe(8)
+    })
+  })
+
   it("keys skin only where the provider may paint, so a head under an outfit's mask keeps its face", () => {
     const built = buildLayerSheet([sources[0]!], { maxSide: 512, minSide: 1 })
     const sheet = decodePng(built.sheet)

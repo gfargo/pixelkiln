@@ -412,9 +412,19 @@ layer) stale, so turn it on before generating those.
 
 Cleaning goes by colour, so look at the limbs afterwards. A model sometimes
 shades a far arm or leg in a dark colour the rotations never use. A whole
-limb drawn that way, in its own outline, is recognised by its size and left
-alone; an edge of such colour on the body itself is still peeled, which can
-thin an arm. Regenerate a loop that comes back like that.
+limb drawn that way is recognised by its size and left alone, sealed in its
+own outline or reaching the edge of the silhouette; an edge of such colour on
+the body itself is still peeled, which can thin an arm. Regenerate a loop
+that comes back like that.
+
+Dark clothing is the figure's own. Shades below the outline threshold in the
+rotations vouch for a loop's slightly lighter shade of them, and the sweep
+that removes outline left framing nothing never takes a connected stretch of
+dark bigger than a ghost. Until this fix a base in black underwear could lose
+thousands of pixels from a frame that way. Loops cleaned before can come out
+with different bytes on their next `pixelkiln fetch`; no spec hash changes.
+`fetch` warns when cleaning takes more than 3% of a frame's opaque pixels;
+`"clean": false` and `pixelkiln fetch` restore the provider's bytes for free.
 
 ### How the family depends on the base
 

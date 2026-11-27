@@ -329,6 +329,9 @@ describe("cleaning a loop", () => {
     const cleaned = applyPostprocess(ghosted, MediaType.PNG, record, [still])
     expect(cleaned).toMatchObject({ changed: true, removed: 1 })
     expect(decodePng(cleaned.bytes).pixels[11]).toBe(0)
+    // How many opaque pixels the frame had, so fetch can warn when cleaning took a large share of them.
+    const opaque = decodePng(ghosted).pixels.filter((v, i) => i % 4 === 3 && v > 0).length
+    expect(cleaned.opaque).toBe(opaque)
     expect(applyPostprocess(still, MediaType.PNG, record, [still])).toEqual({ bytes: still, changed: false })
     expect(() => applyPostprocess(ghosted, MediaType.PNG, record)).toThrow(/needs the rotations of hero/)
   })
