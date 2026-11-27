@@ -23,7 +23,7 @@ import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
 import { normalMapCost, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
 import { isDirection } from "../attach.ts"
-import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, redrawSheet, LAYER_SHEET_MAX_SIDE, type LayerFrame, type LayerRegion } from "../paperdoll.ts"
+import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, redrawSheet, LAYER_SHEET_MAX_SIDE, type LayerFrame, type LayerRegion, type LayerSheet } from "../paperdoll.ts"
 import { placeHeldFrames } from "../pipeline/attach.ts"
 import { decodePng, joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
@@ -520,6 +520,48 @@ const GRASP_PROMPT =
  */
 export function layerWorkDir(spec: Pick<ResolvedSpec, "root" | "styleId" | "assetId">): string {
   return path.join(spec.root, ".pixelkiln", "layers", spec.styleId, spec.assetId)
+}
+
+/**
+ * The sheet, keyed sheet and mask a drawn layer sends: what submit inpaints,
+ * and what `layer preview` writes without sending. `outputs` are every frame
+ * of every source, in `of` order, after any anchor's guides, as
+ * `layerSourceOutputs` lists them.
+ */
+export function layerSheetFor(spec: ResolvedSpec, outputs: NonNullable<SubmitContext["parentOutputs"]>): LayerSheet {
+  const character = spec.character!
+  const layer = character.layer!
+  const label = `${spec.styleId}/${spec.assetId}`
+  if (!outputs.length) throw new Error(`${label}: its layer sources have no downloaded frames`)
+  const sources = outputs.map((output) => ({
+    assetId: output.assetId ?? character.parentAssetId!,
+    ...(output.role ? { role: output.role } : {}),
+    png: readFileSync(output.path),
+    still: output.still === true,
+  }))
+  const supplied = (name: string, file: { path: string; sha256: string | null } | undefined) => {
+    if (!file) return undefined
+    const bytes = readFileSync(file.path)
+    if (sha256(bytes) !== file.sha256) throw new Error(`${label}: layer ${name} changed after the manifest was resolved: ${file.path}`)
+    return bytes
+  }
+  const built = buildLayerSheet(sources, {
+    minSide: 32,
+    maxSide: LAYER_SHEET_MAX_SIDE,
+    columns: layer.columns,
+    region: layer.region,
+    padding: layer.padding,
+    key: layer.key,
+    skin: layer.skin,
+    cover: layer.cover,
+    reference: layer.clean ? sources.filter((source) => source.still).map((source) => source.png) : [],
+    mask: supplied("mask", layer.mask),
+    keyed: supplied("keyed sheet", layer.keyed),
+  })
+  // An anchor's guides (first, as layerSourceOutputs lists them) go on dressed
+  // and masked shut, the way redraw shows a loop's finished frames.
+  if (!outputs.some((output) => output.guide)) return built
+  return { ...built, ...redrawSheet(built, outputs.map((output) => output.guide ?? null), outputs.map((output) => !output.guide)) }
 }
 
 export class PixelLabProvider implements Provider {
@@ -1612,40 +1654,12 @@ export class PixelLabProvider implements Provider {
       const layer = character.layer!
       const label = `${spec.styleId}/${spec.assetId}`
       const outputs = context?.parentOutputs ?? []
-      if (!outputs.length) throw new Error(`${label}: its layer sources have no downloaded frames`)
-      const sources = outputs.map((output) => ({
-        assetId: output.assetId ?? character.parentAssetId!,
-        ...(output.role ? { role: output.role } : {}),
-        png: readFileSync(output.path),
-        still: output.still === true,
-      }))
-      // An anchor's guides lead the sheet; the pipeline puts them first.
+      const built = layerSheetFor(spec, outputs)
+      // An anchor's guides lead the sheet, already dressed and masked shut.
       const guides = outputs.filter((output) => output.guide).length
-      const supplied = (name: string, file: { path: string; sha256: string | null } | undefined) => {
-        if (!file) return undefined
-        const bytes = readFileSync(file.path)
-        if (sha256(bytes) !== file.sha256) throw new Error(`${label}: layer ${name} changed after the manifest was resolved: ${file.path}`)
-        return bytes
-      }
-      const built = buildLayerSheet(sources, {
-        minSide: 32,
-        maxSide: LAYER_SHEET_MAX_SIDE,
-        columns: layer.columns,
-        region: layer.region,
-        padding: layer.padding,
-        key: layer.key,
-        skin: layer.skin,
-        reference: layer.clean ? sources.filter((source) => source.still).map((source) => source.png) : [],
-        mask: supplied("mask", layer.mask),
-        keyed: supplied("keyed sheet", layer.keyed),
-      })
       const dir = layerWorkDir(spec)
       mkdirSync(dir, { recursive: true })
       let prepared = built
-      if (guides) {
-        // The anchor's frames go on dressed and masked shut, as redraw shows a loop's finished frames.
-        prepared = { ...built, ...redrawSheet(built, outputs.map((output) => output.guide ?? null), outputs.map((output) => !output.guide)) }
-      }
       let grasp: LayerLayout["grasp"]
       if (layer.attach?.grasp) {
         // A grip pass: place the item on every frame as a free held item is,
@@ -1710,7 +1724,18 @@ export class PixelLabProvider implements Provider {
           character: {
             kind: "layer",
             backgroundJobId: res.background_job_id,
-            sheet: { width, height, frames: prepared.frames.length, cleanedPixels: prepared.cleaned, ...(guides ? { guides } : {}) },
+            sheet: {
+              width,
+              height,
+              frames: prepared.frames.length,
+              cleanedPixels: prepared.cleaned,
+              ...(guides ? { guides } : {}),
+              // Each frame's neck row in its cell, and the frames whose own narrowest row was overruled; submit prints both.
+              ...(prepared.necks ? { necks: prepared.necks.map((neck) => neck?.row ?? null) } : {}),
+              ...(prepared.necks?.some((neck) => neck?.corrected)
+                ? { neckCorrected: prepared.necks.flatMap((neck, index) => (neck?.corrected ? [index] : [])) }
+                : {}),
+            },
           },
         },
       }

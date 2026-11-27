@@ -270,8 +270,8 @@ const BOOL_FLAGS = [
 export const COMMANDS = [
   "init", "plan", "hash", "doctor", "gen", "submit", "poll", "pick", "fetch", "restore", "adopt", "accept",
   "salvage", "purge", "prune", "audit", "cache", "pack", "mount", "export", "tag", "balance", "status",
-  "gallery", "edit", "model", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw",
-  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "parallax", "layer", "help", "--help", "-h", "--version", "-v",
+  "gallery", "edit", "model", "tools", "history", "quality", "refine", "recipe", "workspace", "estimate-skeleton", "anchors", "redraw", "layer",
+  "skeleton-preview", "unzoom", "pixelate", "normal-map", "vfx", "font", "music", "sfx", "ui", "asset", "talk", "parallax", "help", "--help", "-h", "--version", "-v",
 ] as const
 
 const WORKSPACE_SUBCOMMANDS = ["add", "remove", "list", "status", "claims"] as const
@@ -402,6 +402,18 @@ export function parseArgs(argv: string[]): Args {
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
     if (target === undefined) throw new UsageError("redraw needs a layer's asset id: pixelkiln redraw <asset> --frame <name>")
     rest = rest.slice(1)
+  } else if (command === "layer") {
+    subcommand = rest[0]
+    if (subcommand === undefined || subcommand.startsWith("-")) {
+      throw new UsageError(`layer needs a subcommand: ${LAYER_SUBCOMMANDS.join(", ")}`)
+    }
+    if (!(LAYER_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
+      throw new UsageError(`Unknown layer subcommand "${subcommand}". Known: ${LAYER_SUBCOMMANDS.join(", ")}`)
+    }
+    rest = rest.slice(1)
+    target = rest[0]?.startsWith("-") ? undefined : rest[0]
+    if (target === undefined) throw new UsageError("layer preview needs a layer's asset id: pixelkiln layer preview <asset>")
+    rest = rest.slice(1)
   } else if (command === "skeleton-preview") {
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
     if (target === undefined) {
@@ -454,18 +466,6 @@ export function parseArgs(argv: string[]): Args {
     }
     if (rest[0] === subcommand) rest = rest.slice(1)
     // The set id; optional when the manifest has one set.
-    target = rest[0]?.startsWith("-") ? undefined : rest[0]
-    if (target !== undefined) rest = rest.slice(1)
-  } else if (command === "layer") {
-    subcommand = rest[0]
-    if (subcommand === undefined || subcommand.startsWith("-")) {
-      throw new UsageError(`layer needs a subcommand: ${LAYER_SUBCOMMANDS.join(", ")}`)
-    }
-    if (!(LAYER_SUBCOMMANDS as readonly string[]).includes(subcommand)) {
-      throw new UsageError(`Unknown layer subcommand "${subcommand}". Known: ${LAYER_SUBCOMMANDS.join(", ")}`)
-    }
-    rest = rest.slice(1)
-    // The layer's asset id; every layer when omitted.
     target = rest[0]?.startsWith("-") ? undefined : rest[0]
     if (target !== undefined) rest = rest.slice(1)
   } else if (command === "refine") {

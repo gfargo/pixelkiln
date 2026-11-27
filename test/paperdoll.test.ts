@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { bodyMask, buildLayerSheet, cutGraspFrames, cutLayerFrames, despeckle, extractLayer, graspSheet, isKeyColor, cutRuns, dressFrame, keySkin, layerFitProblem, layerSheetFit, neckRow, trimBase, packSheet, unionBounds, unpackSheet } from "../src/paperdoll.ts"
+import { bodyMask, buildLayerSheet, layerMask, cutGraspFrames, cutLayerFrames, despeckle, extractLayer, graspSheet, isKeyColor, cutRuns, dressFrame, keySkin, layerFitProblem, layerSheetFit, neckRow, trimBase, packSheet, unionBounds, unpackSheet } from "../src/paperdoll.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 
 type Pixel = [number, number, number, number]
@@ -114,6 +114,108 @@ describe("bodyMask", () => {
     const sheet = packSheet([draw(FIGURE), draw(FIGURE.map(() => "......."))], { columns: 2 })
     const white = (png: Buffer) => decodePng(png).pixels.filter((v, i) => i % 4 === 0 && v === 255).length
     expect(white(bodyMask(sheet.png, sheet.cells))).toBe(white(bodyMask(draw(FIGURE))))
+  })
+})
+
+describe("layerMask on a loop", () => {
+  // A 40x80 side-view figure, skin with a dark outline: a 12-wide head on rows 0-13, a 4-wide neck on 14-15, the body below.
+  type Rect = [number, number, number, number, Pixel]
+  const W = 40, H = 80
+  const paint = (rects: Rect[], shift = 0) => {
+    const buf = Buffer.alloc(W * H * 4)
+    for (const [x0, y0, x1, y1, colour] of rects) {
+      for (let y = y0 + shift; y <= y1 + shift; y++) for (let x = x0; x <= x1; x++) if (y >= 0 && y < H) Buffer.from(colour).copy(buf, (y * W + x) * 4)
+    }
+    return encodeRgbaPng(W, H, buf)
+  }
+  const BODY: Rect[] = [[14, 0, 25, 13, SKIN], [18, 14, 21, 15, SKIN], [10, 16, 29, 60, SKIN], [12, 61, 27, 79, SKIN]]
+  const sheetOf = (frames: Buffer[]) => packSheet(frames, { columns: frames.length })
+  const open = (mask: Buffer, x: number, y: number) => pixel(mask, x, y)[0] === 255
+
+  it("puts the neck the same distance below the head on every frame, overruling a frame whose narrowest row is lower", () => {
+    // Two frames of eight pinch the torso on row 24 (a shoulder in shadow): alone, the narrowest-row rule puts the neck there.
+    const pinched = paint([...BODY.slice(0, 2), [10, 16, 29, 23, SKIN], [19, 24, 20, 24, SKIN], [10, 25, 29, 60, SKIN], BODY[3]!])
+    const frames = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (i === 2 || i === 5 ? pinched : paint(BODY)))
+    expect(neckRow(decodePng(pinched))).toBe(24)
+    const sheet = sheetOf(frames)
+    const { png, necks } = layerMask(sheet.png, sheet.cells)
+    expect(necks.map((neck) => neck!.row)).toEqual([15, 15, 15, 15, 15, 15, 15, 15])
+    expect(necks.map((neck) => neck!.corrected)).toEqual([false, false, true, false, false, true, false, false])
+    // The chest of a pinched frame is open, as on the others.
+    expect(open(png, sheet.cells[2]!.x + 20, 18)).toBe(true)
+    expect(open(png, sheet.cells[2]!.x + 20, 10)).toBe(false)
+  })
+
+  it("follows a head that moves down the cell, as in a sit-down loop", () => {
+    const sheet = sheetOf([paint(BODY), paint(BODY), paint(BODY, 10)])
+    const { necks } = layerMask(sheet.png, sheet.cells)
+    expect(necks.map((neck) => neck!.row)).toEqual([15, 15, 25])
+    expect(necks.every((neck) => !neck!.corrected)).toBe(true)
+  })
+
+  it("dresses an arm raised beside the head and leaves the head alone", () => {
+    // Upper arm from the shoulder (rows 16-18) out to column 5, forearm up beside the head to row 2.
+    const raised = paint([...BODY, [5, 16, 9, 18, SKIN], [3, 2, 6, 18, SKIN]])
+    const sheet = sheetOf([paint(BODY), raised, paint(BODY)])
+    const { png, necks } = layerMask(sheet.png, sheet.cells)
+    const x0 = sheet.cells[1]!.x
+    expect(necks[1]!.row).toBe(15)
+    expect(open(png, x0 + 4, 5)).toBe(true) // the forearm, beside the head
+    expect(open(png, x0 + 20, 5)).toBe(false) // the face
+    expect(open(png, x0 + 8, 5)).toBe(false) // empty space beside it
+  })
+
+  it("does not take a hand raised above the head for the top of the head", () => {
+    const BELOW = BODY.map(([x0, y0, x1, y1, c]): Rect => [x0, y0 + 6, x1, Math.min(79, y1 + 6), c])
+    const plain = paint(BELOW)
+    const hand = paint([...BELOW, [19, 0, 21, 4, SKIN]])
+    const sheet = sheetOf([plain, plain, hand])
+    const { necks } = layerMask(sheet.png, sheet.cells)
+    expect(necks.map((neck) => neck!.head)).toEqual([6, 6, 6])
+    expect(necks[2]!.row).toBe(necks[0]!.row)
+  })
+})
+
+describe("keying inside the mask", () => {
+  const BRA: Pixel = [20, 18, 22, 255]
+  const W = 40, H = 80
+  const figure = (marks: Array<[number, number, number, number, Pixel]>) => {
+    const buf = Buffer.alloc(W * H * 4)
+    const rects: Array<[number, number, number, number, Pixel]> = [[14, 0, 25, 13, SKIN], [18, 14, 21, 15, SKIN], [10, 16, 29, 60, SKIN], [12, 61, 27, 79, SKIN], ...marks]
+    for (const [x0, y0, x1, y1, colour] of rects) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) Buffer.from(colour).copy(buf, (y * W + x) * 4)
+    return encodeRgbaPng(W, H, buf)
+  }
+  // The sheet is cut to the figure's bounds, which start at column 10: `at` takes the figure's own column.
+  const at = (png: Buffer, x: number, y: number) => pixel(png, x - 10, y)
+  const keyed = (png: Buffer, x: number, y: number) => {
+    const [r, g, b] = at(png, x, y)
+    return isKeyColor(r!, g!, b!)
+  }
+
+  it("leaves dark underwear as it is by default, and keys it with cover so the outfit goes over it", () => {
+    const base = figure([[10, 22, 29, 28, BRA], [12, 50, 27, 60, BRA]])
+    const plain = buildLayerSheet([{ assetId: "base", png: base }], { maxSide: 512, minSide: 1 })
+    expect(at(plain.keyed, 15, 25)).toEqual(BRA)
+    expect(keyed(plain.keyed, 15, 40)).toBe(true)
+    const covered = buildLayerSheet([{ assetId: "base", png: base }], { maxSide: 512, minSide: 1, cover: true })
+    expect(keyed(covered.keyed, 15, 25)).toBe(true)
+    expect(keyed(covered.keyed, 15, 55)).toBe(true)
+    // The head is outside the mask and keeps its own colours either way.
+    expect(at(covered.keyed, 20, 5)).toEqual(SKIN)
+    expect(covered.mask.equals(plain.mask)).toBe(true)
+  })
+
+  it("keys shut a dark pinhole in bare skin, but not a band too wide to be one, nor clothing named apart from skin", () => {
+    const INKY: Pixel = [30, 25, 25, 255]
+    const base = figure([[20, 30, 21, 30, INKY], [12, 40, 27, 40, INKY]])
+    const built = buildLayerSheet([{ assetId: "base", png: base }], { maxSide: 512, minSide: 1 })
+    expect(keyed(built.keyed, 20, 30)).toBe(true)
+    expect(keyed(built.keyed, 21, 30)).toBe(true)
+    expect(at(built.keyed, 20, 40)).toEqual(INKY)
+    expect(built.closed).toBe(2)
+    const named = buildLayerSheet([{ assetId: "base", png: base }], { maxSide: 512, minSide: 1, skin: ["#c8966e"] })
+    expect(at(named.keyed, 20, 30)).toEqual(INKY)
+    expect(named.closed).toBe(0)
   })
 })
 

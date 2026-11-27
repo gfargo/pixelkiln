@@ -207,6 +207,8 @@ export function specHash(
                   keyed: spec.character.layer.keyed?.sha256,
                   skin: spec.character.layer.skin?.map(normalizeHex),
                   key: spec.character.layer.key ? normalizeHex(spec.character.layer.key) : undefined,
+                  // Omitted unless set so a layer made before it existed keeps its identity.
+                  cover: spec.character.layer.cover,
                   clean: spec.character.layer.clean,
                   columns: spec.character.layer.columns,
                   // Omitted at their defaults so a layer made before these existed keeps its identity.

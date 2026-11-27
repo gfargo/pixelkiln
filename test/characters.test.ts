@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -20,7 +20,7 @@ import { sha256File } from "../src/hash.ts"
 import { CHARACTER_DIRECTIONS_8, lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
 import { writeAnchors } from "../src/pipeline/attach.ts"
 import { redrawLayerFrames } from "../src/pipeline/redraw.ts"
-import { dressLayer, dressedGif, dressedStrip } from "../src/pipeline/layer-preview.ts"
+import { dressLayer, dressedGif, dressedStrip, previewLayer } from "../src/pipeline/layer-preview.ts"
 import { SKELETON_LABELS } from "../src/skeleton.ts"
 
 /** The directions a held item needs files for: every one its base faces. */
@@ -2160,6 +2160,13 @@ describe("paperdoll layer", () => {
     expect(dressed[1]!.cut).toBeGreaterThan(0)
     expect(dressedGif(dressed[1]!).subarray(0, 6).toString("latin1")).toBe("GIF89a")
     expect(decodePng(dressedStrip(dressed[0]!)).width).toBe(decodePng(dressed[0]!.frames[0]!.png).width * 8)
+
+    // The one `layer preview`: the inpaint's inputs, and with gif the made layer over its frames.
+    const preview = await previewLayer(spec, p.lock, { gif: true })
+    expect(preview.dressed!.map((source) => path.basename(source.file))).toEqual(["mira.png", "mira.walk.gif"])
+    expect(readFileSync(preview.dressed![1]!.file).subarray(0, 6).toString("latin1")).toBe("GIF89a")
+    expect(preview.written).toEqual(expect.arrayContaining([path.join(preview.dir, "mask.png"), preview.dressed![1]!.file]))
+    expect((await previewLayer(spec, p.lock)).dressed).toBeUndefined()
   })
 
   it("continues a split outfit from its anchor: the anchor's dressed south frame guides the sheet and is cut from nothing", async () => {
@@ -2188,6 +2195,10 @@ describe("paperdoll layer", () => {
     const item = plan.items.find((i) => i.key === "cast/mira.armor.walk")!
     expect(item.state).toBe("missing")
     expect(item.reason).toMatch(/^not in lockfile; 5 frames,/)
+    // The preview builds the same sheet: the guide first, masked shut.
+    const preview = await previewLayer(continued, p.lock)
+    expect(preview.frames.map((frame) => Boolean(frame.guide))).toEqual([true, false, false, false, false])
+    expect(preview.frames[0]!.masked).toBe(0)
     await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
     const sent = client.inpaints.at(-1)!
     expect(sent.description).toMatch(/^leather ranger armour\. The first figure already wears it\. Dress every other figure in exactly the same thing/)
@@ -2349,6 +2360,40 @@ describe("paperdoll layer", () => {
     masked = await openProject(await layeredManifest({ mask: "armor-mask.png" }), { env: false })
     await submit(provider, masked.loaded, (await masked.plan()).actionable, masked.lock, masked.lockPath, { spacingMs: 0 })
     expect(masked.lock.entries["cast/mira.armor"]).toMatchObject({ status: "failed", error: expect.stringContaining("the mask is 8x8") })
+  })
+
+  it("previews the exact sheet, keyed sheet and mask submit sends, for free, and keys underwear with cover", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(await layeredManifest(), client, provider)
+    const spec = p.specs.find((s) => s.assetId === "mira.armor")!
+    const jobs = client.inpaints.length
+    const preview = await previewLayer(spec, p.lock)
+    expect(client.inpaints).toHaveLength(jobs)
+    // Priced by the sheet it built, where the plan, which has no sheet yet, charges the top tier.
+    expect(preview.cost).toBe(10)
+    expect(preview.frames.map((frame) => frame.name)).toEqual([
+      ...p.lock.entries["cast/mira"]!.outputs.map((output) => `mira.${output.role}`),
+      ...p.lock.entries["cast/mira.walk"]!.outputs.map((output) => `mira.walk.${output.role}`),
+    ])
+    expect(preview.written.filter((file) => file.includes(`${path.sep}frames${path.sep}`))).toHaveLength(preview.frames.length * 2)
+    // Previewing does not touch the plan: the layer is still the one thing to generate.
+    expect((await p.plan()).actionable.map((item) => item.key)).toEqual(["cast/mira.armor"])
+
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const sent = client.inpaints.at(-1)!
+    expect((await readFile(path.join(preview.dir, "keyed.png"))).equals(sent.image)).toBe(true)
+    expect((await readFile(path.join(preview.dir, "mask.png"))).equals(sent.mask)).toBe(true)
+    expect(p.lock.entries["cast/mira.armor"]!.providerMetadata!.pixellab).toMatchObject({ character: { sheet: { necks: expect.any(Array) } } })
+
+    // cover is identity when set, and absent from the hash when not.
+    const covered = await openProject(await layeredManifest({ cover: true }), { env: false })
+    const coveredSpec = covered.specs.find((s) => s.assetId === "mira.armor")!
+    expect(coveredSpec.character!.layer!.cover).toBe(true)
+    expect(spec.character!.layer!.cover).toBeUndefined()
+    expect(coveredSpec.specHash).not.toBe(spec.specHash)
+    expect((await openProject(await layeredManifest({ cover: false }), { env: false })).specs.find((s) => s.assetId === "mira.armor")!.specHash).toBe(spec.specHash)
+    await expect(openProject(await layeredManifest({ cover: true, attach: { item: "items/sword-{direction}.png", anchors: "anchors/mira.json" } }), { env: false })).rejects.toThrow(/cover has nothing to act on/)
   })
 
   it("moves a drawn layer by its offset at download, and again for free when the offset changes", async () => {

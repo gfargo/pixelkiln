@@ -7,7 +7,7 @@ pixelkiln <command> [options]
 Unknown commands, positional arguments, and flags are errors. The only
 positional words accepted are a command's own subcommands (`refine approve`,
 `workspace add <manifest>`, and the like), `estimate-skeleton`'s one image
-path, `anchors`'s and `redraw`'s asset id, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
+path, `anchors`'s, `redraw`'s and `layer preview`'s asset id, and `skeleton-preview`'s keypoints file or asset id. Repeated `--style`, `--only`, `--claims`, and `--output-role` values
 accumulate; comma-separated values work too. This strict parsing prevents a misspelled filter
 from widening a paid run.
 
@@ -61,6 +61,7 @@ Which command:
 | start an `animate-skeleton` keypoints file from an image | `pixelkiln estimate-skeleton poses/hero.png --out poses/hero-swing.json` |
 | find the hands in every frame so a held item can be pinned to one | `pixelkiln anchors hero.sword` |
 | draw one wrong frame of a paperdoll layer again, not the whole layer | `pixelkiln redraw hero.robe --frame walk.south.frame-05` |
+| see a paperdoll layer's mask and keyed input for every frame before paying | `pixelkiln layer preview hero.robe` |
 | see a keypoints file's poses over the source before paying | `pixelkiln skeleton-preview hero-swing` |
 | work across several projects | `pixelkiln workspace add ../other/pixelkiln.manifest.json`, then `--workspace` on `gallery` and `salvage` |
 
@@ -1382,25 +1383,6 @@ level's edge. See
 [parallax backgrounds](./PARALLAX.md) for the manifest fields and engine
 setup.
 
-### `layer`
-
-Look at paperdoll layers without packing them. `layer preview [layer]` draws
-each layer over every frame it dresses, the way `pack --flatten` does (the
-layer's `trim` applied), and writes one strip per source asset to
-`.pixelkiln/previews/<style>/<layer>/`, or to `--out` when one layer is named.
-`--gif` writes each loop as an animated GIF at the loop's own rate instead;
-rotations stay a strip. It prints how many base pixels the trim hid. Offline;
-spends nothing.
-
-```bash
-pixelkiln layer preview hero.shirt --gif
-pixelkiln layer preview --style hero           # every layer in the style
-```
-
-A fringe of bare base beside the clothes, or a seam where two loops' layers
-meet, is easier to judge moving than on a still sheet. See
-[Paperdoll layers](./PAPERDOLL.md#composing-layers-in-a-game).
-
 ## PixelLab utilities
 
 Three commands call PixelLab on loose files rather than manifest assets. None
@@ -2218,6 +2200,37 @@ be downloaded and unchanged in the manifest since; a held item is refused.
 
 See [Redrawing one frame](./PAPERDOLL.md#redrawing-one-frame).
 
+### `layer`
+
+```bash
+pixelkiln layer preview <layer> [--style <id>] [--gif]
+```
+
+Builds a drawn paperdoll layer's sheet, keyed sheet and mask exactly as `gen`
+would send them, and writes them to `.pixelkiln/layers/<style>/<layer>/preview/`
+without calling any provider: `sheet.png`, `keyed.png`, `mask.png`,
+`overlay.png` (the mask over the frames) and `frames/`, each frame's keyed
+input and mask. It prints each frame's neck row, the frames whose own
+narrowest row was overruled, and what the inpaint would cost at that sheet
+size. Free, offline, and outside the plan; the sources must be downloaded. A
+held item is refused, since it is placed rather than inpainted. A layer with
+an `anchor` shows the anchor's guide frames first, dressed and masked shut.
+
+Once the layer is made, `--gif` also draws it over every frame it dresses,
+the way `pack --flatten` does (the layer's `trim` applied), into `dressed/`:
+an animated GIF per loop at the loop's own rate, a strip per set of
+rotations. It prints how many base pixels the trim hid. A fringe of bare base
+beside the clothes, or a seam where two layers meet, is easier to judge
+moving than on a still sheet.
+
+```bash
+pixelkiln layer preview hero.shirt          # before gen: the mask and inputs
+pixelkiln layer preview hero.shirt --gif    # after: the layer over its loops, moving
+```
+
+See [Previewing before paying](./PAPERDOLL.md#previewing-before-paying) and
+[Composing layers in a game](./PAPERDOLL.md#composing-layers-in-a-game).
+
 ## Utility commands
 
 ### `help`
@@ -2293,7 +2306,7 @@ Print the package version. `-v` is an alias.
 | `--output-role <role>` | pack | Include named structural roles; repeatable. |
 | `--primary-only` | pack | Include only unambiguous primary/single outputs. |
 | `--flatten` | pack | Draw paperdoll layers onto the frames they go over, trim applied, and leave their own frames off the sheet; `--only` picks the layers and their order. |
-| `--gif` | layer preview | Write each dressed loop as an animated GIF instead of a strip. |
+| `--gif` | layer preview | Also draw the made layer over its frames: a GIF per loop, a strip per set of rotations, in `dressed/`. |
 | `--max-distance <n>` | audit | Absolute palette-distance ceiling. |
 | `--min-transparency <0..1>` | audit/refine | Minimum transparent canvas share. |
 | `--max-colors <n>` | audit | Maximum distinct opaque colors. |

@@ -1,38 +1,48 @@
 /**
- * `layer preview`: each paperdoll layer drawn over the frames it dresses, the
- * way `pack --flatten` draws it, as a strip per source or, with `--gif`, a
- * GIF per loop. A fringe or a seam between two loops' layers is easier to
- * judge moving than on a still sheet. Free and local.
+ * `layer preview`: a paperdoll layer's inpaint inputs, written and not sent,
+ * and with `--gif` the made layer drawn over its frames. Free and offline;
+ * see src/pipeline/layer-preview.ts.
  */
-import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { UsageError } from "../../errors.ts"
-import { dressedGif, dressedStrip, dressLayer } from "../../pipeline/layer-preview.ts"
+import { previewLayer } from "../../pipeline/layer-preview.ts"
 import { log } from "../io.ts"
 import { openProject } from "../project.ts"
 import type { Args } from "../args.ts"
 
 export async function runLayer(args: Args): Promise<void> {
+  const target = args.target!
   const project = await openProject(args)
-  const manifestDir = path.dirname(path.resolve(args.manifest))
-  const layers = project.specs.filter((spec) => spec.character?.kind === "layer" && (!args.target || spec.assetId === args.target))
-  if (!layers.length) {
-    throw new UsageError(args.target ? `${args.target} is not a paperdoll layer in ${args.manifest}` : `${args.manifest} declares no paperdoll layers`)
+  const named = project.specs.filter((spec) => spec.assetId === target)
+  if (!named.length) throw new UsageError(`No asset "${target}" in ${args.manifest}`)
+  const layers = named.filter((spec) => spec.character?.kind === "layer")
+  if (!layers.length) throw new UsageError(`${target} is not a paperdoll layer`)
+  if (layers.length > 1) {
+    throw new UsageError(`${target} is a layer in ${layers.length} styles (${layers.map((spec) => spec.styleId).join(", ")}); pick one with --style`)
   }
-  if (args.out && layers.length > 1) {
-    throw new UsageError(`--out names one layer's folder; ${layers.length} match. Name the layer: pixelkiln layer preview <layer> [--style <id>]`)
-  }
-  for (const spec of layers) {
-    const dir = path.resolve(args.out ?? path.join(manifestDir, ".pixelkiln", "previews", spec.styleId, spec.assetId))
-    await mkdir(dir, { recursive: true })
-    for (const source of dressLayer(spec, project.lock)) {
-      const gif = args.gif && !source.still
-      const file = path.join(dir, `${source.assetId}.${gif ? "gif" : "png"}`)
-      await writeFile(file, gif ? dressedGif(source) : dressedStrip(source))
-      const trimmed = spec.character!.layer!.trim ? `, trim hid ${source.cut} base pixel${source.cut === 1 ? "" : "s"}` : ""
-      log(`  ${spec.styleId}/${spec.assetId} over ${source.assetId}: ${source.frames.length} frame${source.frames.length === 1 ? "" : "s"}${trimmed}`)
-      log(`    ${path.relative(process.cwd(), file)}`)
-      if (source.missing.length) log(`    no layer frame over ${source.missing.join(", ")}; shown bare`)
+  const result = await previewLayer(layers[0]!, project.lock, { gif: args.gif })
+  const width = Math.max(...result.frames.map((frame) => frame.name.length))
+  for (const frame of result.frames) {
+    const neck = frame.neck
+      ? `neck row ${String(frame.neck.row).padStart(3)}` +
+        (frame.neck.corrected ? `  (own narrowest row ${frame.neck.detected ?? "none"}; taken from the head and the other frames)` : "")
+      : result.supplied.mask ? "mask supplied" : "empty"
+    if (frame.guide) {
+      log(`  ${frame.name.padEnd(width)}  ${"guide".padStart(6)}         the anchor's layer, masked shut`)
+      continue
     }
+    log(`  ${frame.name.padEnd(width)}  ${String(frame.masked).padStart(6)} px open  ${neck}`)
+  }
+  const corrected = result.frames.filter((frame) => frame.neck?.corrected).length
+  if (corrected) log(`  ${corrected} frame${corrected === 1 ? "'s" : "s'"} neck overruled; look at those in overlay.png before paying`)
+  if (result.closed) log(`  ${result.closed} pinhole pixel${result.closed === 1 ? "" : "s"} keyed shut inside the mask`)
+  if (result.cleaned) log(`  ${result.cleaned} ghost pixel${result.cleaned === 1 ? "" : "s"} cleaned from the loops`)
+  log(`  wrote ${result.written.length} files to ${path.relative(process.cwd(), result.dir) || "."} (overlay.png shows the mask over the frames)`)
+  log(`  ${result.frames.length} frames on a ${result.sheet.width}x${result.sheet.height} sheet: about ${result.cost} generations when generated; nothing was sent`)
+  const trims = Boolean(layers[0]!.character!.layer!.trim)
+  for (const source of result.dressed ?? []) {
+    const trimmed = trims ? `, trim hid ${source.cut} base pixel${source.cut === 1 ? "" : "s"}` : ""
+    log(`  dressed ${source.assetId}: ${source.frames.length} frame${source.frames.length === 1 ? "" : "s"}${trimmed}  ${path.relative(process.cwd(), source.file)}`)
+    if (source.missing.length) log(`    no layer frame over ${source.missing.join(", ")}; shown bare`)
   }
 }

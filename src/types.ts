@@ -886,6 +886,13 @@ export const CharacterLayerSchema = z
     /** The stand-in colour skin is painted before the provider sees it. Default cyan. */
     key: HexColorSchema.optional(),
     /**
+     * Key every opaque pixel inside the mask, whatever its colour, not only
+     * skin. For a base that wears underwear (or anything else it cannot be
+     * drawn without): what it wears is body to dress over, so the outfit
+     * covers it instead of being drawn around it. Default false.
+     */
+    cover: z.boolean().optional(),
+    /**
      * Remove animation ghosts from the loops before dressing them, judged
      * against the stills among `of` (bases and states). Default true; it has
      * nothing to judge against, and is skipped, when `of` holds no still.
@@ -959,7 +966,7 @@ export const CharacterLayerSchema = z
   .strict()
   .superRefine((layer, context) => {
     if (!layer.attach) return
-    for (const field of ["mask", "keyed", "skin", "key", "clean", "region", "trim", "anchor"] as const) {
+    for (const field of ["mask", "keyed", "skin", "key", "cover", "clean", "region", "trim", "anchor"] as const) {
       if (layer[field] !== undefined) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -1216,6 +1223,8 @@ export interface ResolvedCharacter {
     keyed?: { path: string; sha256: string | null }
     skin?: string[]
     key?: string
+    /** Key everything inside the mask; absent unless set, so a layer made before it existed keeps its identity. */
+    cover?: true
     clean: boolean
     columns?: number
     region: "body" | "head" | "around"

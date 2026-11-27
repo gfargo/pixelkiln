@@ -38,9 +38,6 @@ Commands
             that scrolls the set and a strip of frames; parallax export [set]
             writes a Tiled map, a Godot scene and an LDtk project (or one,
             with --format) with the layer pictures. Offline.
-  layer     Paperdoll layers. layer preview [layer] draws each one over the
-            frames it dresses, trim applied, as a strip per source, or with
-            --gif an animated GIF per loop. Offline.
   purge     Delete objects previously tagged discard. Irreversible; asks first.
   prune     Drop lock entries the manifest no longer declares. Offline; asks
             first. Local art is untouched.
@@ -65,6 +62,13 @@ Commands
             beside them. Direct and un-budgeted, 10 to 25 generations by sheet
             size. The new frames replace the old in the lockfile. Without
             --frame it lists the names; --dry-run prices the call.
+  layer preview <layer> [--style <id>] [--gif]
+            Free and offline: build a paperdoll layer's sheet, keyed sheet and
+            mask as gen would send them, write them (and each frame's own) to
+            .pixelkiln/layers/<style>/<layer>/preview/, and print each frame's
+            neck row and the inpaint's price. Nothing is submitted. Once the
+            layer is made, --gif also draws it over the frames it dresses,
+            trim applied, into dressed/: a GIF per loop, a strip per still set.
   skeleton-preview <keypoints.json | asset> [--from <image>] [--out <file>]
             Draw every pose of a keypoints file over its source image as one
             PNG, locally and free. Given an animate-skeleton asset id, reads
@@ -154,7 +158,7 @@ Options
   --primary-only      pack: include only unambiguous primary/single outputs
   --flatten           pack: draw the layers onto the frames they go over, trim
                       applied, and leave their own frames off; --only picks layers
-  --gif               layer preview: an animated GIF per loop instead of a strip
+  --gif               layer preview: also draw the made layer over its frames, a GIF per loop
   --max-distance <n>  audit: maximum palette distance
   --min-transparency <0..1>  audit: minimum transparent canvas share
   --max-colors <n>    audit: maximum distinct opaque colors
