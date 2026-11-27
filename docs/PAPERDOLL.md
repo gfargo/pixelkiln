@@ -635,7 +635,12 @@ further up are four.
   so anything one-sided (a sword, a shoulder strap) is drawn for that side
   rather than flipped. Dress the mirror, do not mirror the layer. A placed
   item on a mirrored loop is pinned by that loop's own anchors, to the hand
-  you named.
+  you named. A symmetric outfit can still be mirrored for free
+  (`"outfit.walk.west": { "mirror": "outfit.walk.east" }`): the flip is
+  current while it is the flip of the source layer's current files, and
+  `plan` makes it stale only when that layer changes, never on the loop the
+  layer was drawn over. While the source layer waits to be redrawn, `plan`
+  reports the flip as blocked until a later wave rather than as broken.
 
 **One sheet for the game.** `pixelkiln pack --style <style>` puts the
 character and every layer on one sheet, and its atlas pairs them up: a

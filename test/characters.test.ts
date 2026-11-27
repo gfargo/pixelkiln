@@ -14,7 +14,8 @@ import { packStyle } from "../src/pipeline/pack.ts"
 import { renderGodotSpriteFrames } from "../src/pipeline/sheet-formats.ts"
 import { openProject } from "../src/project.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
-import { upsert } from "../src/lock.ts"
+import { saveLock, upsert } from "../src/lock.ts"
+import { mirrorSourceHash } from "../src/pipeline/mirror.ts"
 import { sha256File } from "../src/hash.ts"
 import { CHARACTER_DIRECTIONS_8, lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
 import { writeAnchors } from "../src/pipeline/attach.ts"
@@ -2073,6 +2074,60 @@ describe("paperdoll layer", () => {
     expect(plan.items.find((i) => i.key === "cast/mira.armor")).toMatchObject({
       state: "stale",
       reason: expect.stringContaining("layer source mira.walk changed"),
+    })
+  })
+
+  it("judges a mirrored layer by its source layer, not by the loop that layer was drawn over (#418)", async () => {
+    const file = await layeredManifest({}, { "mira.armor.flip": { mirror: "mira.armor" } })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(file, client, provider)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    const flip = async () => {
+      const q = await openProject(file, { env: false })
+      const plan = await q.plan()
+      expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.armor.flip"])
+      await submit(provider, q.loaded, plan.actionable, q.lock, q.lockPath, { spacingMs: 0 })
+      return openProject(file, { env: false })
+    }
+    const state = async (q: Awaited<ReturnType<typeof openProject>>) => (await q.plan()).items.find((i) => i.key === "cast/mira.armor.flip")
+    expect(await state(await flip())).toMatchObject({ state: "ok" })
+
+    // The loop is redrawn and the layer dressed again over it: the flip goes stale on the layer, and one re-flip settles it.
+    const q = await openProject(file, { env: false })
+    const walk = q.lock.entries["cast/mira.walk"]!
+    const redrawn = path.resolve(dir, walk.outputs[0]!.path)
+    await writeFile(redrawn, px(8, 77))
+    upsert(q.lock, "cast/mira.walk", {
+      outputs: await Promise.all(walk.outputs.map(async (output, index) => (index === 0 ? { ...output, sha256: await sha256File(redrawn) } : output))),
+    })
+    const armor = q.lock.entries["cast/mira.armor"]!
+    const repainted = path.resolve(dir, armor.outputs[0]!.path)
+    await writeFile(repainted, px(8, 99))
+    upsert(q.lock, "cast/mira.armor", {
+      layer: {
+        ...armor.layer!,
+        sources: armor.layer!.sources.map((source) => (source.assetId === "mira.walk" ? { ...source, sha256: mirrorSourceHash(q.lock.entries["cast/mira.walk"]!) } : source)),
+      },
+      outputs: await Promise.all(armor.outputs.map(async (output, index) => (index === 0 ? { ...output, sha256: await sha256File(repainted) } : output))),
+    })
+    await saveLock(q.lockPath, q.lock)
+    const before = await state(await openProject(file, { env: false }))
+    expect(before).toMatchObject({ state: "stale", reason: expect.stringContaining("mirror source mira.armor changed") })
+    expect((await openProject(file, { env: false }).then((r) => r.plan())).items.find((i) => i.key === "cast/mira.armor")).toMatchObject({ state: "ok" })
+    expect(await state(await flip())).toMatchObject({ state: "ok" })
+
+    // A layer about to be redrawn holds its flip back as waiting, not as a broken record.
+    await layeredManifest({}, { "mira.armor": { prompt: "steel plate armour", layer: { of: ["mira", "mira.walk"] } }, "mira.armor.flip": { mirror: "mira.armor" } })
+    const waiting = (await (await openProject(file, { env: false })).plan()).items
+    expect(waiting.find((i) => i.key === "cast/mira.armor")).toMatchObject({ state: "stale" })
+    expect(await state(await openProject(file, { env: false }))).toMatchObject({
+      state: "blocked",
+      reason: expect.stringMatching(/^waits for cast\/mira.armor, which this run generates first; follows in a later wave \(mirror source cast\/mira.armor is not ready: /),
     })
   })
 
