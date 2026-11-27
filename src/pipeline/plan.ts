@@ -6,6 +6,7 @@ import { isHeldItem } from "../attach.ts"
 import { deriveStale } from "./derive.ts"
 import { inspectExternal } from "./external.ts"
 import { inspectLayerFit } from "./layer-fit.ts"
+import { anchorRecord } from "./layer-anchor.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { lockKey, type Lock, type LockEntry, type LockTerrainSettings, type ResolvedSpec } from "../types.ts"
 import type { CostUnit } from "../provider.ts"
@@ -63,6 +64,7 @@ function dependencies(spec: ResolvedSpec): ResolvedSpec[] {
     spec.derive?.source.kind === "asset" ? spec.derive.source.spec : undefined,
     spec.revision?.sourceSpec,
     spec.character?.parentSpec,
+    spec.character?.layer?.anchor?.spec,
     spec.character?.motionLeader?.spec,
     spec.character?.styleAnchor?.spec,
     spec.objectPro?.parentSpec,
@@ -291,6 +293,10 @@ export async function buildPlan(
       reason = isHeldItem(spec)
         ? `layer source ${changedLayerSource(spec, entry, lock)} changed; place the item again (no generation cost)`
         : `layer source ${changedLayerSource(spec, entry, lock)} changed; dress the frames again`
+    } else if (spec.character?.layer?.anchor && entry.layer?.anchor?.sha256 !== anchorRecord(spec, lock)!.sha256) {
+      // Which layer it follows is in specHash; that layer's current bytes are only in the lockfile.
+      state = "stale"
+      reason = `layer anchor ${spec.character.layer.anchor.assetId} changed; dress the frames again`
     } else if (isHeldItem(spec) && entry.status === "downloaded" && entry.outputs.some((_output, index) =>
       !existsSync(currentEntryOutputPath(entry, spec, index)))
     ) {

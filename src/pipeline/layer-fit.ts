@@ -3,6 +3,7 @@ import { isHeldItem } from "../attach.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
 import { chooseLayerColumns, layerFitProblem, layerSheetFit, LAYER_SHEET_MAX_SIDE, type LayerSheetFit } from "../paperdoll.ts"
 import { lockKey, type Lock, type ResolvedSpec } from "../types.ts"
+import { anchorGuides } from "./layer-anchor.ts"
 
 /**
  * Whether a paperdoll layer's frames fit the one sheet its inpaint is drawn
@@ -81,6 +82,17 @@ export function inspectLayerFit(spec: ResolvedSpec, lock: Lock): LayerFitInspect
     else pending += count
     if (still) stills += count ?? 0
     else loops++
+  }
+  // An anchor's guides each take a cell, ahead of the layer's own frames.
+  if (layer.anchor) {
+    const guides = anchorGuides(spec, lock)
+    if (guides.ok) {
+      for (const guide of guides.guides) known.unshift({ assetId: guide.assetId, role: guide.role, png: readFileSync(guide.basePath), still: true })
+      stills += guides.guides.length
+    } else {
+      pending += layer.anchor.frames?.length ?? 1
+      stills += layer.anchor.frames?.length ?? 1
+    }
   }
   if (!known.length) return null
   const options = {

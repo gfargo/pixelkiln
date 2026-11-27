@@ -1,4 +1,5 @@
 import { BudgetError } from "../errors.ts"
+import { anchorGuides, anchorRecord } from "./layer-anchor.ts"
 import {
   DEFAULT_RATE_LIMIT,
   formatCost,
@@ -384,6 +385,7 @@ export async function submit(
               assetId: source.assetId,
               sha256: mirrorSourceHash(lock.entries[lockKey(source.spec.styleId, source.spec.assetId)] ?? { outputs: [] }),
             })),
+            ...(spec.character.layer!.anchor ? { anchor: anchorRecord(spec, lock)! } : {}),
           }
         : undefined,
       terrainConnect: spec.terrainConnect ? terrainConnect : undefined,
@@ -438,8 +440,9 @@ export async function submit(
             role: output.role,
           }))
         : spec.character?.kind === "layer"
-          // Every frame of every source, in `of` order; requireRevisionReady proved each one downloaded.
-          ? spec.character.layer!.sources.flatMap((source) => {
+          // The anchor's guide frames first, then every frame of every source, in
+          // `of` order; requireRevisionReady proved each one downloaded.
+          ? [...layerGuideOutputs(spec, lock), ...spec.character.layer!.sources.flatMap((source) => {
               const sourceEntry = lock.entries[lockKey(source.spec.styleId, source.spec.assetId)]!
               return sourceEntry.outputs.map((output, index) => ({
                 path: currentEntryOutputPath(sourceEntry, source.spec, index),
@@ -447,7 +450,7 @@ export async function submit(
                 assetId: source.assetId,
                 still: source.spec.character?.kind !== "animation",
               }))
-            })
+            })]
           : undefined
       const referenceSourceImageId = ownedReferenceImageId(spec, lock, provider.id)
       const { jobId, metadata } = await provider.submit(spec, refs, {
@@ -565,4 +568,12 @@ function ownedReferenceImageId(spec: ResolvedSpec, lock: Lock, providerId: strin
     if (typeof recorded?.sourceImageId === "string" && recorded.sourceImageId) return recorded.sourceImageId
   }
   return undefined
+}
+
+/** A layer anchor's guide frames as provider inputs: the base frame, with the anchor's clothes to paint over it. */
+function layerGuideOutputs(spec: ResolvedSpec, lock: Lock) {
+  if (!spec.character?.layer?.anchor) return []
+  const guides = anchorGuides(spec, lock)
+  if (!guides.ok) throw new Error(`${spec.styleId}/${spec.assetId}: ${guides.reason}`)
+  return guides.guides.map((guide) => ({ path: guide.basePath, role: guide.role, assetId: guide.assetId, still: true, guide: guide.layer }))
 }

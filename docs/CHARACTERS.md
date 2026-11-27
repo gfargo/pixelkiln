@@ -709,6 +709,7 @@ frames), `keyed.png` and `mask.png` (what the provider was sent), `result.png`
 | `key` | The stand-in colour. Default `#00ffff`. Change it for an outfit that is itself cyan. |
 | `clean` | `false` skips step 1. |
 | `columns` | Sheet columns. Chosen to fit in the smallest area when omitted, or when the count given would pass the 512px limit. |
+| `anchor` | A drawn layer this one continues; its south frame goes on this sheet as a guide so a split outfit matches. See [Paperdoll layers](./PAPERDOLL.md#cost-and-limits). |
 | `trim` | `true` or `{ "run": 4, "island": 45 }`: hide the strip of bare base a swaying figure leaves beside the clothes, at compose time. See [Paperdoll layers](./PAPERDOLL.md#composing-layers-in-a-game). |
 | `region` | What may be repainted: `body` (default; the figure below the neck, for clothing), `head` (the cell down to the neck, for hats and hair), or `around` (everything below the neck, for held items and capes). |
 | `padding` | Empty pixels around every figure, for a layer that reaches past it. Layer frames come back larger by this much on every side. Default 0 for `body`, 8 otherwise. |

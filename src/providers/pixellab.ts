@@ -23,7 +23,7 @@ import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
 import { normalMapCost, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
 import { isDirection } from "../attach.ts"
-import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, LAYER_SHEET_MAX_SIDE, type LayerFrame, type LayerRegion } from "../paperdoll.ts"
+import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, redrawSheet, LAYER_SHEET_MAX_SIDE, type LayerFrame, type LayerRegion } from "../paperdoll.ts"
 import { placeHeldFrames } from "../pipeline/attach.ts"
 import { decodePng, joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
@@ -498,6 +498,8 @@ interface LayerLayout {
   frames: LayerFrame[]
   /** Set for a grip pass: the layer is each placed frame with its hand's disc redrawn. */
   grasp?: { radius: number; hands: number }
+  /** Cells at the start of the sheet that are an anchor's guides, cut from nothing. */
+  guides?: number
 }
 
 /**
@@ -1617,6 +1619,8 @@ export class PixelLabProvider implements Provider {
         png: readFileSync(output.path),
         still: output.still === true,
       }))
+      // An anchor's guides lead the sheet; the pipeline puts them first.
+      const guides = outputs.filter((output) => output.guide).length
       const supplied = (name: string, file: { path: string; sha256: string | null } | undefined) => {
         if (!file) return undefined
         const bytes = readFileSync(file.path)
@@ -1638,6 +1642,10 @@ export class PixelLabProvider implements Provider {
       const dir = layerWorkDir(spec)
       mkdirSync(dir, { recursive: true })
       let prepared = built
+      if (guides) {
+        // The anchor's frames go on dressed and masked shut, as redraw shows a loop's finished frames.
+        prepared = { ...built, ...redrawSheet(built, outputs.map((output) => output.guide ?? null), outputs.map((output) => !output.guide)) }
+      }
       let grasp: LayerLayout["grasp"]
       if (layer.attach?.grasp) {
         // A grip pass: place the item on every frame as a free held item is,
@@ -1669,7 +1677,12 @@ export class PixelLabProvider implements Provider {
       writeFileSync(path.join(dir, "mask.png"), prepared.mask)
       const { width, height } = decodePng(prepared.keyed)
       const res = await this.client.inpaintV3({
-        description: grasp ? (spec.prompt ? `The item each figure carries: ${spec.prompt}. ${GRASP_PROMPT}` : GRASP_PROMPT) : spec.prompt,
+        description: grasp
+          ? (spec.prompt ? `The item each figure carries: ${spec.prompt}. ${GRASP_PROMPT}` : GRASP_PROMPT)
+          : guides
+            ? `${spec.prompt}. The first ${guides === 1 ? "figure already wears" : `${guides} figures already wear`} it. ` +
+              "Dress every other figure in exactly the same thing, the same colours and details, seen from the side each figure faces."
+            : spec.prompt,
         image: { base64: prepared.keyed.toString("base64"), format: "png" },
         width,
         height,
@@ -1688,6 +1701,7 @@ export class PixelLabProvider implements Provider {
         maskSha256: sha256(prepared.mask),
         frames: prepared.frames,
         ...(grasp ? { grasp } : {}),
+        ...(guides ? { guides } : {}),
       }
       writeFileSync(path.join(dir, "layout.json"), `${JSON.stringify(layout, null, 2)}\n`)
       return {
@@ -1696,7 +1710,7 @@ export class PixelLabProvider implements Provider {
           character: {
             kind: "layer",
             backgroundJobId: res.background_job_id,
-            sheet: { width, height, frames: prepared.frames.length, cleanedPixels: prepared.cleaned },
+            sheet: { width, height, frames: prepared.frames.length, cleanedPixels: prepared.cleaned, ...(guides ? { guides } : {}) },
           },
         },
       }
@@ -2055,7 +2069,9 @@ export class PixelLabProvider implements Provider {
     }
     const cache = PixelLabProvider.cacheDir("layer")
     const counters = new Map<string, number>()
-    const sources: OutputSource[] = frames.map((png, index) => {
+    const guideCells = layout.guides ?? 0
+    const sources: OutputSource[] = frames.slice(guideCells).map((png, kept) => {
+      const index = kept + guideCells
       const frame = layout.frames[index]!
       const ordinal = counters.get(frame.assetId) ?? 0
       counters.set(frame.assetId, ordinal + 1)

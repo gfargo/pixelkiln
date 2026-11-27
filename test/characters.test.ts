@@ -2161,6 +2161,95 @@ describe("paperdoll layer", () => {
     expect(decodePng(dressedStrip(dressed[0]!)).width).toBe(decodePng(dressed[0]!.frames[0]!.png).width * 8)
   })
 
+  it("continues a split outfit from its anchor: the anchor's dressed south frame guides the sheet and is cut from nothing", async () => {
+    const split = {
+      "mira.armor": { prompt: "leather ranger armour", layer: { of: ["mira", "mira.walk"] } },
+      "mira.armor.walk": { prompt: "leather ranger armour", layer: { of: "mira.walk", anchor: "mira.armor" } },
+    }
+    const file = await layeredManifest({}, split)
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await withSources(file, client, provider)
+    const continued = p.specs.find((s) => s.assetId === "mira.armor.walk")!
+    expect(continued.character!.layer!.anchor).toMatchObject({ assetId: "mira.armor" })
+    let plan = await p.plan()
+    expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.armor"])
+    expect(plan.items.find((i) => i.key === "cast/mira.armor.walk")).toMatchObject({ state: "blocked", reason: expect.stringContaining("layer anchor cast/mira.armor is not made yet") })
+
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const first = client.inpaints.at(-1)!
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(first))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    plan = await p.plan()
+    const item = plan.items.find((i) => i.key === "cast/mira.armor.walk")!
+    expect(item.state).toBe("missing")
+    expect(item.reason).toMatch(/^not in lockfile; 5 frames,/)
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const sent = client.inpaints.at(-1)!
+    expect(sent.description).toMatch(/^leather ranger armour\. The first figure already wears it\. Dress every other figure in exactly the same thing/)
+    const layout = JSON.parse(await readFile(path.join(dir, ".pixelkiln", "layers", "cast", "mira.armor.walk", "layout.json"), "utf8"))
+    expect(layout.guides).toBe(1)
+    expect(layout.frames.map((frame: { assetId: string; role: string }) => `${frame.assetId}.${frame.role}`)).toEqual(
+      ["mira.south", "mira.walk.frame-00", "mira.walk.frame-01", "mira.walk.frame-02", "mira.walk.frame-03"],
+    )
+    // The guide cell is closed and already wears the anchor's leather; the loop's cells are open.
+    const guide = layout.frames[0].cell
+    const mask = decodePng(sent.mask)
+    const keyed = decodePng(sent.image)
+    let open = 0
+    let leather = 0
+    for (let y = guide.y; y < guide.y + guide.height; y++) {
+      for (let x = guide.x; x < guide.x + guide.width; x++) {
+        const i = (y * mask.width + x) * 4
+        if (mask.pixels[i] === 255) open++
+        if ([...keyed.pixels.subarray(i, i + 4)].join() === LEATHER.join()) leather++
+      }
+    }
+    expect(open).toBe(0)
+    expect(leather).toBeGreaterThan(0)
+    const loopCell = layout.frames[1].cell
+    expect(mask.pixels[((loopCell.y + loopCell.height - 1) * mask.width + loopCell.x + Math.floor(loopCell.width / 2)) * 4]).toBe(255)
+
+    client.completeInpaint(p.lock.entries["cast/mira.armor.walk"]!.jobId!, painted(sent))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const entry = p.lock.entries["cast/mira.armor.walk"]!
+    expect(entry.outputs.map((output) => output.role)).toEqual(["mira.walk.frame-00", "mira.walk.frame-01", "mira.walk.frame-02", "mira.walk.frame-03"])
+    expect(entry.layer!.anchor).toMatchObject({ assetId: "mira.armor" })
+    expect((await (await openProject(file, { env: false })).plan()).items.find((i) => i.key === "cast/mira.armor.walk")!.state).toBe("ok")
+
+    // The anchor drawn again: the layer that follows it goes stale.
+    const armor = p.lock.entries["cast/mira.armor"]!
+    const redrawn = path.resolve(dir, armor.outputs[0]!.path)
+    await writeFile(redrawn, px(8, 77))
+    upsert(p.lock, "cast/mira.armor", {
+      outputs: await Promise.all(armor.outputs.map(async (output, index) => (index === 0 ? { ...output, sha256: await sha256File(redrawn) } : output))),
+    })
+    expect((await p.plan()).items.find((i) => i.key === "cast/mira.armor.walk")).toMatchObject({
+      state: "stale",
+      reason: expect.stringMatching(/^layer anchor mira.armor changed; dress the frames again/),
+    })
+  })
+
+  it("refuses an anchor on itself, on something that is not a drawn layer, in a cycle, or with other padding", async () => {
+    const layered = (layers: Record<string, unknown>) => layeredManifest({}, layers)
+    await expect(openProject(await layered({ "mira.armor": { prompt: "armour", layer: { of: "mira", anchor: "mira.armor" } } }), { env: false }))
+      .rejects.toThrow(/a layer cannot anchor on itself/)
+    await expect(openProject(await layered({ "mira.armor": { prompt: "armour", layer: { of: "mira", anchor: "mira.walk" } } }), { env: false }))
+      .rejects.toThrow(/layer.anchor "mira.walk" is not a drawn paperdoll layer/)
+    await expect(openProject(await layered({
+      "mira.armor": { prompt: "armour", layer: { of: "mira", anchor: "mira.hat" } },
+      "mira.hat": { prompt: "hat", layer: { of: "mira.walk", anchor: "mira.armor" } },
+    }), { env: false })).rejects.toThrow(/anchors back on this layer/)
+    await expect(openProject(await layered({
+      "mira.armor": { prompt: "armour", layer: { of: "mira" } },
+      "mira.hat": { prompt: "hat", layer: { of: "mira.walk", anchor: "mira.armor", padding: 4 } },
+    }), { env: false })).rejects.toThrow(/has padding 0 and this layer 4/)
+  })
+
   it("goes stale when any source is regenerated", async () => {
     const file = await layeredManifest()
     const client = fakeClient()

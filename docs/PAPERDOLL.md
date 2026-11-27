@@ -831,10 +831,25 @@ stated when the job was submitted.
   `"keepFirstFrame": false` (a kept first frame repeats the start pose and
   takes a cell) and a frame count that fills the sheet: an 8-frame loop
   stored with its first frame is 9 frames, one too many at 256px.
-- **Split when you must.** Two layers over different loops are two requests
-  and may not match each other. Put the base's rotations in both so each has
-  the same anchor, and compare the results. `layer preview --gif` shows the
-  seam between them.
+- **Split with an anchor.** Two layers over different loops are two
+  requests, and on their own they need not match. Make the first, then give
+  the second `"anchor": "<first layer>"`: the first layer's frame over the
+  base's south rotation goes on the second's sheet dressed and closed to the
+  provider, and the prompt asks it to dress every other figure the same way.
+
+  ```json
+  "hero.shirt": { "prompt": "...", "layer": { "of": ["hero", "hero.idle", "hero.walk"] } },
+  "hero.shirt.more": { "prompt": "...", "layer": { "of": ["hero.wave", "hero.sit"], "anchor": "hero.shirt" } }
+  ```
+
+  The second waits for the first (`blocked` until it is downloaded), goes
+  `stale` when it is regenerated, and needs the same `padding`. Each guide
+  takes a cell of its sheet, so at 256px a continuing layer has room for 7
+  frames of its own. `{ "layer": "hero.shirt", "frames": ["hero.east",
+  "hero.walk.frame-00"] }` picks other guide frames, by the first layer's
+  own frame names; pick ones facing the way the new loops do. Leave the
+  stills out of the second layer's `of`: the guide already shows them
+  dressed. `layer preview --gif` shows the seam between the two.
 - **A recoloured layer is free.** So is placing an item, and moving a layer
   with `offset`.
 - **PixelLab only.** The layer uses `/inpaint-v3`. Pro Flash inpainting was
@@ -868,6 +883,7 @@ A `layer` asset needs a `prompt` and a `layer` object. It takes no
 | `clean` | `true` | Clean loop frames against the stills among `of` before sheeting them. |
 | `offset` | none | `[x, y]` pixels to move every frame by, or `{ "<of asset>": [x, y], "*": [x, y] }`. Free to change on a drawn layer. |
 | `columns` | fitted | Sheet columns. A count that does not fit the 512px limit gives way to one that does. |
+| `anchor` | none | A drawn layer this one continues, or `{ "layer": "<id>", "frames": [...] }`. Its frame over the base's south rotation (or the frames named) goes on this sheet as a closed guide, so the outfit matches. Same `padding` required. See [Cost and limits](#cost-and-limits). |
 | `trim` | off | `true`, or `{ "run": 4, "island": 45 }`: hide the bare fringe of base the layer leaves, at compose time. See [Composing layers in a game](#composing-layers-in-a-game). Not part of the layer's identity. |
 
 Plan states: `blocked` until every source is downloaded and current,
@@ -1004,7 +1020,7 @@ That one was not tried.
 | Part of an arm or leg is missing after cleaning | It was shaded in a colour the rotations do not use. | Regenerate the loop (`gen --force --only <loop>`), or turn `clean` off for it. |
 | Pale specks around the dressed character | The loop's own files were never cleaned; the layer is fine. | Set `"clean": true` on the loop and run `pixelkiln fetch`. |
 | Sleeves or collar missing where an arm is raised | The computed mask put the neck in the wrong row for that frame. | Supply a `mask`. |
-| The outfit differs between two loops | They were dressed by two layers. | Put both loops in one layer's `of`. |
+| The outfit differs between two loops | They were dressed by two layers. | Put both loops in one layer's `of`, or, when they do not fit one sheet, give the second layer an `anchor` on the first. |
 | Old clothes show at the edges | The base is not bare. | Use a bare base, or accept it. |
 | A fringe in the key colour at wrists or collar | Shades of the key the cut did not recognise. | Change `key` to a colour further from the outfit's, or open an issue with `result.png`. |
 | A hat sits too low or too high, on every frame or on one loop | The provider seated it there. | Set `offset`, per asset if it differs, and run `pixelkiln fetch`. |

@@ -935,6 +935,21 @@ export const CharacterLayerSchema = z
       ])
       .optional(),
     /**
+     * Draw this layer to match another, already made: the layer whose frames
+     * a split outfit continues. Its dressed frame over the base's south
+     * rotation (or the frames named, by that layer's own role names, such as
+     * `"hero.south"`) goes on this layer's sheet as a guide the provider may
+     * not repaint, so the clothes it draws on the rest follow it. Each guide
+     * takes one cell of the sheet. The anchor must share this layer's
+     * `padding`; when it is regenerated this layer goes stale.
+     */
+    anchor: z
+      .union([
+        z.string().min(1),
+        z.object({ layer: z.string().min(1), frames: z.array(z.string().min(1)).min(1).max(8).optional() }).strict(),
+      ])
+      .optional(),
+    /**
      * Make this layer a held item instead of an inpaint: a sprite you already
      * have, pinned to a hand in every frame. Free and local. See
      * CharacterAttachSchema.
@@ -944,7 +959,7 @@ export const CharacterLayerSchema = z
   .strict()
   .superRefine((layer, context) => {
     if (!layer.attach) return
-    for (const field of ["mask", "keyed", "skin", "key", "clean", "region", "trim"] as const) {
+    for (const field of ["mask", "keyed", "skin", "key", "clean", "region", "trim", "anchor"] as const) {
       if (layer[field] !== undefined) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -1209,6 +1224,8 @@ export interface ResolvedCharacter {
     offset?: LayerOffset
     /** How much bare base to hide under it at compose time; absent unless `trim` is set. Not part of the spec's identity. */
     trim?: { run: number; island: number }
+    /** The made layer this one is drawn to match, and which of its frames go on the sheet as guides (its own role names); absent unless set. */
+    anchor?: { assetId: string; spec: ResolvedSpec; frames?: string[] }
     /** For a held item: its files, the anchors file, and how it is turned. Hashes are null while a file does not exist. */
     attach?: {
       item: Array<{ direction: CharacterDirection; path: string; sha256: string | null }>
@@ -3076,6 +3093,8 @@ export const LockEntrySchema = z.object({
   layer: z
     .object({
       sources: z.array(z.object({ assetId: z.string().min(1), sha256: z.string().regex(/^[0-9a-f]{64}$/) }).strict()).min(1),
+      /** The anchor layer and a hash over its output hashes when this was made; absent on a layer without one. */
+      anchor: z.object({ assetId: z.string().min(1), sha256: z.string().regex(/^[0-9a-f]{64}$/) }).strict().optional(),
     })
     .strict()
     .optional(),

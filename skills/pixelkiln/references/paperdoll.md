@@ -64,6 +64,11 @@ hands mid-walk and an inpainted shield was drawn face-on in a side view.
   disk: a layer that cannot fit is `invalid`, costs nothing, and says the
   frame count to regenerate at. Read that line before proposing to
   regenerate anything.
+- When the loops still do not fit one sheet, split them across two layers
+  and give the second `"anchor": "<first layer>"`. The first layer's dressed
+  south frame goes on the second sheet as a closed guide, so the outfit
+  matches; each guide costs a cell. Same `padding` on both, and leave the
+  stills out of the second's `of`. Two separate requests, so say both costs.
 - After it downloads, look at every frame of every loop. One frame facing the
   wrong way is the usual fault. Regenerate with `gen --force --only <asset>`;
   the previous result stays in `pixelkiln history` and restores for free.

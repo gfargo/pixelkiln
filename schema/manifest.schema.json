@@ -1900,6 +1900,36 @@
                       }
                     ]
                   },
+                  "anchor": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "layer": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "frames": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "minItems": 1,
+                            "maxItems": 8
+                          }
+                        },
+                        "required": [
+                          "layer"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
                   "attach": {
                     "type": "object",
                     "properties": {
