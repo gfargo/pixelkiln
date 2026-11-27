@@ -1,3 +1,11 @@
+## [0.148.1](https://github.com/gfargo/pixelkiln/compare/v0.148.0...v0.148.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **clean:** keep a figure's own dark clothing when cleaning loop frames ([9c66beb](https://github.com/gfargo/pixelkiln/commit/9c66bebda6ff263c550c33abd7858553be394e20)), closes [#414](https://github.com/gfargo/pixelkiln/issues/414) [#414](https://github.com/gfargo/pixelkiln/issues/414)
+* **plan:** a mirrored layer is current once it is re-flipped ([370164e](https://github.com/gfargo/pixelkiln/commit/370164efcec4860ac3aa4b9f7fc336c20f6474c6)), closes [#418](https://github.com/gfargo/pixelkiln/issues/418)
+
 # [0.148.0](https://github.com/gfargo/pixelkiln/compare/v0.147.0...v0.148.0) (2026-11-26)
 
 
