@@ -62,6 +62,11 @@ Commands
             beside them. Direct and un-budgeted, 10 to 25 generations by sheet
             size. The new frames replace the old in the lockfile. Without
             --frame it lists the names; --dry-run prices the call.
+  layer preview <layer> [--style <id>]
+            Free and offline: build a paperdoll layer's sheet, keyed sheet and
+            mask as gen would send them, write them (and each frame's own) to
+            .pixelkiln/layers/<style>/<layer>/preview/, and print each frame's
+            neck row and the inpaint's price. Nothing is submitted.
   skeleton-preview <keypoints.json | asset> [--from <image>] [--out <file>]
             Draw every pose of a keypoints file over its source image as one
             PNG, locally and free. Given an animate-skeleton asset id, reads

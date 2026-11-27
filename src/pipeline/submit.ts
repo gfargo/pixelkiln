@@ -14,6 +14,7 @@ import { resolveStyleImages, type LoadedManifest } from "../manifest.ts"
 import { lockKey, type Lock, type LockEntry, type ResolvedSpec, type ResolvedStyleImage } from "../types.ts"
 import type { PlanItem } from "./plan.ts"
 import { recordedAnimationGroup, requireRevisionReady } from "./revision.ts"
+import { layerSourceOutputs } from "./layer-preview.ts"
 import { historyAfterReplacing, historyLimit } from "./history.ts"
 import { heldItemAsset, isHeldItem } from "./attach.ts"
 import { deriveMirror, mirrorSourceHash } from "./mirror.ts"
@@ -439,15 +440,7 @@ export async function submit(
           }))
         : spec.character?.kind === "layer"
           // Every frame of every source, in `of` order; requireRevisionReady proved each one downloaded.
-          ? spec.character.layer!.sources.flatMap((source) => {
-              const sourceEntry = lock.entries[lockKey(source.spec.styleId, source.spec.assetId)]!
-              return sourceEntry.outputs.map((output, index) => ({
-                path: currentEntryOutputPath(sourceEntry, source.spec, index),
-                role: output.role,
-                assetId: source.assetId,
-                still: source.spec.character?.kind !== "animation",
-              }))
-            })
+          ? layerSourceOutputs(spec, lock)
           : undefined
       const referenceSourceImageId = ownedReferenceImageId(spec, lock, provider.id)
       const { jobId, metadata } = await provider.submit(spec, refs, {
@@ -512,6 +505,13 @@ export async function submit(
             : "") +
           `, ${estimate.amount})`,
       )
+      const sheet = (metadata?.character as { sheet?: { necks?: Array<number | null>; neckCorrected?: number[] } } | undefined)?.sheet
+      if (sheet?.necks) {
+        log(`    neck rows by frame: ${sheet.necks.map((row) => row ?? "-").join(" ")}`)
+        if (sheet.neckCorrected?.length) {
+          log(`    frame${sheet.neckCorrected.length === 1 ? "" : "s"} ${sheet.neckCorrected.join(", ")}: own narrowest row disagreed; neck taken from the head and the other frames`)
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       const entry = lock.entries[key]!

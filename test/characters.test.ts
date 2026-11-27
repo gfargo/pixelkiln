@@ -20,6 +20,7 @@ import { sha256File } from "../src/hash.ts"
 import { CHARACTER_DIRECTIONS_8, lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
 import { writeAnchors } from "../src/pipeline/attach.ts"
 import { redrawLayerFrames } from "../src/pipeline/redraw.ts"
+import { previewLayer } from "../src/pipeline/layer-preview.ts"
 import { SKELETON_LABELS } from "../src/skeleton.ts"
 
 /** The directions a held item needs files for: every one its base faces. */
@@ -2150,6 +2151,40 @@ describe("paperdoll layer", () => {
     masked = await openProject(await layeredManifest({ mask: "armor-mask.png" }), { env: false })
     await submit(provider, masked.loaded, (await masked.plan()).actionable, masked.lock, masked.lockPath, { spacingMs: 0 })
     expect(masked.lock.entries["cast/mira.armor"]).toMatchObject({ status: "failed", error: expect.stringContaining("the mask is 8x8") })
+  })
+
+  it("previews the exact sheet, keyed sheet and mask submit sends, for free, and keys underwear with cover", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(await layeredManifest(), client, provider)
+    const spec = p.specs.find((s) => s.assetId === "mira.armor")!
+    const jobs = client.inpaints.length
+    const preview = await previewLayer(spec, p.lock)
+    expect(client.inpaints).toHaveLength(jobs)
+    // Priced by the sheet it built, where the plan, which has no sheet yet, charges the top tier.
+    expect(preview.cost).toBe(10)
+    expect(preview.frames.map((frame) => frame.name)).toEqual([
+      ...p.lock.entries["cast/mira"]!.outputs.map((output) => `mira.${output.role}`),
+      ...p.lock.entries["cast/mira.walk"]!.outputs.map((output) => `mira.walk.${output.role}`),
+    ])
+    expect(preview.written.filter((file) => file.includes(`${path.sep}frames${path.sep}`))).toHaveLength(preview.frames.length * 2)
+    // Previewing does not touch the plan: the layer is still the one thing to generate.
+    expect((await p.plan()).actionable.map((item) => item.key)).toEqual(["cast/mira.armor"])
+
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const sent = client.inpaints.at(-1)!
+    expect((await readFile(path.join(preview.dir, "keyed.png"))).equals(sent.image)).toBe(true)
+    expect((await readFile(path.join(preview.dir, "mask.png"))).equals(sent.mask)).toBe(true)
+    expect(p.lock.entries["cast/mira.armor"]!.providerMetadata!.pixellab).toMatchObject({ character: { sheet: { necks: expect.any(Array) } } })
+
+    // cover is identity when set, and absent from the hash when not.
+    const covered = await openProject(await layeredManifest({ cover: true }), { env: false })
+    const coveredSpec = covered.specs.find((s) => s.assetId === "mira.armor")!
+    expect(coveredSpec.character!.layer!.cover).toBe(true)
+    expect(spec.character!.layer!.cover).toBeUndefined()
+    expect(coveredSpec.specHash).not.toBe(spec.specHash)
+    expect((await openProject(await layeredManifest({ cover: false }), { env: false })).specs.find((s) => s.assetId === "mira.armor")!.specHash).toBe(spec.specHash)
+    await expect(openProject(await layeredManifest({ cover: true, attach: { item: "items/sword-{direction}.png", anchors: "anchors/mira.json" } }), { env: false })).rejects.toThrow(/cover has nothing to act on/)
   })
 
   it("moves a drawn layer by its offset at download, and again for free when the offset changes", async () => {

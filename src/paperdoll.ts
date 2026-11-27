@@ -158,6 +158,8 @@ export interface KeyOptions {
 const DEFAULT_KEY = "#00ffff"
 /** How much of the key's own hue a keyed pixel keeps; the rest carries the source's shading. */
 const KEY_SATURATION = 0.85
+/** The darkest a covered pixel is keyed: black underwear keyed at its own brightness would not read as key. */
+const COVER_FLOOR = 96
 
 /**
  * Repaints skin in the key colour, keeping each pixel's brightness so the
@@ -208,9 +210,9 @@ export function isKeyColor(r: number, g: number, b: number, key = DEFAULT_KEY): 
  * The row where a figure's neck is: the narrowest row between 19% and 42% of
  * the way down its opaque bounds, the lower one on a tie.
  *
- * A heuristic for a bald base with its arms below the shoulders. Hair wider
- * than the head, or a raised arm beside it, puts the narrowest row somewhere
- * else, and that frame wants a hand-painted mask instead.
+ * A heuristic for one frame alone, and a fragile one: hair wider than the
+ * head, a raised arm or a shoulder in shadow puts the narrowest row
+ * somewhere else. `layerMask` uses it only as a vote, one per frame.
  */
 export function neckRow(image: DecodedPng, cell: SheetCell = whole(image)): number | null {
   let top = -1
@@ -246,29 +248,153 @@ export function neckRow(image: DecodedPng, cell: SheetCell = whole(image)): numb
  */
 export type LayerRegion = "body" | "head" | "around"
 
+/** Where one cell's neck was put, in rows from the top of the cell. */
+export interface NeckReport {
+  /** The neck row the mask used. */
+  row: number
+  /** The top of the head the row was measured from. */
+  head: number
+  /** The row the narrowest-row rule picked on this frame alone; null when it found none. */
+  detected: number | null
+  /** True when `detected` was so far from the rest of the sheet that `row` replaced it. */
+  corrected: boolean
+}
+
+export interface LayerMask {
+  png: Buffer
+  /** One per cell, in cell order; null for an empty cell. */
+  necks: Array<NeckReport | null>
+}
+
+/** The longest run of opaque pixels on one row of a cell, as [start, end] columns, or null on an empty row. */
+function longestRun(image: DecodedPng, cell: SheetCell, y: number): [number, number] | null {
+  let best: [number, number] | null = null
+  let start = -1
+  for (let x = 0; x <= cell.width; x++) {
+    const on = x < cell.width && opaque(image, cell.x + x, cell.y + y)
+    if (on && start < 0) start = x
+    if (!on && start >= 0) {
+      if (!best || x - 1 - start > best[1] - best[0]) best = [start, x - 1]
+      start = -1
+    }
+  }
+  return best
+}
+
+const median = (values: number[]) => {
+  const sorted = [...values].sort((a, b) => a - b)
+  return sorted[Math.floor((sorted.length - 1) / 2)]!
+}
+
 /**
  * The inpaint mask for a sheet: white (repaint) on each cell's `region`,
  * black (keep) everywhere else. Whatever the region, part of the figure is
  * always kept, and that is what stops the provider redrawing the pose: it
  * cannot move a head, or a body, that it may not touch.
+ *
+ * The neck is found per frame, as a distance below the top of that frame's
+ * head. The distance is the sheet's median of what the narrowest-row rule
+ * finds on each frame alone, so one frame whose narrowest row is somewhere
+ * else (a shoulder in shadow, an elbow tucked in) takes its neck from the
+ * rest, and a head that moves down the cell (sitting down) takes the neck
+ * with it. The top of the head is the first row as wide as half a head, so
+ * a hand raised above it is not mistaken for it.
+ *
+ * On `body`, an arm raised beside the head is dressed too: above the neck,
+ * the figure's pixels clear of the head's columns are part of the mask.
  */
-export function bodyMask(sheet: Buffer, cells?: SheetCell[], region: LayerRegion = "body"): Buffer {
+export function layerMask(sheet: Buffer, cells?: SheetCell[], region: LayerRegion = "body"): LayerMask {
   const image = decodePng(sheet)
   const out = Buffer.alloc(image.width * image.height * 4)
   for (let i = 3; i < out.length; i += 4) out[i] = 255
-  for (const cell of cells ?? [whole(image)]) {
+  const all = cells ?? [whole(image)]
+
+  // Pass 1: each frame on its own, as the narrowest-row rule sees it.
+  const first = all.map((cell) => {
+    let top = -1
+    let bottom = -1
+    for (let y = 0; y < cell.height && top < 0; y++) if (longestRun(image, cell, y)) top = y
+    for (let y = cell.height - 1; y >= 0 && bottom < 0; y--) if (longestRun(image, cell, y)) bottom = y
+    if (top < 0) return null
     const neck = neckRow(image, cell)
-    if (neck === null) continue
-    const from = region === "head" ? cell.y : neck + 1
-    const to = region === "head" ? neck + 1 : cell.y + cell.height
-    for (let y = from; y < to; y++) {
-      for (let x = cell.x; x < cell.x + cell.width; x++) {
-        if (region === "body" && !opaque(image, x, y)) continue
-        out.fill(255, at(image, x, y), at(image, x, y) + 3)
+    return { top, bottom, detected: neck === null ? null : neck - cell.y }
+  })
+  const seen = first.filter((frame): frame is NonNullable<typeof frame> => frame !== null)
+  const offsets = seen.filter((frame) => frame.detected !== null).map((frame) => frame.detected! - frame.top)
+  if (!offsets.length) return { png: encodeRgbaPng(image.width, image.height, out), necks: all.map(() => null) }
+  const drop = median(offsets)
+  // How wide a head is, halfway down it: the yardstick that tells a head's top row from a hand's.
+  const heads = seen.map((frame) => {
+    const cell = all[first.indexOf(frame)]!
+    const run = longestRun(image, cell, Math.min(frame.bottom, frame.top + Math.floor(drop / 2)))
+    return run ? run[1] - run[0] + 1 : 1
+  })
+  const wide = Math.max(1, Math.ceil(median(heads) / 2))
+
+  const necks = all.map((cell, index): NeckReport | null => {
+    const frame = first[index]
+    if (!frame) return null
+    let head = frame.top
+    for (let y = frame.top; y <= frame.bottom; y++) {
+      const run = longestRun(image, cell, y)
+      if (run && run[1] - run[0] + 1 >= wide) {
+        head = y
+        break
       }
     }
-  }
-  return encodeRgbaPng(image.width, image.height, out)
+    const row = Math.min(head + drop, frame.bottom)
+    // A frame whose own narrowest row is far from where the head puts it: report it.
+    const slack = Math.max(2, Math.round((frame.bottom - frame.top + 1) * 0.06))
+    const corrected = frame.detected === null || Math.abs(frame.detected - row) > slack
+
+    const from = region === "head" ? 0 : row + 1
+    const to = region === "head" ? row + 1 : cell.height
+    for (let y = from; y < to; y++) {
+      for (let x = 0; x < cell.width; x++) {
+        if (region === "body" && !opaque(image, cell.x + x, cell.y + y)) continue
+        out.fill(255, at(image, cell.x + x, cell.y + y), at(image, cell.x + x, cell.y + y) + 3)
+      }
+    }
+    if (region === "body") {
+      // The head: everything joined to its top row above the neck. Its columns are kept, whatever else is in them.
+      const seed = longestRun(image, cell, head)!
+      const inHead = new Uint8Array(cell.width * (row + 1))
+      const queue: Array<[number, number]> = []
+      for (let x = seed[0]; x <= seed[1]; x++) {
+        inHead[head * cell.width + x] = 1
+        queue.push([x, head])
+      }
+      let left = seed[0]
+      let right = seed[1]
+      while (queue.length) {
+        const [x, y] = queue.pop()!
+        left = Math.min(left, x)
+        right = Math.max(right, x)
+        for (const [dx, dy] of STEPS) {
+          const nx = x + dx
+          const ny = y + dy
+          if (nx < 0 || nx >= cell.width || ny < 0 || ny > row) continue
+          if (inHead[ny * cell.width + nx] || !opaque(image, cell.x + nx, cell.y + ny)) continue
+          inHead[ny * cell.width + nx] = 1
+          queue.push([nx, ny])
+        }
+      }
+      for (let y = 0; y <= row; y++) {
+        for (let x = 0; x < cell.width; x++) {
+          if (x >= left - 1 && x <= right + 1) continue
+          if (!opaque(image, cell.x + x, cell.y + y)) continue
+          out.fill(255, at(image, cell.x + x, cell.y + y), at(image, cell.x + x, cell.y + y) + 3)
+        }
+      }
+    }
+    return { row, head, detected: frame.detected, corrected }
+  })
+  return { png: encodeRgbaPng(image.width, image.height, out), necks }
+}
+
+/** The mask alone; see `layerMask`. */
+export function bodyMask(sheet: Buffer, cells?: SheetCell[], region: LayerRegion = "body"): Buffer {
+  return layerMask(sheet, cells, region).png
 }
 
 /**
@@ -560,6 +686,10 @@ export interface LayerSheet {
   frames: LayerFrame[]
   /** Pixels `despeckle` removed, over all frames. */
   cleaned: number
+  /** Where each frame's neck was put, in frame order; absent when the mask was supplied. */
+  necks?: Array<NeckReport | null>
+  /** Pinholes keyed shut inside the mask; absent when the keyed sheet was supplied. */
+  closed?: number
 }
 
 export interface LayerSheetOptions {
@@ -579,6 +709,8 @@ export interface LayerSheetOptions {
   padding?: number
   key?: string
   skin?: string[]
+  /** Key every opaque pixel inside the mask, not only skin: for a base that wears underwear. */
+  cover?: boolean
   /** Stills to clean every other frame against; cleaning is skipped when empty. */
   reference?: Buffer[]
   /** Replaces the computed mask. Must be the sheet's size. */
@@ -717,13 +849,17 @@ export function buildLayerSheet(
     }
     return png
   }
-  const mask = options.mask ? sized("mask", options.mask) : bodyMask(sheetPng, frames.map((frame) => frame.cell), options.region)
+  const computed = options.mask ? undefined : layerMask(sheetPng, frames.map((frame) => frame.cell), options.region)
+  const mask = options.mask ? sized("mask", options.mask) : computed!.png
+  const keyed = options.keyed ? undefined : keyInsideMask(sheetPng, mask, { key: options.key, skin: options.skin, cover: options.cover })
   return {
     sheet: sheetPng,
-    keyed: options.keyed ? sized("keyed sheet", options.keyed) : keyInsideMask(sheetPng, mask, { key: options.key, skin: options.skin }),
+    keyed: options.keyed ? sized("keyed sheet", options.keyed) : keyed!.png,
     mask,
     frames,
     cleaned,
+    ...(computed ? { necks: computed.necks } : {}),
+    ...(keyed ? { closed: keyed.closed } : {}),
   }
 }
 
@@ -733,15 +869,52 @@ export function buildLayerSheet(
  * and costs the provider its best clue to which way a figure faces: under an
  * outfit's mask that is the head, and a head in its own colours has a face
  * on the front and none on the back. A cyan one barely does.
+ *
+ * With `cover`, every opaque pixel inside the mask is keyed whatever its
+ * colour: underwear, or anything else a base wears, is body to dress over.
+ * Dark pixels are lifted so they still read as key.
+ *
+ * On a bare base (no `skin`, no `cover`), a pixel left unkeyed with keyed
+ * skin no more than 3px away on both sides, along its row, is keyed too: a
+ * dark tattoo or shading pixel would otherwise stay in the provider's input
+ * as it was, come back unchanged, and leave a pinhole in the garment.
  */
-function keyInsideMask(sheet: Buffer, mask: Buffer, options: KeyOptions): Buffer {
+function keyInsideMask(sheet: Buffer, mask: Buffer, options: KeyOptions & { cover?: boolean }): { png: Buffer; closed: number } {
   const original = decodePng(sheet)
-  const keyed = decodePng(keySkin(sheet, options))
   const allowed = decodePng(mask)
+  const key = parseHex(options.key ?? DEFAULT_KEY)
+  const keyed = options.cover ? { ...original, pixels: Buffer.from(original.pixels) } : decodePng(keySkin(sheet, options))
+  const paint = (i: number, lift: boolean) => {
+    const brightest = Math.max(original.pixels[i]!, original.pixels[i + 1]!, original.pixels[i + 2]!)
+    const value = lift ? COVER_FLOOR + Math.floor((brightest * (255 - COVER_FLOOR)) / 255) : brightest
+    const tint = (channel: number) => Math.floor(value * (1 - KEY_SATURATION + (KEY_SATURATION * channel) / 255))
+    keyed.pixels[i] = tint(key.r)
+    keyed.pixels[i + 1] = tint(key.g)
+    keyed.pixels[i + 2] = tint(key.b)
+  }
   for (let i = 0; i < keyed.pixels.length; i += 4) {
     if (allowed.pixels[i] !== 255) original.pixels.copy(keyed.pixels, i, i, i + 4)
+    else if (options.cover && original.pixels[i + 3]) paint(i, true)
   }
-  return encodeRgbaPng(keyed.width, keyed.height, keyed.pixels)
+  let closed = 0
+  if (!options.cover && !options.skin) {
+    const changed = (i: number) => original.pixels[i + 3]! > 0 && original.pixels.compare(keyed.pixels, i, i + 3, i, i + 3) !== 0
+    const holes: number[] = []
+    for (let y = 0; y < keyed.height; y++) {
+      for (let x = 0; x < keyed.width; x++) {
+        const i = (y * keyed.width + x) * 4
+        if (allowed.pixels[i] !== 255 || !original.pixels[i + 3] || changed(i)) continue
+        const near = (dir: number) => [1, 2, 3].some((k) => {
+          const nx = x + dir * k
+          return nx >= 0 && nx < keyed.width && allowed.pixels[i + dir * k * 4] === 255 && changed(i + dir * k * 4)
+        })
+        if (near(-1) && near(1)) holes.push(i)
+      }
+    }
+    for (const i of holes) paint(i, false)
+    closed = holes.length
+  }
+  return { png: encodeRgbaPng(keyed.width, keyed.height, keyed.pixels), closed }
 }
 
 /**
