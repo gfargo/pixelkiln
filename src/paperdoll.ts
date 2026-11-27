@@ -324,11 +324,15 @@ export interface DespeckleOptions {
  *   or mostly in colours the reference barely uses,
  * - any other run in such colours that outline has sealed off, unless the body
  *   lies beyond it in all four directions (which is what tells an eye, inside
- *   the head, from a ghost with its own outline, beside it), or it is bigger
- *   than a ghost gets (24 pixels, or 6% of the body), which is a limb the
- *   model shaded in colours the stills do not use,
+ *   the head, from a ghost with its own outline, beside it),
  * - such colours on the body's own exposed edge, peeled up to four deep, and
  * - outline pixels left with nothing but outline or transparency around them.
+ *
+ * A run in strange colours bigger than a ghost gets (24 pixels, or 6% of the
+ * body) is kept, sealed or exposed: it is a limb the model shaded in colours
+ * the stills do not use. Dark reference pixels vouch for colours too, so a
+ * loop that lifts black clothing a shade keeps it, and the outline sweep
+ * never takes a connected stretch bigger than a ghost (#414).
  *
  * Colour, not shape, decides: a fragment of three or more pixels in the
  * body's own colours is kept however thin, because that is also what a
@@ -345,16 +349,19 @@ export function despeckle(png: Buffer, options: DespeckleOptions): { png: Buffer
   const outlineBelow = options.outlineBelow ?? 60
   const minShare = options.minShare ?? 0.005
   const outline = (pixels: Buffer, i: number) => Math.max(pixels[i]!, pixels[i + 1]!, pixels[i + 2]!) < outlineBelow
-  // How many non-outline reference pixels carry each colour.
+  // How many reference pixels carry each colour. Shares are of the
+  // non-outline pixels, but dark pixels vouch too: black clothing is mostly
+  // below the outline threshold in the stills, and a loop that lifts its
+  // sheen a shade above it must still find that sheen vouched for (#414).
   const palette = new Map<number, number>()
   let total = 0
   for (const still of options.reference) {
     const { pixels } = decodePng(still)
     for (let i = 0; i < pixels.length; i += 4) {
-      if (pixels[i + 3] === 0 || outline(pixels, i)) continue
+      if (pixels[i + 3] === 0) continue
       const rgb = (pixels[i]! << 16) | (pixels[i + 1]! << 8) | pixels[i + 2]!
       palette.set(rgb, (palette.get(rgb) ?? 0) + 1)
-      total++
+      if (!outline(pixels, i)) total++
     }
   }
   if (!total) throw new Error("the reference stills have no opaque pixels that are not outline")
@@ -420,7 +427,7 @@ export function despeckle(png: Buffer, options: DespeckleOptions): { png: Buffer
       const strange = run.filter(([x, y]) => foreign(at(image, x, y))).length / run.length > 0.5
       let debris: boolean
       const exposed = run.some(([x, y]) => STEPS.some(([dx, dy]) => open(x + dx, y + dy)))
-      if (strange && !exposed && run.length > limb) {
+      if (strange && run.length > limb) {
         debris = false
         limbs.add(index)
       } else if (exposed) {
@@ -469,6 +476,7 @@ export function despeckle(png: Buffer, options: DespeckleOptions): { png: Buffer
         if (src[at(image, x, y) + 3]! > 0 && out[at(image, x, y) + 3] === 0) frontier.push([x, y])
       }
     }
+    const seeds = frontier.length
     for (let n = 0; n < frontier.length; n++) {
       const [fx, fy] = frontier[n]!
       for (let dy = -1; dy <= 1; dy++) {
@@ -490,6 +498,35 @@ export function despeckle(png: Buffer, options: DespeckleOptions): { png: Buffer
           erase(i)
           frontier.push([x, y])
         }
+      }
+    }
+    // The chain stops at the body's colours, so it can run on into a mass of
+    // dark the figure owns (black clothing, hair) and hollow it out. Outline
+    // around a ghost is a thin frame; a connected stretch of it bigger than a
+    // ghost gets is the figure's own and goes back (#414).
+    const chained = new Set(frontier.slice(seeds).map(([x, y]) => local(x, y)))
+    const visited = new Set<number>()
+    for (const [sx, sy] of frontier.slice(seeds)) {
+      if (visited.has(local(sx, sy))) continue
+      const group: Array<[number, number]> = [[sx, sy]]
+      visited.add(local(sx, sy))
+      for (let n = 0; n < group.length; n++) {
+        const [gx, gy] = group[n]!
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const x = gx + dx
+            const y = gy + dy
+            if (!inside(cell, x, y) || visited.has(local(x, y)) || !chained.has(local(x, y))) continue
+            visited.add(local(x, y))
+            group.push([x, y])
+          }
+        }
+      }
+      if (group.length <= limb) continue
+      for (const [x, y] of group) {
+        const i = at(image, x, y)
+        src.copy(out, i, i, i + 4)
+        removed--
       }
     }
   }

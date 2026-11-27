@@ -71,6 +71,8 @@ export interface PostprocessResult {
   changed: boolean
   /** Ghost pixels removed, when the record asked for cleaning and found some. */
   removed?: number
+  /** With `removed`: the frame's opaque pixels before cleaning, to judge whether the cleaning took part of the figure. */
+  opaque?: number
   /** True when the palette snap moved at least one pixel. */
   snapped?: boolean
   /** Set when the record moved the layer: how many pixels fell off the canvas. */
@@ -96,10 +98,13 @@ export function applyPostprocess(
   if (mediaType !== MediaType.PNG || (!record?.palette && !record?.despeckle && !record?.offset)) return { bytes, changed: false }
   let out = bytes
   let removed = 0
+  let opaque = 0
   if (record.despeckle) {
     if (!reference.length) throw new Error(`cleaning needs the rotations of ${record.despeckle.of}, and none were given`)
     const cleaned = despeckle(out, { reference })
     if (cleaned.removed) {
+      const { pixels } = decodePng(out)
+      for (let i = 3; i < pixels.length; i += 4) if (pixels[i]! > 0) opaque++
       out = cleaned.png
       removed = cleaned.removed
     }
@@ -126,5 +131,11 @@ export function applyPostprocess(
     }
   }
   if (!removed && !snapped && !moved) return { bytes, changed: false }
-  return { bytes: out, changed: true, ...(removed ? { removed } : {}), ...(snapped ? { snapped } : {}), ...(moved ? { moved } : {}) }
+  return { bytes: out, changed: true, ...(removed ? { removed, opaque } : {}), ...(snapped ? { snapped } : {}), ...(moved ? { moved } : {}) }
 }
+
+/**
+ * Ghosts are specks and arcs; a frame that loses more than this share of its
+ * opaque pixels to cleaning has more likely lost part of the figure.
+ */
+export const CLEAN_DAMAGE_SHARE = 0.03

@@ -276,6 +276,10 @@ export async function buildPlan(
       state = "stale"
       reason = "mirror output missing on disk; flip it again (no generation cost)"
     } else if (
+      // A mirror carries its source's character shape, but it is a flip of
+      // the source's files: whether it is current is the check above, never
+      // the outfit or layer rule its source answers to (#418).
+      !spec.mirror &&
       spec.character?.kind === "outfit" &&
       entry.outfit?.sourceSha256 !== mirrorSourceHash(lock.entries[lockKey(spec.styleId, spec.character.parentAssetId!)] ?? { outputs: [] })
     ) {
@@ -284,7 +288,7 @@ export async function buildPlan(
       // need their own check, the same way a mirror's source does.
       state = "stale"
       reason = `outfit source ${spec.character.parentAssetId} changed; re-clothe the loop again`
-    } else if (spec.character?.kind === "layer" && changedLayerSource(spec, entry, lock)) {
+    } else if (!spec.mirror && spec.character?.kind === "layer" && changedLayerSource(spec, entry, lock)) {
       state = "stale"
       reason = isHeldItem(spec)
         ? `layer source ${changedLayerSource(spec, entry, lock)} changed; place the item again (no generation cost)`
@@ -405,6 +409,7 @@ export async function buildPlan(
   // the child then waits for the next wave.
   const isActionable = (i: PlanItem) => i.state === "missing" || i.state === "stale" || i.state === "failed"
   const stateOf = new Map(items.map((i) => [i.key, i.state]))
+  const waiting = new Set<string>()
   for (const item of items) {
     if (!isActionable(item)) continue
     for (const parent of dependencies(item.spec)) {
@@ -413,6 +418,7 @@ export async function buildPlan(
       if (parentState && isActionable({ state: parentState } as PlanItem)) {
         item.state = "blocked"
         item.reason = `parent ${parentKey} is being generated in this run; this follows in the next wave`
+        waiting.add(item.key)
         break
       }
       if ((item.spec.mirror || item.spec.derive || isHeldItem(item.spec)) && (parentState === "recoverable" || parentState === "in-flight")) {
@@ -420,6 +426,33 @@ export async function buildPlan(
         // fetch or poll that is about to change them.
         item.state = "blocked"
         item.reason = `mirror source ${parentKey} is ${parentState}; this follows in the next wave`
+        waiting.add(item.key)
+        break
+      }
+    }
+  }
+
+  // A child that readiness blocked on a parent this run regenerates is
+  // waiting, not broken: say so, through any number of generations, rather
+  // than reporting the parent's out-of-date record as the child's problem.
+  const byKey = new Map(items.map((i) => [i.key, i]))
+  for (let changed = true; changed;) {
+    changed = false
+    for (const item of items) {
+      if (item.state !== "blocked" || waiting.has(item.key)) continue
+      for (const parent of dependencies(item.spec)) {
+        const parentKey = lockKey(parent.styleId, parent.assetId)
+        const parentItem = byKey.get(parentKey)
+        if (!parentItem || !item.reason.includes(`${parentKey} is not ready`)) continue
+        if (isActionable(parentItem)) {
+          item.reason = `waits for ${parentKey}, which this run generates first; follows in a later wave (${item.reason})`
+        } else if (waiting.has(parentKey)) {
+          item.reason = `waits for ${parentKey}, which itself follows in a later wave of this run (${item.reason})`
+        } else {
+          continue
+        }
+        waiting.add(item.key)
+        changed = true
         break
       }
     }
