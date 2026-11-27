@@ -23,7 +23,7 @@ import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
 import { normalMapCost, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
 import { isDirection } from "../attach.ts"
-import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, type LayerFrame, type LayerRegion } from "../paperdoll.ts"
+import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, LAYER_SHEET_MAX_SIDE, type LayerFrame, type LayerRegion } from "../paperdoll.ts"
 import { placeHeldFrames } from "../pipeline/attach.ts"
 import { decodePng, joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
@@ -484,7 +484,7 @@ function decodeObjectAnimationJob(jobId: string): ObjectAnimationJob | null {
 }
 
 /** /inpaint-v3 takes 32 to 512px a side (docs/REVISIONS.md). */
-export const LAYER_SHEET_MAX_SIDE = 512
+export { LAYER_SHEET_MAX_SIDE } from "../paperdoll.ts"
 
 /** What submit records about a layer's sheet for the download step to cut against. */
 interface LayerLayout {

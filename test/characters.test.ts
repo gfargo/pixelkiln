@@ -14,7 +14,7 @@ import { packStyle } from "../src/pipeline/pack.ts"
 import { renderGodotSpriteFrames } from "../src/pipeline/sheet-formats.ts"
 import { openProject } from "../src/project.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
-import { upsert } from "../src/lock.ts"
+import { saveLock, upsert } from "../src/lock.ts"
 import { sha256File } from "../src/hash.ts"
 import { CHARACTER_DIRECTIONS_8, lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
 import { writeAnchors } from "../src/pipeline/attach.ts"
@@ -1970,6 +1970,64 @@ describe("paperdoll layer", () => {
     await expect(openProject(await layeredManifest({ of: "mira.face" }, { "mira.face": { portrait: { of: "mira", size: 16 } } }), { env: false }))
       .rejects.toThrow(/layer source "mira.face" is not a character base, state, or loop/)
     await expect(openProject(await layeredManifest({}, { "mira.armor": { layer: { of: "mira" } } }), { env: false })).rejects.toThrow(/prompt/)
+  })
+
+  it("removes the frames a shorter regeneration of a loop leaves behind, and keeps one changed by hand", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    await withSources(await layeredManifest(), client, provider)
+    const frame = (n: number) => path.join(dir, "art", "characters", `mira.walk-frame-0${n}.png`)
+    expect([0, 1, 2, 3].map((n) => existsSync(frame(n)))).toEqual([true, true, true, true])
+    await writeFile(frame(2), px(8, 33))
+
+    // The loop drawn again with a new prompt, and two frames back instead of four.
+    const file = await layeredManifest({}, { "mira.walk": { prompt: "walking briskly", animation: { of: "mira", direction: "south", frames: 4, fps: 8 } } })
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable.filter((i) => i.key === "cast/mira.walk"), p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-1", "pixelkiln:cast/mira.walk", "south", 2)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    const entry = p.lock.entries["cast/mira.walk"]!
+    const spec = p.specs.find((candidate) => candidate.assetId === "mira.walk")
+    const state = await provider.poll(entry.reviewObjectId!, entry.generator, { spec, metadata: entry.providerMetadata?.pixellab })
+    if (state.status !== "review-set") throw new Error("the loop is not ready for review")
+    upsert(p.lock, "cast/mira.walk", { status: "selected", objectId: state.objectId, sourceUrl: state.sources[0]?.url ?? null, sourceUrls: state.sources })
+    const logged: string[] = []
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath, { onProgress: (line) => logged.push(line) })
+
+    expect(p.lock.entries["cast/mira.walk"]!.outputs).toHaveLength(2)
+    expect(existsSync(frame(3))).toBe(false)
+    expect(existsSync(frame(2))).toBe(true)
+    expect(logged.join("\n")).toMatch(/removed .*mira\.walk-frame-03\.png/)
+    expect(logged.join("\n")).toMatch(/left +.*mira\.walk-frame-02\.png: from the previous generation, changed since/)
+    p = await openProject(file, { env: false })
+    expect((await p.plan()).items.find((i) => i.key === "cast/mira.walk")!.state).toBe("ok")
+  })
+
+  it("reports the sheet a layer will use, and marks one too big for a sheet invalid at no cost", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const file = await layeredManifest()
+    const p = await withSources(file, client, provider)
+    const ready = (await p.plan()).items.find((i) => i.key === "cast/mira.armor")!
+    expect(ready.state).toBe("missing")
+    expect(ready.reason).toMatch(/\d+ frames, \d+ columns? of \d+x\d+ on a \d+x\d+ sheet, room for \d+/)
+
+    // The loop drawn at 200px: two cells across, two down, and twelve frames with the rotations.
+    const walk = p.lock.entries["cast/mira.walk"]!
+    const outputs = []
+    for (const output of walk.outputs) {
+      const frame = path.resolve(dir, output.path)
+      await writeFile(frame, px(200, 120))
+      outputs.push({ ...output, sha256: await sha256File(frame) })
+    }
+    upsert(p.lock, "cast/mira.walk", { outputs })
+    await saveLock(p.lockPath, p.lock)
+    const plan = await (await openProject(file, { env: false })).plan()
+    const item = plan.items.find((i) => i.key === "cast/mira.armor")!
+    expect(item.state).toBe("invalid")
+    expect(item.reason).toMatch(/frames of 200x200 do not fit one 512px sheet; at most 4 fit \(2 across, 2 down\)/)
+    expect(plan.actionable.map((i) => i.key)).not.toContain("cast/mira.armor")
+    expect(plan.cost).toBe(0)
   })
 
   it("sends one keyed sheet and mask, then cuts one layer per source frame named after it", async () => {

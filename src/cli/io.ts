@@ -78,7 +78,7 @@ export function selectInvalid(
 export function printPlan(plan: Plan, invalid: InvalidManifestEntry[] = [], hiddenInvalid = 0): void {
   const counts = summarize(plan)
   const order = [
-    "blocked", "missing", "untracked", "stale", "failed", "recoverable", "in-flight", "orphaned", "ok",
+    "invalid", "blocked", "missing", "untracked", "stale", "failed", "recoverable", "in-flight", "orphaned", "ok",
   ] as const
   for (const state of order) {
     const items = plan.items.filter((i) => i.state === state)
@@ -103,6 +103,7 @@ export function printPlan(plan: Plan, invalid: InvalidManifestEntry[] = [], hidd
     `\n  totals: ${counts.ok} ok · ${counts.blocked} blocked · ${counts.missing} missing · ${counts.untracked} untracked · ` +
       `${counts.stale} stale · ${counts["in-flight"]} in-flight · ${counts.orphaned} orphaned · ` +
       `${counts.recoverable} recoverable · ${counts.failed} failed` +
+      (counts.invalid ? ` · ${counts.invalid} cannot be made as declared` : "") +
       (invalid.length ? ` · ${invalid.length} invalid` : ""),
   )
   if (plan.actionable.length) {

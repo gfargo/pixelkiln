@@ -523,6 +523,8 @@ export interface LayerSheet {
   frames: LayerFrame[]
   /** Pixels `despeckle` removed, over all frames. */
   cleaned: number
+  /** The cell, the columns chosen, and how many frames a sheet of this cell holds. */
+  fit: LayerSheetFit
 }
 
 export interface LayerSheetOptions {
@@ -550,20 +552,80 @@ export interface LayerSheetOptions {
   keyed?: Buffer
 }
 
+/** The longest side PixelLab's inpaint accepts, and so the largest layer sheet. */
+export const LAYER_SHEET_MAX_SIDE = 512
+
+/** How a layer's frames lie on one sheet, or why they cannot. */
+export interface LayerSheetFit {
+  /** Frames on the sheet. */
+  frames: number
+  /** The one cell every frame is cut to: the union of their opaque bounds, plus padding. */
+  cellWidth: number
+  cellHeight: number
+  /** The longest side the provider takes. */
+  maxSide: number
+  /** Cells of this size one sheet holds: `across` by `down`. */
+  across: number
+  down: number
+  maxFrames: number
+  /** The columns used, or null when the frames do not fit at any count. */
+  columns: number | null
+  /** The sheet at `columns`, before any padding up to the provider's floor. */
+  width?: number
+  height?: number
+  /** `columns` as asked for, when that count does not fit and another was chosen. */
+  requestedColumns?: number
+}
+
 /**
- * Builds everything a provider needs to dress a set of frames in one inpaint:
- * the frames cleaned, centred on a common canvas, cut to the one box that
- * holds them all, laid on a sheet, keyed and masked.
- *
- * Frames of different canvases share a sheet by their centres, which is how
- * PixelLab pads an animation frame around its character's still.
+ * Columns for `frames` cells of one size: the asked-for count when it fits,
+ * otherwise the count that fits `maxSide` in the smallest area (the squarer
+ * sheet on a tie), or null when none does.
  */
-export function buildLayerSheet(
-  sources: Array<{ assetId: string; role?: string; png: Buffer }>,
-  options: LayerSheetOptions,
-): LayerSheet {
+export function chooseLayerColumns(
+  frames: number,
+  cellWidth: number,
+  cellHeight: number,
+  maxSide: number,
+  requested?: number,
+): LayerSheetFit {
+  const across = Math.floor(maxSide / cellWidth)
+  const down = Math.floor(maxSide / cellHeight)
+  const fits = (columns: number) =>
+    columns * cellWidth <= maxSide && Math.ceil(frames / columns) * cellHeight <= maxSide
+  const base = { frames, cellWidth, cellHeight, maxSide, across, down, maxFrames: across * down }
+  const at = (columns: number) => ({ columns, width: columns * cellWidth, height: Math.ceil(frames / columns) * cellHeight })
+  if (requested !== undefined && fits(requested)) return { ...base, ...at(requested) }
+  let best: { columns: number; area: number; longest: number } | undefined
+  for (let candidate = 1; candidate <= frames; candidate++) {
+    if (!fits(candidate)) continue
+    const { width, height } = at(candidate)
+    const score = { columns: candidate, area: width * height, longest: Math.max(width, height) }
+    if (!best || score.area < best.area || (score.area === best.area && score.longest < best.longest)) best = score
+  }
+  return {
+    ...base,
+    ...(best ? at(best.columns) : { columns: null }),
+    ...(requested !== undefined ? { requestedColumns: requested } : {}),
+  }
+}
+
+/** Why a layer's frames do not fit one sheet, in the words `plan` and `gen` both use. */
+export function layerFitProblem(fit: LayerSheetFit): string {
+  return (
+    `${fit.frames} frames of ${fit.cellWidth}x${fit.cellHeight} do not fit one ${fit.maxSide}px sheet; ` +
+    `at most ${fit.maxFrames} fit (${fit.across} across, ${fit.down} down)`
+  )
+}
+
+type LayerSource = { assetId: string; role?: string; png: Buffer }
+
+/**
+ * Cleans the frames and centres them on one canvas, then finds the one box
+ * that holds all of them: the work every sheet of these frames starts from.
+ */
+function placeLayerFrames(sources: LayerSource[], options: Pick<LayerSheetOptions, "reference" | "padding">) {
   if (!sources.length) throw new Error("a layer needs at least one source frame")
-  const minSide = options.minSide ?? 32
   let cleaned = 0
   // Stills drawn entirely in outline-dark colours give cleaning no body
   // palette to judge against; the frames go through as they are.
@@ -611,45 +673,50 @@ export function buildLayerSheet(
   const padding = options.padding ?? 0
   left -= padding
   top -= padding
-  const cellWidth = right - left + 1 + padding
-  const cellHeight = bottom - top + 1 + padding
+  return { placed, left, top, padding, cleaned, cellWidth: right - left + 1 + padding, cellHeight: bottom - top + 1 + padding }
+}
 
-  const fits = (columns: number) => {
-    const rows = Math.ceil(placed.length / columns)
-    return columns * cellWidth <= options.maxSide && rows * cellHeight <= options.maxSide
-  }
-  let columns = options.columns
-  if (columns !== undefined) {
-    if (!fits(columns)) {
-      throw new Error(
-        `${placed.length} frames in ${columns} columns of ${cellWidth}x${cellHeight} make a ` +
-          `${columns * cellWidth}x${Math.ceil(placed.length / columns) * cellHeight} sheet; the limit is ${options.maxSide}px a side`,
-      )
-    }
-  } else {
-    let best: { columns: number; area: number; longest: number } | undefined
-    for (let candidate = 1; candidate <= placed.length; candidate++) {
-      if (!fits(candidate)) continue
-      const width = candidate * cellWidth
-      const height = Math.ceil(placed.length / candidate) * cellHeight
-      const score = { columns: candidate, area: width * height, longest: Math.max(width, height) }
-      if (!best || score.area < best.area || (score.area === best.area && score.longest < best.longest)) best = score
-    }
-    if (!best) {
-      throw new Error(
-        `${placed.length} frames of ${cellWidth}x${cellHeight} do not fit one ${options.maxSide}px sheet; ` +
-          "split the layer across two assets",
-      )
-    }
-    columns = best.columns
-  }
+/**
+ * How these frames would lie on a layer sheet, without building it: the cell
+ * they share, how many such cells a sheet holds, and the columns
+ * `buildLayerSheet` would use. Cleaning runs first, as it does there, since a
+ * ghost pixel can widen the cell.
+ */
+export function layerSheetFit(
+  sources: LayerSource[],
+  options: Pick<LayerSheetOptions, "maxSide" | "columns" | "padding" | "reference">,
+): LayerSheetFit {
+  const { placed, cellWidth, cellHeight } = placeLayerFrames(sources, options)
+  return chooseLayerColumns(placed.length, cellWidth, cellHeight, options.maxSide, options.columns)
+}
+
+/**
+ * Builds everything a provider needs to dress a set of frames in one inpaint:
+ * the frames cleaned, centred on a common canvas, cut to the one box that
+ * holds them all, laid on a sheet, keyed and masked.
+ *
+ * Frames of different canvases share a sheet by their centres, which is how
+ * PixelLab pads an animation frame around its character's still.
+ *
+ * `columns` that do not fit `maxSide` give way to the count that does; the
+ * result's `fit` says so. Frames that fit at no count are refused.
+ */
+export function buildLayerSheet(
+  sources: LayerSource[],
+  options: LayerSheetOptions,
+): LayerSheet {
+  const minSide = options.minSide ?? 32
+  const { placed, left, top, padding, cleaned, cellWidth, cellHeight } = placeLayerFrames(sources, options)
+  const fit = chooseLayerColumns(placed.length, cellWidth, cellHeight, options.maxSide, options.columns)
+  if (fit.columns === null) throw new Error(`${layerFitProblem(fit)}; split the layer across two assets`)
+  const columns = fit.columns
   const rows = Math.ceil(placed.length / columns)
   // A sheet under the provider's floor is padded with empty space, never scaled.
   const width = Math.max(minSide, columns * cellWidth)
   const height = Math.max(minSide, rows * cellHeight)
   const sheet: DecodedPng = { width, height, pixels: Buffer.alloc(width * height * 4) }
   const frames = placed.map((frame, index): LayerFrame => {
-    const cell = { x: (index % columns!) * cellWidth, y: Math.floor(index / columns!) * cellHeight, width: cellWidth, height: cellHeight }
+    const cell = { x: (index % columns) * cellWidth, y: Math.floor(index / columns) * cellHeight, width: cellWidth, height: cellHeight }
     const offsetX = left - frame.left
     const offsetY = top - frame.top
     for (let y = 0; y < cellHeight; y++) {
@@ -687,6 +754,7 @@ export function buildLayerSheet(
     mask,
     frames,
     cleaned,
+    fit,
   }
 }
 

@@ -380,6 +380,30 @@ export async function fetchAssets(
           result.unchanged = (result.unchanged ?? 0) + 1
           continue
         }
+        // A generation with fewer members than the one it replaced (a loop
+        // drawn again at 8 frames instead of 9) leaves the old high-numbered
+        // files beside the new ones, and anything that globs the directory
+        // picks them up. Those still holding the bytes PixelKiln wrote are
+        // removed (their bytes go to the cache first, so a restore can show
+        // them); one changed by hand is left and named.
+        const written = new Set(outputs.map((output) => resolveOutputPath(output.path, spec.root)))
+        const retired = entry.supersededOutputs ?? []
+        for (const [oldIndex, old] of retired.entries()) {
+          const file = currentOutputPath(old, spec, oldIndex, retired.length)
+          if (written.has(file) || !existsSync(file)) continue
+          const current = await sha256File(file)
+          if (current !== old.sha256) {
+            log(`  left    ${path.relative(process.cwd(), file)}: from the previous generation, changed since; delete it if it is not wanted`)
+            continue
+          }
+          if (cacheDir) {
+            const bytes = await readFile(file)
+            const kind = detectMediaType(bytes)
+            if (kind) await cacheMedia(cacheDir, bytes, kind, current)
+          }
+          await rm(file)
+          log(`  removed ${path.relative(process.cwd(), file)} (previous generation had more outputs)`)
+        }
         const persistentSources = sources.filter((source) => shouldPersistSourceUrl(source.url))
         upsert(lock, key, {
           status: "downloaded",

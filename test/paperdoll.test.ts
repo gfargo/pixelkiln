@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { bodyMask, buildLayerSheet, cutGraspFrames, cutLayerFrames, despeckle, extractLayer, graspSheet, isKeyColor, keySkin, neckRow, packSheet, unionBounds, unpackSheet } from "../src/paperdoll.ts"
+import { bodyMask, buildLayerSheet, cutGraspFrames, cutLayerFrames, despeckle, extractLayer, graspSheet, isKeyColor, keySkin, layerFitProblem, layerSheetFit, neckRow, packSheet, unionBounds, unpackSheet } from "../src/paperdoll.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 
 type Pixel = [number, number, number, number]
@@ -257,7 +257,19 @@ describe("layer sheets", () => {
     expect(decodePng(built.sheet)).toMatchObject({ width: 20, height: 20 })
     expect(decodePng(buildLayerSheet([sources[0]!], { maxSide: 512 }).sheet)).toMatchObject({ width: 32, height: 32 })
     expect(() => buildLayerSheet(eight, { maxSide: 12, minSide: 1 })).toThrow(/8 frames of 5x10 do not fit one 12px sheet/)
-    expect(() => buildLayerSheet(eight, { maxSide: 20, minSide: 1, columns: 8 })).toThrow(/make a 40x10 sheet/)
+    // Columns that would make a 40x10 sheet give way to the count that fits.
+    const narrowed = buildLayerSheet(eight, { maxSide: 20, minSide: 1, columns: 8 })
+    expect(narrowed.fit).toMatchObject({ columns: 4, requestedColumns: 8, maxFrames: 8, across: 4, down: 2 })
+    expect(decodePng(narrowed.sheet)).toMatchObject({ width: 20, height: 20 })
+  })
+
+  it("measures the fit without building a sheet, and names the most frames one holds", () => {
+    const nine = Array.from({ length: 9 }, (_, index) => ({ assetId: "hero", role: String(index), png: still }))
+    expect(layerSheetFit(nine.slice(0, 8), { maxSide: 20 })).toMatchObject({ frames: 8, cellWidth: 5, cellHeight: 10, columns: 4, maxFrames: 8 })
+    const over = layerSheetFit(nine, { maxSide: 20 })
+    expect(over).toMatchObject({ frames: 9, columns: null, maxFrames: 8 })
+    expect(layerFitProblem(over)).toBe("9 frames of 5x10 do not fit one 20px sheet; at most 8 fit (4 across, 2 down)")
+    expect(() => buildLayerSheet(nine, { maxSide: 20, minSide: 1 })).toThrow(/9 frames of 5x10 do not fit one 20px sheet; at most 8 fit/)
   })
 
   it("cleans loop frames against the stills and leaves the stills alone", () => {
