@@ -1,3 +1,10 @@
+# [0.149.0](https://github.com/gfargo/pixelkiln/compare/v0.148.1...v0.149.0) (2026-11-27)
+
+
+### Features
+
+* per-frame layer mask, cover keying, and free layer preview ([fc5593b](https://github.com/gfargo/pixelkiln/commit/fc5593baed011fdab86477c7ed87e843e2713e48)), closes [#413](https://github.com/gfargo/pixelkiln/issues/413)
+
 ## [0.148.1](https://github.com/gfargo/pixelkiln/compare/v0.148.0...v0.148.1) (2026-11-27)
 
 
