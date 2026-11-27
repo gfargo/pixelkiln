@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -20,7 +20,7 @@ import { sha256File } from "../src/hash.ts"
 import { CHARACTER_DIRECTIONS_8, lockKey, type Lock, type ResolvedSpec } from "../src/types.ts"
 import { writeAnchors } from "../src/pipeline/attach.ts"
 import { redrawLayerFrames } from "../src/pipeline/redraw.ts"
-import { previewLayer } from "../src/pipeline/layer-preview.ts"
+import { dressLayer, dressedGif, dressedStrip, previewLayer } from "../src/pipeline/layer-preview.ts"
 import { SKELETON_LABELS } from "../src/skeleton.ts"
 
 /** The directions a held item needs files for: every one its base faces. */
@@ -1974,6 +1974,64 @@ describe("paperdoll layer", () => {
     await expect(openProject(await layeredManifest({}, { "mira.armor": { layer: { of: "mira" } } }), { env: false })).rejects.toThrow(/prompt/)
   })
 
+  it("removes the frames a shorter regeneration of a loop leaves behind, and keeps one changed by hand", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    await withSources(await layeredManifest(), client, provider)
+    const frame = (n: number) => path.join(dir, "art", "characters", `mira.walk-frame-0${n}.png`)
+    expect([0, 1, 2, 3].map((n) => existsSync(frame(n)))).toEqual([true, true, true, true])
+    await writeFile(frame(2), px(8, 33))
+
+    // The loop drawn again with a new prompt, and two frames back instead of four.
+    const file = await layeredManifest({}, { "mira.walk": { prompt: "walking briskly", animation: { of: "mira", direction: "south", frames: 4, fps: 8 } } })
+    let p = await openProject(file, { env: false })
+    await submit(provider, p.loaded, (await p.plan()).actionable.filter((i) => i.key === "cast/mira.walk"), p.lock, p.lockPath, { spacingMs: 0 })
+    client.landAnimation("char-1", "pixelkiln:cast/mira.walk", "south", 2)
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    const entry = p.lock.entries["cast/mira.walk"]!
+    const spec = p.specs.find((candidate) => candidate.assetId === "mira.walk")
+    const state = await provider.poll(entry.reviewObjectId!, entry.generator, { spec, metadata: entry.providerMetadata?.pixellab })
+    if (state.status !== "review-set") throw new Error("the loop is not ready for review")
+    upsert(p.lock, "cast/mira.walk", { status: "selected", objectId: state.objectId, sourceUrl: state.sources[0]?.url ?? null, sourceUrls: state.sources })
+    const logged: string[] = []
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath, { onProgress: (line) => logged.push(line) })
+
+    expect(p.lock.entries["cast/mira.walk"]!.outputs).toHaveLength(2)
+    expect(existsSync(frame(3))).toBe(false)
+    expect(existsSync(frame(2))).toBe(true)
+    expect(logged.join("\n")).toMatch(/removed .*mira\.walk-frame-03\.png/)
+    expect(logged.join("\n")).toMatch(/left +.*mira\.walk-frame-02\.png: from the previous generation, changed since/)
+    p = await openProject(file, { env: false })
+    expect((await p.plan()).items.find((i) => i.key === "cast/mira.walk")!.state).toBe("ok")
+  })
+
+  it("reports the sheet a layer will use, and marks one too big for a sheet invalid at no cost", async () => {
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const file = await layeredManifest()
+    const p = await withSources(file, client, provider)
+    const ready = (await p.plan()).items.find((i) => i.key === "cast/mira.armor")!
+    expect(ready.state).toBe("missing")
+    expect(ready.reason).toMatch(/\d+ frames, \d+ columns? of \d+x\d+ on a \d+x\d+ sheet, room for \d+/)
+
+    // The loop drawn at 200px: two cells across, two down, and twelve frames with the rotations.
+    const walk = p.lock.entries["cast/mira.walk"]!
+    const outputs = []
+    for (const output of walk.outputs) {
+      const frame = path.resolve(dir, output.path)
+      await writeFile(frame, px(200, 120))
+      outputs.push({ ...output, sha256: await sha256File(frame) })
+    }
+    upsert(p.lock, "cast/mira.walk", { outputs })
+    await saveLock(p.lockPath, p.lock)
+    const plan = await (await openProject(file, { env: false })).plan()
+    const item = plan.items.find((i) => i.key === "cast/mira.armor")!
+    expect(item.state).toBe("invalid")
+    expect(item.reason).toMatch(/frames of 200x200 do not fit one 512px sheet; at most 4 fit \(2 across, 2 down\)/)
+    expect(plan.actionable.map((i) => i.key)).not.toContain("cast/mira.armor")
+    expect(plan.cost).toBe(0)
+  })
+
   it("sends one keyed sheet and mask, then cuts one layer per source frame named after it", async () => {
     const file = await layeredManifest()
     const client = fakeClient()
@@ -2051,6 +2109,157 @@ describe("paperdoll layer", () => {
     // A padded layer shares its frame's centre, so it is drawn that much up and to the left.
     expect(packStyle(p.lock, "cast", dir, { pivot: "bottom-center" }).atlas.layers![0]!.frames[0]).toMatchObject({ over: "mira/south", dx: -4, dy: -4 })
     expect(openProject(await layeredManifest({ region: "around" }), { env: false }).then((q) => q.specs.find((s) => s.assetId === "mira.armor")!.character!.layer!.padding)).resolves.toBe(8)
+  })
+
+  it("trims the bare fringe under a layer in the atlas, flattens it into the frames, and previews it, without touching the spec's identity", async () => {
+    const plainSpec = (await openProject(await layeredManifest(), { env: false })).specs.find((s) => s.assetId === "mira.armor")!
+    const file = await layeredManifest({ trim: true })
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    const p = await withSources(file, client, provider)
+    const spec = p.specs.find((s) => s.assetId === "mira.armor")!
+    expect(spec.character!.layer!.trim).toEqual({ run: 4, island: 45 })
+    expect(spec.specHash).toBe(plainSpec.specHash)
+    await submit(provider, p.loaded, (await p.plan()).actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(client.inpaints.at(-1)!))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    // The provider's clothes one pixel short of the body's left edge on every frame: the fringe.
+    for (const output of p.lock.entries["cast/mira.armor"]!.outputs) {
+      const frame = path.resolve(dir, output.path)
+      const image = decodePng(await readFile(frame))
+      for (let y = 0; y < image.height; y++) {
+        const x = [...Array(image.width).keys()].find((column) => image.pixels[(y * image.width + column) * 4 + 3]! > 0)
+        if (x !== undefined) image.pixels.fill(0, (y * image.width + x) * 4, (y * image.width + x) * 4 + 4)
+      }
+      await writeFile(frame, encodeRgbaPng(image.width, image.height, image.pixels))
+    }
+    const trim = { "mira.armor": spec.character!.layer!.trim! }
+    const atlas = packStyle(p.lock, "cast", dir, { pivot: "bottom-center", trim }).atlas
+    const south = atlas.layers![0]!.frames.find((frame) => frame.over === "mira/south")!
+    expect(south.cut!.length).toBeGreaterThan(0)
+    expect(south.cut!.every(([, , length]) => length >= 1 && length <= 4)).toBe(true)
+    expect(packStyle(p.lock, "cast", dir, { pivot: "bottom-center" }).atlas.layers![0]!.frames[0]!.cut).toBeUndefined()
+
+    const flat = packStyle(p.lock, "cast", dir, { pivot: "bottom-center", trim, flatten: true })
+    expect(flat.atlas.layers).toBeUndefined()
+    expect(flat.atlas.frames.some((frame) => frame.id.startsWith("mira.armor"))).toBe(false)
+    expect(flat.atlas.sets?.some((set) => set.id === "mira.armor")).toBeFalsy()
+    expect(flat.sources.some((source) => source.id === "mira.armor/mira.south")).toBe(true)
+    // The dressed south frame shows leather where the bare base showed skin.
+    const bare = decodePng(await readFile(path.resolve(dir, p.lock.entries["cast/mira"]!.outputs[0]!.path)))
+    const sheet = decodePng(flat.png)
+    const at = flat.atlas.frames.find((frame) => frame.id === "mira/south")!
+    const placedAt = ((at.y + bare.height - 1) * sheet.width + at.x + Math.floor(bare.width / 2)) * 4
+    expect([...sheet.pixels.subarray(placedAt, placedAt + 4)]).toEqual(LEATHER)
+    expect(() => packStyle(p.lock, "cast", dir, { flatten: ["mira.walk"] })).toThrow(/--flatten names mira.walk, which is not a layer/)
+
+    const dressed = dressLayer(spec, p.lock)
+    expect(dressed.map((source) => [source.assetId, source.still, source.frames.length])).toEqual([["mira", true, 8], ["mira.walk", false, 4]])
+    expect(dressed[1]!.cut).toBeGreaterThan(0)
+    expect(dressedGif(dressed[1]!).subarray(0, 6).toString("latin1")).toBe("GIF89a")
+    expect(decodePng(dressedStrip(dressed[0]!)).width).toBe(decodePng(dressed[0]!.frames[0]!.png).width * 8)
+
+    // The one `layer preview`: the inpaint's inputs, and with gif the made layer over its frames.
+    const preview = await previewLayer(spec, p.lock, { gif: true })
+    expect(preview.dressed!.map((source) => path.basename(source.file))).toEqual(["mira.png", "mira.walk.gif"])
+    expect(readFileSync(preview.dressed![1]!.file).subarray(0, 6).toString("latin1")).toBe("GIF89a")
+    expect(preview.written).toEqual(expect.arrayContaining([path.join(preview.dir, "mask.png"), preview.dressed![1]!.file]))
+    expect((await previewLayer(spec, p.lock)).dressed).toBeUndefined()
+  })
+
+  it("continues a split outfit from its anchor: the anchor's dressed south frame guides the sheet and is cut from nothing", async () => {
+    const split = {
+      "mira.armor": { prompt: "leather ranger armour", layer: { of: ["mira", "mira.walk"] } },
+      "mira.armor.walk": { prompt: "leather ranger armour", layer: { of: "mira.walk", anchor: "mira.armor" } },
+    }
+    const file = await layeredManifest({}, split)
+    const client = fakeClient()
+    const provider = new PixelLabProvider(client as never)
+    let p = await withSources(file, client, provider)
+    const continued = p.specs.find((s) => s.assetId === "mira.armor.walk")!
+    expect(continued.character!.layer!.anchor).toMatchObject({ assetId: "mira.armor" })
+    let plan = await p.plan()
+    expect(plan.actionable.map((i) => i.key)).toEqual(["cast/mira.armor"])
+    expect(plan.items.find((i) => i.key === "cast/mira.armor.walk")).toMatchObject({ state: "blocked", reason: expect.stringContaining("layer anchor cast/mira.armor is not made yet") })
+
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const first = client.inpaints.at(-1)!
+    client.completeInpaint(p.lock.entries["cast/mira.armor"]!.jobId!, painted(first))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+
+    p = await openProject(file, { env: false })
+    plan = await p.plan()
+    const item = plan.items.find((i) => i.key === "cast/mira.armor.walk")!
+    expect(item.state).toBe("missing")
+    expect(item.reason).toMatch(/^not in lockfile; 5 frames,/)
+    // The preview builds the same sheet: the guide first, masked shut.
+    const preview = await previewLayer(continued, p.lock)
+    expect(preview.frames.map((frame) => Boolean(frame.guide))).toEqual([true, false, false, false, false])
+    expect(preview.frames[0]!.masked).toBe(0)
+    await submit(provider, p.loaded, plan.actionable, p.lock, p.lockPath, { spacingMs: 0 })
+    const sent = client.inpaints.at(-1)!
+    expect(sent.description).toMatch(/^leather ranger armour\. The first figure already wears it\. Dress every other figure in exactly the same thing/)
+    const layout = JSON.parse(await readFile(path.join(dir, ".pixelkiln", "layers", "cast", "mira.armor.walk", "layout.json"), "utf8"))
+    expect(layout.guides).toBe(1)
+    expect(layout.frames.map((frame: { assetId: string; role: string }) => `${frame.assetId}.${frame.role}`)).toEqual(
+      ["mira.south", "mira.walk.frame-00", "mira.walk.frame-01", "mira.walk.frame-02", "mira.walk.frame-03"],
+    )
+    // The guide cell is closed and already wears the anchor's leather; the loop's cells are open.
+    const guide = layout.frames[0].cell
+    const mask = decodePng(sent.mask)
+    const keyed = decodePng(sent.image)
+    let open = 0
+    let leather = 0
+    for (let y = guide.y; y < guide.y + guide.height; y++) {
+      for (let x = guide.x; x < guide.x + guide.width; x++) {
+        const i = (y * mask.width + x) * 4
+        if (mask.pixels[i] === 255) open++
+        if ([...keyed.pixels.subarray(i, i + 4)].join() === LEATHER.join()) leather++
+      }
+    }
+    expect(open).toBe(0)
+    expect(leather).toBeGreaterThan(0)
+    const loopCell = layout.frames[1].cell
+    expect(mask.pixels[((loopCell.y + loopCell.height - 1) * mask.width + loopCell.x + Math.floor(loopCell.width / 2)) * 4]).toBe(255)
+
+    client.completeInpaint(p.lock.entries["cast/mira.armor.walk"]!.jobId!, painted(sent))
+    await poll(provider, p.lock, p.lockPath, { intervalMs: 0, specs: p.specs })
+    await fetchAssets(provider, p.specs, p.lock, p.lockPath)
+    const entry = p.lock.entries["cast/mira.armor.walk"]!
+    expect(entry.outputs.map((output) => output.role)).toEqual(["mira.walk.frame-00", "mira.walk.frame-01", "mira.walk.frame-02", "mira.walk.frame-03"])
+    expect(entry.layer!.anchor).toMatchObject({ assetId: "mira.armor" })
+    expect((await (await openProject(file, { env: false })).plan()).items.find((i) => i.key === "cast/mira.armor.walk")!.state).toBe("ok")
+
+    // The anchor drawn again: the layer that follows it goes stale.
+    const armor = p.lock.entries["cast/mira.armor"]!
+    const redrawn = path.resolve(dir, armor.outputs[0]!.path)
+    await writeFile(redrawn, px(8, 77))
+    upsert(p.lock, "cast/mira.armor", {
+      outputs: await Promise.all(armor.outputs.map(async (output, index) => (index === 0 ? { ...output, sha256: await sha256File(redrawn) } : output))),
+    })
+    expect((await p.plan()).items.find((i) => i.key === "cast/mira.armor.walk")).toMatchObject({
+      state: "stale",
+      reason: expect.stringMatching(/^layer anchor mira.armor changed; dress the frames again/),
+    })
+  })
+
+  it("refuses an anchor on itself, on something that is not a drawn layer, in a cycle, or with other padding", async () => {
+    const layered = (layers: Record<string, unknown>) => layeredManifest({}, layers)
+    await expect(openProject(await layered({ "mira.armor": { prompt: "armour", layer: { of: "mira", anchor: "mira.armor" } } }), { env: false }))
+      .rejects.toThrow(/a layer cannot anchor on itself/)
+    await expect(openProject(await layered({ "mira.armor": { prompt: "armour", layer: { of: "mira", anchor: "mira.walk" } } }), { env: false }))
+      .rejects.toThrow(/layer.anchor "mira.walk" is not a drawn paperdoll layer/)
+    await expect(openProject(await layered({
+      "mira.armor": { prompt: "armour", layer: { of: "mira", anchor: "mira.hat" } },
+      "mira.hat": { prompt: "hat", layer: { of: "mira.walk", anchor: "mira.armor" } },
+    }), { env: false })).rejects.toThrow(/anchors back on this layer/)
+    await expect(openProject(await layered({
+      "mira.armor": { prompt: "armour", layer: { of: "mira" } },
+      "mira.hat": { prompt: "hat", layer: { of: "mira.walk", anchor: "mira.armor", padding: 4 } },
+    }), { env: false })).rejects.toThrow(/has padding 0 and this layer 4/)
   })
 
   it("goes stale when any source is regenerated", async () => {

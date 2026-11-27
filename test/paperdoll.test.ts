@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { bodyMask, buildLayerSheet, layerMask, cutGraspFrames, cutLayerFrames, despeckle, extractLayer, graspSheet, isKeyColor, keySkin, neckRow, packSheet, unionBounds, unpackSheet } from "../src/paperdoll.ts"
+import { bodyMask, buildLayerSheet, layerMask, cutGraspFrames, cutLayerFrames, despeckle, extractLayer, graspSheet, isKeyColor, cutRuns, dressFrame, keySkin, layerFitProblem, layerSheetFit, neckRow, trimBase, packSheet, unionBounds, unpackSheet } from "../src/paperdoll.ts"
 import { decodePng, encodeRgbaPng } from "../src/png.ts"
 
 type Pixel = [number, number, number, number]
@@ -359,7 +359,19 @@ describe("layer sheets", () => {
     expect(decodePng(built.sheet)).toMatchObject({ width: 20, height: 20 })
     expect(decodePng(buildLayerSheet([sources[0]!], { maxSide: 512 }).sheet)).toMatchObject({ width: 32, height: 32 })
     expect(() => buildLayerSheet(eight, { maxSide: 12, minSide: 1 })).toThrow(/8 frames of 5x10 do not fit one 12px sheet/)
-    expect(() => buildLayerSheet(eight, { maxSide: 20, minSide: 1, columns: 8 })).toThrow(/make a 40x10 sheet/)
+    // Columns that would make a 40x10 sheet give way to the count that fits.
+    const narrowed = buildLayerSheet(eight, { maxSide: 20, minSide: 1, columns: 8 })
+    expect(narrowed.fit).toMatchObject({ columns: 4, requestedColumns: 8, maxFrames: 8, across: 4, down: 2 })
+    expect(decodePng(narrowed.sheet)).toMatchObject({ width: 20, height: 20 })
+  })
+
+  it("measures the fit without building a sheet, and names the most frames one holds", () => {
+    const nine = Array.from({ length: 9 }, (_, index) => ({ assetId: "hero", role: String(index), png: still }))
+    expect(layerSheetFit(nine.slice(0, 8), { maxSide: 20 })).toMatchObject({ frames: 8, cellWidth: 5, cellHeight: 10, columns: 4, maxFrames: 8 })
+    const over = layerSheetFit(nine, { maxSide: 20 })
+    expect(over).toMatchObject({ frames: 9, columns: null, maxFrames: 8 })
+    expect(layerFitProblem(over)).toBe("9 frames of 5x10 do not fit one 20px sheet; at most 8 fit (4 across, 2 down)")
+    expect(() => buildLayerSheet(nine, { maxSide: 20, minSide: 1 })).toThrow(/9 frames of 5x10 do not fit one 20px sheet; at most 8 fit/)
   })
 
   it("cleans loop frames against the stills and leaves the stills alone", () => {
@@ -577,5 +589,64 @@ describe("layer sheets", () => {
     expect(pixel(layer!, 5, 5)).toEqual(INK4)         // its outline
     expect(pixel(layer!, 4, 0)).toEqual(STEEL)        // outside the disc: the placed sprite
     expect(pixel(layer!, 4, 3)).toEqual(STEEL)        // in the disc and returned unchanged
+  })
+})
+
+describe("trimming the base under a layer", () => {
+  const SKIN = [220, 170, 140, 255]
+  const CLOTH = [40, 70, 160, 255]
+  /** A 20x30 figure: a head, a two-pixel neck, a 12-wide body from row 8, and a 6-wide hand hanging off the right at rows 18-27 (60 pixels). */
+  function figure() {
+    const pixels = Buffer.alloc(20 * 30 * 4)
+    const put = (x: number, y: number, colour: number[]) => Buffer.from(colour).copy(pixels, (y * 20 + x) * 4)
+    for (let y = 0; y < 6; y++) for (let x = 7; x < 13; x++) put(x, y, SKIN)
+    for (let y = 6; y < 8; y++) for (let x = 9; x < 11; x++) put(x, y, SKIN)
+    for (let y = 8; y < 30; y++) for (let x = 2; x < 14; x++) put(x, y, SKIN)
+    for (let y = 18; y < 28; y++) for (let x = 14; x < 20; x++) put(x, y, SKIN)
+    return encodeRgbaPng(20, 30, pixels)
+  }
+  /** Clothes over the body one pixel short on the left, and with a 2x2 gap at its right shoulder. */
+  function shirt(padding = 0) {
+    const w = 20 + padding * 2
+    const h = 30 + padding * 2
+    const pixels = Buffer.alloc(w * h * 4)
+    for (let y = 8; y < 30; y++) {
+      for (let x = 3; x < 14; x++) {
+        if (y < 10 && x >= 12) continue
+        Buffer.from(CLOTH).copy(pixels, ((y + padding) * w + x + padding) * 4)
+      }
+    }
+    return encodeRgbaPng(w, h, pixels)
+  }
+
+  it("hides the bare strip beside the clothes and the island at the shoulder, and keeps the hand and the head", () => {
+    const cut = trimBase(figure(), [shirt()])
+    // The left column of the body, rows 8-29: a one-pixel run with air on one side and cloth on the other.
+    for (let y = 8; y < 30; y++) expect(cut.mask[y * 20 + 2]).toBe(1)
+    // The 2x2 shoulder gap is a run of two too, and the hand (six wide) is not touched.
+    expect(cut.mask[8 * 20 + 12]).toBe(1)
+    expect(cut.mask[22 * 20 + 16]).toBe(0)
+    expect(cut.mask[2 * 20 + 8]).toBe(0)
+    expect(cut.mask[7 * 20 + 9]).toBe(0)
+    expect(cut.pixels).toBe(22 + 4)
+    expect(cutRuns(cut).slice(0, 2)).toEqual([[2, 8, 1], [12, 8, 2]])
+  })
+
+  it("leaves a run wider than the limit, and lines a padded layer up by its centre", () => {
+    expect(trimBase(figure(), [shirt()], { run: 0, island: 0 }).pixels).toBe(0)
+    expect(trimBase(figure(), [shirt(4)]).pixels).toBe(22 + 4)
+  })
+
+  it("composes the base, cut, under its layers on the largest canvas", () => {
+    const base = figure()
+    const layer = shirt(4)
+    const cut = trimBase(base, [layer])
+    const dressed = decodePng(dressFrame(base, [layer], cut))
+    expect(dressed).toMatchObject({ width: 28, height: 38 })
+    const pixel = (x: number, y: number) => [...dressed.pixels.subarray((y * 28 + x) * 4, (y * 28 + x) * 4 + 4)]
+    expect(pixel(2 + 4, 15 + 4)).toEqual([0, 0, 0, 0])
+    expect(pixel(5 + 4, 15 + 4)).toEqual(CLOTH)
+    expect(pixel(16 + 4, 22 + 4)).toEqual(SKIN)
+    expect(pixel(8 + 4, 2 + 4)).toEqual(SKIN)
   })
 })

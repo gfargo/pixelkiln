@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs"
+import { anchorGuides } from "./layer-anchor.ts"
 import path from "node:path"
 import { sha256File } from "../hash.ts"
 import { currentEntryOutputPath } from "../outputs.ts"
@@ -189,6 +190,10 @@ async function inspectLayer(spec: ResolvedSpec, lock: Lock, seen: Set<string>): 
     if (!dependency.ready) {
       return { ready: false, reason: `layer source ${spec.styleId}/${source.assetId} is not ready: ${dependency.reason}` }
     }
+  }
+  if (layer.anchor) {
+    const guides = anchorGuides(spec, lock)
+    if (!guides.ok) return { ready: false, reason: guides.reason }
   }
   for (const [name, file] of [["mask", layer.mask], ["keyed sheet", layer.keyed]] as const) {
     if (!file) continue

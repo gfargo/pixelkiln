@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises"
 import { resolveSpecs } from "../../manifest.ts"
 import { mountStyle, packSprites, packStyle, resolvePackInputs } from "../../pipeline/pack.ts"
 import { lockKey, type ResolvedSpec } from "../../types.ts"
+import type { TrimOptions } from "../../paperdoll.ts"
 import { qualityRecordPath } from "../../pipeline/refine.ts"
 import { requireApprovedQualitySources } from "../../pipeline/quality-profile.ts"
 import { connectedGroup } from "../../pipeline/connected-sets.ts"
@@ -71,6 +72,8 @@ export async function runPack(args: Args): Promise<void> {
     const pivot = style?.generator === "character" ? "bottom-center" : "top-left"
     const packagingSpecs = await resolveSpecs(loaded, { styles: [styleId] })
     const qualitySources = await requireApprovedQualitySources(packagingSpecs, lock)
+    const trim = layerTrims(packagingSpecs)
+    const flatten = args.flatten ? (args.assets.length ? args.assets : true) : undefined
     const { png, atlas, skipped, sources } = packStyle(lock, styleId, manifestDir, {
       columns: args.columns,
       outputRoles: args.outputRoles,
@@ -78,6 +81,8 @@ export async function runPack(args: Args): Promise<void> {
       pivot,
       sourceOverrides: qualitySources,
       sources: manifestSources(loaded.manifest, styleId),
+      ...(Object.keys(trim).length ? { trim } : {}),
+      ...(flatten ? { flatten } : {}),
     })
 
     // Default beside the style's own output tree, so sheets for different
@@ -115,6 +120,7 @@ export async function runPack(args: Args): Promise<void> {
         order: "id",
         outputRoles: [...args.outputRoles].sort(),
         pivot,
+        ...(flatten ? { flatten: flatten === true ? "all" : [...flatten] } : {}),
         primaryOnly: args.primaryOnly,
         style: styleId,
       },
@@ -128,6 +134,26 @@ export async function runPack(args: Args): Promise<void> {
     log(`    ${path.relative(process.cwd(), base)}.png + ${extension} + .pixelkiln.json`)
     for (const s of skipped) log(`    skipped ${s.id}: ${s.reason}`)
   }
+}
+
+/**
+ * Each layer's trim, by asset id, from the resolved specs. A recoloured layer
+ * is a derived asset over the same frames, so it trims as its source does.
+ */
+export function layerTrims(specs: ResolvedSpec[]): Record<string, TrimOptions> {
+  const trims: Record<string, TrimOptions> = {}
+  for (const spec of specs) {
+    let source: ResolvedSpec | undefined = spec
+    for (let depth = 0; source && depth < 8; depth++) {
+      const trim = source.character?.kind === "layer" ? source.character.layer?.trim : undefined
+      if (trim) {
+        trims[spec.assetId] = trim
+        break
+      }
+      source = source.derive?.source.kind === "asset" ? source.derive.source.spec : undefined
+    }
+  }
+  return trims
 }
 
 export async function runMount(args: Args): Promise<void> {

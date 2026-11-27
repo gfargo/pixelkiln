@@ -214,6 +214,11 @@ export function specHash(
                   // Omitted at their defaults so a layer made before these existed keeps its identity.
                   region: spec.character.layer.region === "body" ? undefined : spec.character.layer.region,
                   padding: spec.character.layer.padding || undefined,
+                  // Which layer it follows and which of its frames guide it; the
+                  // anchor's own bytes are compared in the plan, like a source's.
+                  anchor: spec.character.layer.anchor
+                    ? { of: spec.character.layer.anchor.assetId, frames: spec.character.layer.anchor.frames }
+                    : undefined,
                   // On a drawn layer the offset is post-processing, re-applied by fetch; on a
                   // held item it is where the item sits, which is identity.
                   offset: spec.character.layer.attach ? spec.character.layer.offset : undefined,

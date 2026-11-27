@@ -673,6 +673,40 @@ and the offset to draw it at. See
 3360×3360 sheet of 1,216 frames with 37 layers listed, recolours included.
 Draw order between layers is left to the game.
 
+**The fringe, and `trim`.** PixelLab anchors the garment, not the body: it
+draws a layer's clothes in nearly the same place on every frame of a sheet,
+so where the figure sways, a strip of the base 1 to 3 pixels wide is left
+uncovered along one edge, with small islands at the shoulders and elbows.
+Drawn as base plus layer, it shows as a line of skin beside the garment.
+`"trim": true` on the layer hides it at compose time, below the neck only:
+runs of bare base up to 4 pixels wide between the layer and empty space,
+then islands of up to 45 pixels that touch both. `{ "run": 4, "island": 45 }`
+sets the limits. Hands, neck and face are larger and stay. Nothing is
+painted, so the silhouette follows the clothes. On a 256px character, 40
+frames over four loops lost about 10,000 fringe pixels this way and kept one
+small bump on two frames.
+
+The layer's own frames are not changed, and turning `trim` on or off never
+makes the layer stale. What it changes is what `pack` writes:
+
+- the atlas's `layers` section gains a `cut` on each frame: the base pixels
+  to hide while this layer is worn, as `[x, y, length]` rows in the `over`
+  frame's own pixels. A game that draws layers at run time clears those
+  pixels of the base before drawing the layer;
+- `pixelkiln pack --flatten` draws the layers onto the frames they go over,
+  trim applied, and leaves the layers' own frames off the sheet: one dressed
+  sheet, for a game that swaps whole sheets per outfit. `--only` picks the
+  layers and the order they are drawn in (`--only underwear,shirt`); without
+  it every layer is drawn, in id order. At 256px with one outfit worn at a
+  time, this is the practical way to ship;
+- `pixelkiln layer preview <layer> --gif` writes each loop dressed as an
+  animated GIF at its own rate, and each set of rotations as a strip, into
+  the preview's `dressed/` folder. A fringe, or a seam between two loops'
+  layers, is easier to judge moving than on a still sheet.
+
+Low-sway loops leave less to trim: an idle that rocks the shoulders was the
+worst case measured, bare along one side in 5 of 8 frames.
+
 `layout.json` in the layer's work folder lists every frame's asset, role,
 canvas, padding and cell, for a build step that wants to pack layers itself.
 
@@ -834,27 +868,81 @@ A placed item is priced differently:
 "Billed" was read back from the finished job; "quoted" is what PixelLab
 stated when the job was submitted.
 
-- **The plan prices every layer at 25**, the top tier, because the sheet's
-  size depends on the frames' own pixels and planning does not read them.
-  The lock records what was billed.
+- **The plan prices every layer at 25**, the top tier, a ceiling for
+  `--budget`. The lock records what was billed. Once the sources are
+  downloaded the plan also says how the sheet will be laid out: "14 frames,
+  4 columns of 38x62 on a 152x248 sheet, room for 104".
 - **A walk to a row costs a tier.** 32 frames of clothing billed 10 on a
   248×248 sheet and 15 on the 180×372 one that keeps each walk on its own
   row; see [Field notes](#field-notes) for why it is worth it.
 - **PixelLab's tiers**: 10 up to a 256×256 square, 15 up to about 341×341,
   25 above, with other aspect ratios measured against their own ceilings.
-- **Everything must fit one 512px sheet.** 56 unpadded frames of a 64px
-  character fit. Padding of 10 takes the same 56 frames past the limit; the
-  20-frame sheets above are what fit comfortably. When the frames do not fit,
-  the layer fails before any request and names the sizes.
-- **Split when you must.** Two layers over different loops are two requests
-  and may not match each other. Put the base's rotations in both so each has
-  the same anchor, and compare the results.
+- **Everything must fit one 512px sheet.** Every frame is cut to one cell,
+  the box that holds the figure in all of them, so the widest pose of any
+  loop sets the size of every cell. 56 unpadded frames of a 64px character
+  fit; padding of 10 takes the same 56 past the limit.
+- **The plan checks the fit.** It measures the sources on disk the way `gen`
+  builds the sheet, cleaning included. A layer whose frames cannot fit is
+  `invalid`, priced at nothing, with the most that fit and the frame count to
+  regenerate the loops at:
+
+  ```text
+  invalid  (1)
+    hero/hero.shirt   not in lockfile; 9 frames of 121x247 do not fit one 512px sheet;
+                       at most 8 fit (4 across, 2 down); regenerate the loop at 8 frames
+                       with keepFirstFrame: false, or split `of` across layers
+  ```
+
+  While a loop is not made yet, the plan estimates from the frames that are
+  (the base's rotations, usually) and says so. A loop sways wider than its
+  rotations, so the real limit can only be lower.
+- **`columns` gives way.** Columns that would make a sheet wider than the
+  limit are replaced by the count that fits, and the plan says so. A
+  supplied `mask` or `keyed` file is the sheet's exact size, so it is made
+  for one layout; change it with the columns.
+- **Frames per layer by size.** One sheet holds this many cells. The 64px
+  row is measured (8 rotations and a walk in 8 directions); 256px is
+  measured on a side-view humanoid at rest and moving; 96 and 128 are the
+  64px cell scaled, so take them as a guide.
+
+  | Character | Cell (unpadded) | Frames per layer |
+  |---|---|---|
+  | 64px | about 38x62 | about 104 |
+  | 96px | about 57x93 | about 40 |
+  | 128px | about 76x124 | about 24 |
+  | 256px, at rest | 76x246 | 12 |
+  | 256px, moving | 122x248 | 8 |
+
+  At 128px and above, make loops meant for layering with
+  `"keepFirstFrame": false` (a kept first frame repeats the start pose and
+  takes a cell) and a frame count that fills the sheet: an 8-frame loop
+  stored with its first frame is 9 frames, one too many at 256px.
+- **Split with an anchor.** Two layers over different loops are two
+  requests, and on their own they need not match. Make the first, then give
+  the second `"anchor": "<first layer>"`: the first layer's frame over the
+  base's south rotation goes on the second's sheet dressed and closed to the
+  provider, and the prompt asks it to dress every other figure the same way.
+
+  ```json
+  "hero.shirt": { "prompt": "...", "layer": { "of": ["hero", "hero.idle", "hero.walk"] } },
+  "hero.shirt.more": { "prompt": "...", "layer": { "of": ["hero.wave", "hero.sit"], "anchor": "hero.shirt" } }
+  ```
+
+  The second waits for the first (`blocked` until it is downloaded), goes
+  `stale` when it is regenerated, and needs the same `padding`. Each guide
+  takes a cell of its sheet, so at 256px a continuing layer has room for 7
+  frames of its own. `{ "layer": "hero.shirt", "frames": ["hero.east",
+  "hero.walk.frame-00"] }` picks other guide frames, by the first layer's
+  own frame names; pick ones facing the way the new loops do. Leave the
+  stills out of the second layer's `of`: the guide already shows them
+  dressed. `layer preview --gif` shows the seam between the two.
 - **A recoloured layer is free.** So is placing an item, and moving a layer
   with `offset`.
 - **PixelLab only.** The layer uses `/inpaint-v3`. Pro Flash inpainting was
   tried and left 3 of 18 frames undressed and erased props in others.
 
-Not tested: sizes other than 64px, quadrupeds, more than 56 frames,
+Not tested: sizes other than 64px and one 256px side-view character,
+quadrupeds, more than 56 frames,
 attack animations (where limbs cross the head and the head detection is
 weakest), hair, capes, shields, and two held items at once. For placed
 items: `tilt` and `lean` through the pipeline (they were tried in a script),
@@ -881,11 +969,14 @@ A `layer` asset needs a `prompt` and a `layer` object. It takes no
 | `key` | `#00ffff` | The stand-in colour. Change it for an item that is itself cyan. |
 | `clean` | `true` | Clean loop frames against the stills among `of` before sheeting them. |
 | `offset` | none | `[x, y]` pixels to move every frame by, or `{ "<of asset>": [x, y], "*": [x, y] }`. Free to change on a drawn layer. |
-| `columns` | fitted | Sheet columns. |
+| `columns` | fitted | Sheet columns. A count that does not fit the 512px limit gives way to one that does. |
+| `anchor` | none | A drawn layer this one continues, or `{ "layer": "<id>", "frames": [...] }`. Its frame over the base's south rotation (or the frames named) goes on this sheet as a closed guide, so the outfit matches. Same `padding` required. See [Cost and limits](#cost-and-limits). |
+| `trim` | off | `true`, or `{ "run": 4, "island": 45 }`: hide the bare fringe of base the layer leaves, at compose time. See [Composing layers in a game](#composing-layers-in-a-game). Not part of the layer's identity. |
 
-Plan states: `blocked` until every source is downloaded and current, `stale`
+Plan states: `blocked` until every source is downloaded and current,
+`invalid` when its frames cannot fit one sheet (priced at nothing), `stale`
 when a source is regenerated or re-processed, or when the prompt or any
-field above changes.
+field above but `trim` changes.
 
 A layer with `attach` is a placed item. It needs no `prompt`, costs nothing,
 and takes only `of` and `padding` (default 12) from the table above.
@@ -1017,7 +1108,7 @@ That one was not tried.
 | Pale specks around the dressed character | The loop's own files were never cleaned; the layer is fine. | Set `"clean": true` on the loop and run `pixelkiln fetch`. |
 | Sleeves or collar missing on some frames | The computed mask left the chest or a raised arm out on those frames. | Check `pixelkiln layer preview <asset>` and its `overlay.png`; supply a `mask` if a frame is still wrong. |
 | Underwear kept, the outfit drawn around it | The base wears underwear and only skin was keyed. | Set `"cover": true`. |
-| The outfit differs between two loops | They were dressed by two layers. | Put both loops in one layer's `of`. |
+| The outfit differs between two loops | They were dressed by two layers. | Put both loops in one layer's `of`, or, when they do not fit one sheet, give the second layer an `anchor` on the first. |
 | Old clothes show at the edges | The base is not bare. | Use a bare base, or accept it. |
 | A fringe in the key colour at wrists or collar | Shades of the key the cut did not recognise. | Change `key` to a colour further from the outfit's, or open an issue with `result.png`. |
 | A hat sits too low or too high, on every frame or on one loop | The provider seated it there. | Set `offset`, per asset if it differs, and run `pixelkiln fetch`. |
@@ -1031,5 +1122,7 @@ That one was not tried.
 | "changed since its anchor was estimated" | A source frame was regenerated or cleaned. | Run `pixelkiln anchors <asset>` again; only changed frames are paid for. |
 | One frame of a layer is wrong and the rest are right | The model misread which way that figure faces. | `pixelkiln redraw <layer> --frame <name>`; see [Redrawing one frame](#redrawing-one-frame). |
 | A placed item is cut off | It reaches past the padded canvas. | Raise `padding`. |
-| "do not fit one 512px sheet" | Too many frames, or too much padding. | Lower `padding`, or split the layer. |
+| "do not fit one 512px sheet", the layer `invalid` | Too many frames, or too much padding, for the character's size. | Regenerate the loops at the frame count the plan suggests with `keepFirstFrame: false`, lower `padding`, or split the layer. |
+| A line of skin beside the clothes on some frames | The provider drew the garment where it was on the other frames; the body swayed. | Set `"trim": true`, and check it with `layer preview --gif`. |
+| Old `-frame-NN.png` files beside a loop drawn again with fewer frames | Left by the generation it replaced. | `fetch` removes them when it downloads the new one; one changed by hand is named and kept. |
 | The layer is `stale` after turning on `clean` | Its sources' bytes changed. | Turn `clean` on first next time; regenerate the layer. |

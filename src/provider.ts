@@ -114,6 +114,12 @@ export interface SubmitContext {
     assetId?: string
     /** True for a base or state's rotation, false for a loop's frame. */
     still?: boolean
+    /**
+     * A layer anchor's guide: the anchor's finished layer over this frame.
+     * The frame goes on the sheet dressed and closed to the provider, and no
+     * output is cut from it.
+     */
+    guide?: Buffer
   }[]
   /**
    * For a terrain set that shares a terrain with another set (`connect`),

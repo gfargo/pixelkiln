@@ -1,3 +1,4 @@
+import { DEFAULT_TRIM } from "./paperdoll.ts"
 import { isHeldItem } from "./attach.ts"
 import { SET_DERIVES } from "./pipeline/derive.ts"
 import { readFile } from "node:fs/promises"
@@ -409,6 +410,7 @@ function dependencyAssetIds(asset: Asset | undefined, styleAnchors: string[] = [
       asset?.mirror,
       asset?.derive?.from,
       ...[asset?.layer?.of ?? []].flat(),
+      typeof asset?.layer?.anchor === "string" ? asset.layer.anchor : asset?.layer?.anchor?.layer,
       asset?.styleCharacter,
       ...(asset?.styleCharacter ? [] : styleAnchors),
     ].filter((id): id is string => Boolean(id)),
@@ -1074,6 +1076,8 @@ export async function resolveSpecs(
     }
 
     const finalized = new Set<string>()
+    // Layers being resolved through an anchor chain, to refuse a cycle.
+    const anchoring = new Set<string>()
     const finalize: (assetId: string) => Promise<ResolvedSpec> = async (assetId) => {
       const resolved = styleSpecs.get(assetId)
       if (!resolved) {
@@ -1424,6 +1428,27 @@ export async function resolveSpecs(
               : {}),
           }
         }
+        // A layer that continues another: the made layer whose frames guide this one.
+        let anchor: NonNullable<NonNullable<ResolvedSpec["character"]>["layer"]>["anchor"]
+        if (asset.layer.anchor) {
+          const declared = typeof asset.layer.anchor === "string" ? { layer: asset.layer.anchor } : asset.layer.anchor
+          if (declared.layer === assetId) throw new Error(`assets.${assetId}: a layer cannot anchor on itself`)
+          if (anchoring.has(declared.layer)) throw new Error(`assets.${assetId}: layer.anchor "${declared.layer}" anchors back on this layer`)
+          anchoring.add(assetId)
+          const anchorSpec = await finalize(declared.layer).finally(() => anchoring.delete(assetId))
+          const anchorLayer = anchorSpec.character?.kind === "layer" ? anchorSpec.character.layer : undefined
+          if (!anchorLayer || anchorLayer.attach) {
+            throw new Error(`assets.${assetId}: layer.anchor "${declared.layer}" is not a drawn paperdoll layer`)
+          }
+          const padding = asset.layer.padding ?? ((asset.layer.region ?? "body") === "body" ? 0 : 8)
+          if (anchorLayer.padding !== padding) {
+            throw new Error(
+              `assets.${assetId}: layer.anchor "${declared.layer}" has padding ${anchorLayer.padding} and this layer ${padding}; ` +
+                "a guide frame has to fit this layer's cells, so give both the same padding",
+            )
+          }
+          anchor = { assetId: declared.layer, spec: anchorSpec, ...(declared.frames ? { frames: declared.frames } : {}) }
+        }
         resolved.character = {
           kind: "layer",
           mode: first.character!.mode,
@@ -1443,6 +1468,10 @@ export async function resolveSpecs(
             region: asset.layer.region ?? "body",
             padding: asset.layer.padding ?? (attach ? 12 : (asset.layer.region ?? "body") === "body" ? 0 : 8),
             ...(offset ? { offset } : {}),
+            ...(asset.layer.trim
+              ? { trim: { ...DEFAULT_TRIM, ...(asset.layer.trim === true ? {} : asset.layer.trim) } }
+              : {}),
+            ...(anchor ? { anchor } : {}),
             ...(attach ? { attach } : {}),
           },
         }

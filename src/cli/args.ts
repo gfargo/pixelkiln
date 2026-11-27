@@ -68,6 +68,10 @@ export interface Args {
   format?: TilesetFormat | SheetFormat
   outputRoles: string[]
   primaryOnly: boolean
+  /** pack: draw the layers onto the frames they go over, trim applied; --only picks the layers. */
+  flatten: boolean
+  /** layer preview: write an animated GIF of each dressed loop instead of a strip. */
+  gif: boolean
   prune: boolean
   maxDistance?: number
   minTransparency?: number
@@ -259,7 +263,7 @@ const VALUE_FLAGS = [
   "--bpm", "--seconds", "--lyrics", "--about", "--voice", "--style-weight", "--loop-of", "--restyle", "--frame", "--image", "--views", "--blend", "--sprites", "--pose",
 ] as const
 const BOOL_FLAGS = [
-  "--force", "--yes", "-y", "--accept-first", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune", "--merge-connected",
+  "--force", "--yes", "-y", "--accept-first", "--dry-run", "--all", "--json", "--check", "--no-open", "--tag", "--write-prompts", "--primary-only", "--prune", "--merge-connected", "--flatten", "--gif",
   "--edit", "--refresh", "--no-editor", "--game-pack", "--local", "--strict", "--auto-lyrics", "--loop", "--improve", "--clear", "--keep", "--discard", "--pro", "--replace", "--custom",
 ] as const
 
@@ -659,6 +663,8 @@ export function parseArgs(argv: string[]): Args {
     format: rawFormat as TilesetFormat | SheetFormat | undefined,
     outputRoles: list("--output-role"),
     primaryOnly: rest.includes("--primary-only"),
+    flatten: rest.includes("--flatten"),
+    gif: rest.includes("--gif"),
     prune: rest.includes("--prune"),
     maxDistance: numberOption("--max-distance", { min: 0 }),
     minTransparency: numberOption("--min-transparency", { min: 0, max: 1 }),

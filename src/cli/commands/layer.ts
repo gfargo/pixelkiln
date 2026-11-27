@@ -1,6 +1,7 @@
 /**
- * `layer preview`: a paperdoll layer's inpaint inputs, written and not sent.
- * Free and offline; see src/pipeline/layer-preview.ts.
+ * `layer preview`: a paperdoll layer's inpaint inputs, written and not sent,
+ * and with `--gif` the made layer drawn over its frames. Free and offline;
+ * see src/pipeline/layer-preview.ts.
  */
 import path from "node:path"
 import { UsageError } from "../../errors.ts"
@@ -19,13 +20,17 @@ export async function runLayer(args: Args): Promise<void> {
   if (layers.length > 1) {
     throw new UsageError(`${target} is a layer in ${layers.length} styles (${layers.map((spec) => spec.styleId).join(", ")}); pick one with --style`)
   }
-  const result = await previewLayer(layers[0]!, project.lock)
+  const result = await previewLayer(layers[0]!, project.lock, { gif: args.gif })
   const width = Math.max(...result.frames.map((frame) => frame.name.length))
   for (const frame of result.frames) {
     const neck = frame.neck
       ? `neck row ${String(frame.neck.row).padStart(3)}` +
         (frame.neck.corrected ? `  (own narrowest row ${frame.neck.detected ?? "none"}; taken from the head and the other frames)` : "")
       : result.supplied.mask ? "mask supplied" : "empty"
+    if (frame.guide) {
+      log(`  ${frame.name.padEnd(width)}  ${"guide".padStart(6)}         the anchor's layer, masked shut`)
+      continue
+    }
     log(`  ${frame.name.padEnd(width)}  ${String(frame.masked).padStart(6)} px open  ${neck}`)
   }
   const corrected = result.frames.filter((frame) => frame.neck?.corrected).length
@@ -34,4 +39,10 @@ export async function runLayer(args: Args): Promise<void> {
   if (result.cleaned) log(`  ${result.cleaned} ghost pixel${result.cleaned === 1 ? "" : "s"} cleaned from the loops`)
   log(`  wrote ${result.written.length} files to ${path.relative(process.cwd(), result.dir) || "."} (overlay.png shows the mask over the frames)`)
   log(`  ${result.frames.length} frames on a ${result.sheet.width}x${result.sheet.height} sheet: about ${result.cost} generations when generated; nothing was sent`)
+  const trims = Boolean(layers[0]!.character!.layer!.trim)
+  for (const source of result.dressed ?? []) {
+    const trimmed = trims ? `, trim hid ${source.cut} base pixel${source.cut === 1 ? "" : "s"}` : ""
+    log(`  dressed ${source.assetId}: ${source.frames.length} frame${source.frames.length === 1 ? "" : "s"}${trimmed}  ${path.relative(process.cwd(), source.file)}`)
+    if (source.missing.length) log(`    no layer frame over ${source.missing.join(", ")}; shown bare`)
+  }
 }

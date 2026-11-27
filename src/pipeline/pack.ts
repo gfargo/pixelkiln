@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
 import { decodePng, encodeRgbaPng } from "../png.ts"
+import { cutRuns, dressFrame, trimBase, type BaseCut, type TrimOptions } from "../paperdoll.ts"
 import type { Lock } from "../types.ts"
 import { frameSetFps, frameSetLoop, resolveEntryOutputs, resolveOutputPath, selectEntryOutput, sourceIsStem, sourceOutputPath } from "../outputs.ts"
 import type { AtlasLayer, AtlasSet } from "./sheet-formats.ts"
@@ -92,6 +93,10 @@ export interface SpriteInput {
   id: string
   /** Absolute path to the PNG. */
   path: string
+  /** The sprite's pixels when they are not `path`'s as is: a frame flattened with its layers. */
+  bytes?: Buffer
+  /** The other files `bytes` was made from, recorded as sources beside `path`. */
+  composedFrom?: Array<{ id: string; path: string }>
 }
 
 /**
@@ -168,15 +173,17 @@ export function packSprites(
 
   for (const input of ordered) {
     let sourceHash: string | null = null
+    const source = { id: input.id, path: input.path }
     try {
       const bytes = readFileSync(input.path)
       sourceHash = sha256(bytes)
-      const png = decodePng(bytes)
+      const png = decodePng(input.bytes ?? bytes)
       sprites.push({ id: input.id, width: png.width, height: png.height, pixels: png.pixels })
-      sources.push({ ...input, sha256: sourceHash, included: true })
+      sources.push({ ...source, sha256: sourceHash, included: true })
+      for (const part of input.composedFrom ?? []) sources.push({ ...part, sha256: sha256(readFileSync(part.path)), included: true })
     } catch (err) {
       skipped.push({ id: input.id, reason: err instanceof Error ? err.message : String(err) })
-      sources.push({ ...input, sha256: sourceHash, included: false })
+      sources.push({ ...source, sha256: sourceHash, included: false })
     }
   }
 
@@ -253,6 +260,14 @@ export function packStyle(
      * file keeps its lock outputs, as before.
      */
     sources?: Record<string, string>
+    /** Layers whose `trim` is set, by asset id: each of their frames records the base pixels it hides. */
+    trim?: Record<string, TrimOptions>
+    /**
+     * Draw these layers (every layer for `true`) onto the frames they go
+     * over, trim applied, and leave their own frames off the sheet: one
+     * dressed sheet, for a game that swaps whole sheets per outfit.
+     */
+    flatten?: true | string[]
   } = {},
 ): PackedSheet {
   if (options.sourceOverrides) {
@@ -355,33 +370,101 @@ export function packStyle(
     throw new Error(`No readable sprites for style "${styleId}"; ${noOutput.length} skipped.`)
   }
 
-  const packed = packSprites(inputs, options)
-  const packedIds = new Set(packed.atlas.frames.map((frame) => frame.id))
-  const placed = sets
-    .map((set) => ({ ...set, frames: set.frames.filter((frameId) => packedIds.has(frameId)) }))
-    .filter((set) => set.frames.length)
-    .sort((a, b) => a.id.localeCompare(b.id))
   // Pair each layer frame with the character frame under it. A layer's role is
   // `<source asset>.<that asset's role>`; the longest source id it starts with
   // owns it, so `hero.walk.south.frame-00` is not taken for `hero`'s.
+  const pairs = layered.sort((a, b) => a.id.localeCompare(b.id)).map((layer) => ({
+    ...layer,
+    frames: layer.roles.flatMap((role) => {
+      const owner = layer.of.filter((source) => role.startsWith(`${source}.`)).sort((a, b) => b.length - a.length)[0]
+      if (!owner) return []
+      const ownerOutputs = lock.entries[`${prefix}${owner}`]?.outputs.length ?? 0
+      return [{ frame: `${layer.id}/${role}`, over: ownerOutputs === 1 ? owner : `${owner}/${role.slice(owner.length + 1)}` }]
+    }),
+  }))
+  const pathById = new Map(inputs.map((input) => [input.id, input.path]))
+  const cutFor = (layerId: string, frame: string, over: string): BaseCut | undefined => {
+    const trim = options.trim?.[layerId]
+    const mine = pathById.get(frame)
+    const under = pathById.get(over)
+    if (!trim || !mine || !under) return undefined
+    return trimBase(readFileSync(under), [readFileSync(mine)], trim)
+  }
+
+  let flattened: Set<string> | undefined
+  if (options.flatten) {
+    const known = new Set(pairs.map((pair) => pair.id))
+    const chosen = options.flatten === true ? [...known] : options.flatten
+    const unknown = chosen.filter((id) => !known.has(id))
+    if (unknown.length) {
+      throw new Error(`--flatten names ${unknown.join(", ")}, which ${unknown.length === 1 ? "is not a layer" : "are not layers"} with frames in style "${styleId}"`)
+    }
+    flattened = new Set(chosen)
+    // Every frame a chosen layer goes over, with the layers in the order given.
+    const over = new Map<string, Array<{ layerId: string; frame: string }>>()
+    for (const id of chosen) {
+      for (const pair of pairs.find((candidate) => candidate.id === id)!.frames) {
+        if (!pathById.has(pair.frame) || !pathById.has(pair.over)) continue
+        over.set(pair.over, [...(over.get(pair.over) ?? []), { layerId: id, frame: pair.frame }])
+      }
+    }
+    const layerFrames = new Set(pairs.filter((pair) => flattened!.has(pair.id)).flatMap((pair) => pair.frames.map((frame) => frame.frame)))
+    const dressed: SpriteInput[] = []
+    for (const input of inputs) {
+      if (layerFrames.has(input.id) || flattened.has(input.id)) continue
+      const worn = over.get(input.id)
+      if (!worn) {
+        dressed.push(input)
+        continue
+      }
+      const base = readFileSync(input.path)
+      const cuts = worn.flatMap((layer) => {
+        const cut = cutFor(layer.layerId, layer.frame, input.id)
+        return cut ? [cut] : []
+      })
+      let cut: BaseCut | undefined
+      if (cuts.length) {
+        cut = { ...cuts[0]!, mask: new Uint8Array(cuts[0]!.mask.length), pixels: 0 }
+        for (const one of cuts) one.mask.forEach((hidden, index) => {
+          if (hidden && !cut!.mask[index]) {
+            cut!.mask[index] = 1
+            cut!.pixels++
+          }
+        })
+      }
+      dressed.push({
+        ...input,
+        bytes: dressFrame(base, worn.map((layer) => readFileSync(pathById.get(layer.frame)!)), cut),
+        composedFrom: worn.map((layer) => ({ id: layer.frame, path: pathById.get(layer.frame)! })),
+      })
+    }
+    inputs.splice(0, inputs.length, ...dressed)
+  }
+
+  const packed = packSprites(inputs, options)
+  const packedIds = new Set(packed.atlas.frames.map((frame) => frame.id))
+  const placed = sets
+    .filter((set) => !flattened?.has(set.id))
+    .map((set) => ({ ...set, frames: set.frames.filter((frameId) => packedIds.has(frameId)) }))
+    .filter((set) => set.frames.length)
+    .sort((a, b) => a.id.localeCompare(b.id))
   const frameById = new Map(packed.atlas.frames.map((frame) => [frame.id, frame]))
   const layers: AtlasLayer[] = []
-  for (const layer of layered.sort((a, b) => a.id.localeCompare(b.id))) {
+  for (const layer of pairs) {
+    if (flattened?.has(layer.id)) continue
     const frames: AtlasLayer["frames"] = []
-    for (const role of layer.roles) {
-      const owner = layer.of.filter((source) => role.startsWith(`${source}.`)).sort((a, b) => b.length - a.length)[0]
-      if (!owner) continue
-      const ownerOutputs = lock.entries[`${prefix}${owner}`]?.outputs.length ?? 0
-      const overId = ownerOutputs === 1 ? owner : `${owner}/${role.slice(owner.length + 1)}`
-      const mine = frameById.get(`${layer.id}/${role}`)
-      const under = frameById.get(overId)
+    for (const pair of layer.frames) {
+      const mine = frameById.get(pair.frame)
+      const under = frameById.get(pair.over)
       if (!mine || !under) continue
+      const cut = cutFor(layer.id, pair.frame, pair.over)
       frames.push({
         frame: mine.id,
         over: under.id,
         // The two share a centre; a padded layer starts that much up and to the left.
         dx: Math.round((under.width - mine.width) / 2),
         dy: Math.round((under.height - mine.height) / 2),
+        ...(cut ? { cut: cutRuns(cut) } : {}),
       })
     }
     if (frames.length) layers.push({ id: layer.id, of: layer.of, frames })

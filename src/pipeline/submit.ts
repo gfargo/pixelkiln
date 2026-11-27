@@ -1,4 +1,5 @@
 import { BudgetError } from "../errors.ts"
+import { anchorRecord } from "./layer-anchor.ts"
 import {
   DEFAULT_RATE_LIMIT,
   formatCost,
@@ -385,6 +386,7 @@ export async function submit(
               assetId: source.assetId,
               sha256: mirrorSourceHash(lock.entries[lockKey(source.spec.styleId, source.spec.assetId)] ?? { outputs: [] }),
             })),
+            ...(spec.character.layer!.anchor ? { anchor: anchorRecord(spec, lock)! } : {}),
           }
         : undefined,
       terrainConnect: spec.terrainConnect ? terrainConnect : undefined,
@@ -439,7 +441,8 @@ export async function submit(
             role: output.role,
           }))
         : spec.character?.kind === "layer"
-          // Every frame of every source, in `of` order; requireRevisionReady proved each one downloaded.
+          // The anchor's guide frames first, then every frame of every source, in
+          // `of` order; requireRevisionReady proved each one downloaded.
           ? layerSourceOutputs(spec, lock)
           : undefined
       const referenceSourceImageId = ownedReferenceImageId(spec, lock, provider.id)

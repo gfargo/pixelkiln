@@ -23,7 +23,7 @@ import { shouldPersistSourceUrl } from "../source-url.ts"
 import { imageMetadata } from "../media.ts"
 import { normalMapCost, NORMAL_MAP_MAX_FRAMES, normalMapResultPng, normalMapSizeProblem } from "../pixellab-utils.ts"
 import { isDirection } from "../attach.ts"
-import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, type LayerFrame, type LayerRegion, type LayerSheet } from "../paperdoll.ts"
+import { buildLayerSheet, cutGraspFrames, cutLayerFrames, graspSheet, redrawSheet, LAYER_SHEET_MAX_SIDE, type LayerFrame, type LayerRegion, type LayerSheet } from "../paperdoll.ts"
 import { placeHeldFrames } from "../pipeline/attach.ts"
 import { decodePng, joinStripPng, paletteSwatch, splitStripPng } from "../png.ts"
 import {
@@ -484,7 +484,7 @@ function decodeObjectAnimationJob(jobId: string): ObjectAnimationJob | null {
 }
 
 /** /inpaint-v3 takes 32 to 512px a side (docs/REVISIONS.md). */
-export const LAYER_SHEET_MAX_SIDE = 512
+export { LAYER_SHEET_MAX_SIDE } from "../paperdoll.ts"
 
 /** What submit records about a layer's sheet for the download step to cut against. */
 interface LayerLayout {
@@ -498,6 +498,8 @@ interface LayerLayout {
   frames: LayerFrame[]
   /** Set for a grip pass: the layer is each placed frame with its hand's disc redrawn. */
   grasp?: { radius: number; hands: number }
+  /** Cells at the start of the sheet that are an anchor's guides, cut from nothing. */
+  guides?: number
 }
 
 /**
@@ -523,7 +525,8 @@ export function layerWorkDir(spec: Pick<ResolvedSpec, "root" | "styleId" | "asse
 /**
  * The sheet, keyed sheet and mask a drawn layer sends: what submit inpaints,
  * and what `layer preview` writes without sending. `outputs` are every frame
- * of every source, in `of` order, as `layerSourceOutputs` lists them.
+ * of every source, in `of` order, after any anchor's guides, as
+ * `layerSourceOutputs` lists them.
  */
 export function layerSheetFor(spec: ResolvedSpec, outputs: NonNullable<SubmitContext["parentOutputs"]>): LayerSheet {
   const character = spec.character!
@@ -542,7 +545,7 @@ export function layerSheetFor(spec: ResolvedSpec, outputs: NonNullable<SubmitCon
     if (sha256(bytes) !== file.sha256) throw new Error(`${label}: layer ${name} changed after the manifest was resolved: ${file.path}`)
     return bytes
   }
-  return buildLayerSheet(sources, {
+  const built = buildLayerSheet(sources, {
     minSide: 32,
     maxSide: LAYER_SHEET_MAX_SIDE,
     columns: layer.columns,
@@ -555,6 +558,10 @@ export function layerSheetFor(spec: ResolvedSpec, outputs: NonNullable<SubmitCon
     mask: supplied("mask", layer.mask),
     keyed: supplied("keyed sheet", layer.keyed),
   })
+  // An anchor's guides (first, as layerSourceOutputs lists them) go on dressed
+  // and masked shut, the way redraw shows a loop's finished frames.
+  if (!outputs.some((output) => output.guide)) return built
+  return { ...built, ...redrawSheet(built, outputs.map((output) => output.guide ?? null), outputs.map((output) => !output.guide)) }
 }
 
 export class PixelLabProvider implements Provider {
@@ -1648,6 +1655,8 @@ export class PixelLabProvider implements Provider {
       const label = `${spec.styleId}/${spec.assetId}`
       const outputs = context?.parentOutputs ?? []
       const built = layerSheetFor(spec, outputs)
+      // An anchor's guides lead the sheet, already dressed and masked shut.
+      const guides = outputs.filter((output) => output.guide).length
       const dir = layerWorkDir(spec)
       mkdirSync(dir, { recursive: true })
       let prepared = built
@@ -1682,7 +1691,12 @@ export class PixelLabProvider implements Provider {
       writeFileSync(path.join(dir, "mask.png"), prepared.mask)
       const { width, height } = decodePng(prepared.keyed)
       const res = await this.client.inpaintV3({
-        description: grasp ? (spec.prompt ? `The item each figure carries: ${spec.prompt}. ${GRASP_PROMPT}` : GRASP_PROMPT) : spec.prompt,
+        description: grasp
+          ? (spec.prompt ? `The item each figure carries: ${spec.prompt}. ${GRASP_PROMPT}` : GRASP_PROMPT)
+          : guides
+            ? `${spec.prompt}. The first ${guides === 1 ? "figure already wears" : `${guides} figures already wear`} it. ` +
+              "Dress every other figure in exactly the same thing, the same colours and details, seen from the side each figure faces."
+            : spec.prompt,
         image: { base64: prepared.keyed.toString("base64"), format: "png" },
         width,
         height,
@@ -1701,6 +1715,7 @@ export class PixelLabProvider implements Provider {
         maskSha256: sha256(prepared.mask),
         frames: prepared.frames,
         ...(grasp ? { grasp } : {}),
+        ...(guides ? { guides } : {}),
       }
       writeFileSync(path.join(dir, "layout.json"), `${JSON.stringify(layout, null, 2)}\n`)
       return {
@@ -1714,6 +1729,7 @@ export class PixelLabProvider implements Provider {
               height,
               frames: prepared.frames.length,
               cleanedPixels: prepared.cleaned,
+              ...(guides ? { guides } : {}),
               // Each frame's neck row in its cell, and the frames whose own narrowest row was overruled; submit prints both.
               ...(prepared.necks ? { necks: prepared.necks.map((neck) => neck?.row ?? null) } : {}),
               ...(prepared.necks?.some((neck) => neck?.corrected)
@@ -2078,7 +2094,9 @@ export class PixelLabProvider implements Provider {
     }
     const cache = PixelLabProvider.cacheDir("layer")
     const counters = new Map<string, number>()
-    const sources: OutputSource[] = frames.map((png, index) => {
+    const guideCells = layout.guides ?? 0
+    const sources: OutputSource[] = frames.slice(guideCells).map((png, kept) => {
+      const index = kept + guideCells
       const frame = layout.frames[index]!
       const ordinal = counters.get(frame.assetId) ?? 0
       counters.set(frame.assetId, ordinal + 1)

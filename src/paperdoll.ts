@@ -686,6 +686,8 @@ export interface LayerSheet {
   frames: LayerFrame[]
   /** Pixels `despeckle` removed, over all frames. */
   cleaned: number
+  /** The cell, the columns chosen, and how many frames a sheet of this cell holds. */
+  fit: LayerSheetFit
   /** Where each frame's neck was put, in frame order; absent when the mask was supplied. */
   necks?: Array<NeckReport | null>
   /** Pinholes keyed shut inside the mask; absent when the keyed sheet was supplied. */
@@ -719,20 +721,80 @@ export interface LayerSheetOptions {
   keyed?: Buffer
 }
 
+/** The longest side PixelLab's inpaint accepts, and so the largest layer sheet. */
+export const LAYER_SHEET_MAX_SIDE = 512
+
+/** How a layer's frames lie on one sheet, or why they cannot. */
+export interface LayerSheetFit {
+  /** Frames on the sheet. */
+  frames: number
+  /** The one cell every frame is cut to: the union of their opaque bounds, plus padding. */
+  cellWidth: number
+  cellHeight: number
+  /** The longest side the provider takes. */
+  maxSide: number
+  /** Cells of this size one sheet holds: `across` by `down`. */
+  across: number
+  down: number
+  maxFrames: number
+  /** The columns used, or null when the frames do not fit at any count. */
+  columns: number | null
+  /** The sheet at `columns`, before any padding up to the provider's floor. */
+  width?: number
+  height?: number
+  /** `columns` as asked for, when that count does not fit and another was chosen. */
+  requestedColumns?: number
+}
+
 /**
- * Builds everything a provider needs to dress a set of frames in one inpaint:
- * the frames cleaned, centred on a common canvas, cut to the one box that
- * holds them all, laid on a sheet, keyed and masked.
- *
- * Frames of different canvases share a sheet by their centres, which is how
- * PixelLab pads an animation frame around its character's still.
+ * Columns for `frames` cells of one size: the asked-for count when it fits,
+ * otherwise the count that fits `maxSide` in the smallest area (the squarer
+ * sheet on a tie), or null when none does.
  */
-export function buildLayerSheet(
-  sources: Array<{ assetId: string; role?: string; png: Buffer }>,
-  options: LayerSheetOptions,
-): LayerSheet {
+export function chooseLayerColumns(
+  frames: number,
+  cellWidth: number,
+  cellHeight: number,
+  maxSide: number,
+  requested?: number,
+): LayerSheetFit {
+  const across = Math.floor(maxSide / cellWidth)
+  const down = Math.floor(maxSide / cellHeight)
+  const fits = (columns: number) =>
+    columns * cellWidth <= maxSide && Math.ceil(frames / columns) * cellHeight <= maxSide
+  const base = { frames, cellWidth, cellHeight, maxSide, across, down, maxFrames: across * down }
+  const at = (columns: number) => ({ columns, width: columns * cellWidth, height: Math.ceil(frames / columns) * cellHeight })
+  if (requested !== undefined && fits(requested)) return { ...base, ...at(requested) }
+  let best: { columns: number; area: number; longest: number } | undefined
+  for (let candidate = 1; candidate <= frames; candidate++) {
+    if (!fits(candidate)) continue
+    const { width, height } = at(candidate)
+    const score = { columns: candidate, area: width * height, longest: Math.max(width, height) }
+    if (!best || score.area < best.area || (score.area === best.area && score.longest < best.longest)) best = score
+  }
+  return {
+    ...base,
+    ...(best ? at(best.columns) : { columns: null }),
+    ...(requested !== undefined ? { requestedColumns: requested } : {}),
+  }
+}
+
+/** Why a layer's frames do not fit one sheet, in the words `plan` and `gen` both use. */
+export function layerFitProblem(fit: LayerSheetFit): string {
+  return (
+    `${fit.frames} frames of ${fit.cellWidth}x${fit.cellHeight} do not fit one ${fit.maxSide}px sheet; ` +
+    `at most ${fit.maxFrames} fit (${fit.across} across, ${fit.down} down)`
+  )
+}
+
+type LayerSource = { assetId: string; role?: string; png: Buffer }
+
+/**
+ * Cleans the frames and centres them on one canvas, then finds the one box
+ * that holds all of them: the work every sheet of these frames starts from.
+ */
+function placeLayerFrames(sources: LayerSource[], options: Pick<LayerSheetOptions, "reference" | "padding">) {
   if (!sources.length) throw new Error("a layer needs at least one source frame")
-  const minSide = options.minSide ?? 32
   let cleaned = 0
   // Stills drawn entirely in outline-dark colours give cleaning no body
   // palette to judge against; the frames go through as they are.
@@ -780,45 +842,50 @@ export function buildLayerSheet(
   const padding = options.padding ?? 0
   left -= padding
   top -= padding
-  const cellWidth = right - left + 1 + padding
-  const cellHeight = bottom - top + 1 + padding
+  return { placed, left, top, padding, cleaned, cellWidth: right - left + 1 + padding, cellHeight: bottom - top + 1 + padding }
+}
 
-  const fits = (columns: number) => {
-    const rows = Math.ceil(placed.length / columns)
-    return columns * cellWidth <= options.maxSide && rows * cellHeight <= options.maxSide
-  }
-  let columns = options.columns
-  if (columns !== undefined) {
-    if (!fits(columns)) {
-      throw new Error(
-        `${placed.length} frames in ${columns} columns of ${cellWidth}x${cellHeight} make a ` +
-          `${columns * cellWidth}x${Math.ceil(placed.length / columns) * cellHeight} sheet; the limit is ${options.maxSide}px a side`,
-      )
-    }
-  } else {
-    let best: { columns: number; area: number; longest: number } | undefined
-    for (let candidate = 1; candidate <= placed.length; candidate++) {
-      if (!fits(candidate)) continue
-      const width = candidate * cellWidth
-      const height = Math.ceil(placed.length / candidate) * cellHeight
-      const score = { columns: candidate, area: width * height, longest: Math.max(width, height) }
-      if (!best || score.area < best.area || (score.area === best.area && score.longest < best.longest)) best = score
-    }
-    if (!best) {
-      throw new Error(
-        `${placed.length} frames of ${cellWidth}x${cellHeight} do not fit one ${options.maxSide}px sheet; ` +
-          "split the layer across two assets",
-      )
-    }
-    columns = best.columns
-  }
+/**
+ * How these frames would lie on a layer sheet, without building it: the cell
+ * they share, how many such cells a sheet holds, and the columns
+ * `buildLayerSheet` would use. Cleaning runs first, as it does there, since a
+ * ghost pixel can widen the cell.
+ */
+export function layerSheetFit(
+  sources: LayerSource[],
+  options: Pick<LayerSheetOptions, "maxSide" | "columns" | "padding" | "reference">,
+): LayerSheetFit {
+  const { placed, cellWidth, cellHeight } = placeLayerFrames(sources, options)
+  return chooseLayerColumns(placed.length, cellWidth, cellHeight, options.maxSide, options.columns)
+}
+
+/**
+ * Builds everything a provider needs to dress a set of frames in one inpaint:
+ * the frames cleaned, centred on a common canvas, cut to the one box that
+ * holds them all, laid on a sheet, keyed and masked.
+ *
+ * Frames of different canvases share a sheet by their centres, which is how
+ * PixelLab pads an animation frame around its character's still.
+ *
+ * `columns` that do not fit `maxSide` give way to the count that does; the
+ * result's `fit` says so. Frames that fit at no count are refused.
+ */
+export function buildLayerSheet(
+  sources: LayerSource[],
+  options: LayerSheetOptions,
+): LayerSheet {
+  const minSide = options.minSide ?? 32
+  const { placed, left, top, padding, cleaned, cellWidth, cellHeight } = placeLayerFrames(sources, options)
+  const fit = chooseLayerColumns(placed.length, cellWidth, cellHeight, options.maxSide, options.columns)
+  if (fit.columns === null) throw new Error(`${layerFitProblem(fit)}; split the layer across two assets`)
+  const columns = fit.columns
   const rows = Math.ceil(placed.length / columns)
   // A sheet under the provider's floor is padded with empty space, never scaled.
   const width = Math.max(minSide, columns * cellWidth)
   const height = Math.max(minSide, rows * cellHeight)
   const sheet: DecodedPng = { width, height, pixels: Buffer.alloc(width * height * 4) }
   const frames = placed.map((frame, index): LayerFrame => {
-    const cell = { x: (index % columns!) * cellWidth, y: Math.floor(index / columns!) * cellHeight, width: cellWidth, height: cellHeight }
+    const cell = { x: (index % columns) * cellWidth, y: Math.floor(index / columns) * cellHeight, width: cellWidth, height: cellHeight }
     const offsetX = left - frame.left
     const offsetY = top - frame.top
     for (let y = 0; y < cellHeight; y++) {
@@ -858,6 +925,7 @@ export function buildLayerSheet(
     mask,
     frames,
     cleaned,
+    fit,
     ...(computed ? { necks: computed.necks } : {}),
     ...(keyed ? { closed: keyed.closed } : {}),
   }
@@ -1271,4 +1339,184 @@ export function redrawSheet(
     keyed: encodeRgbaPng(keyed.width, keyed.height, keyed.pixels),
     mask: encodeRgbaPng(mask.width, mask.height, mask.pixels),
   }
+}
+
+/** How much of the base a layer's trim may hide: runs across a row, and islands left after them. */
+export interface TrimOptions {
+  /** The widest run of bare base, between the layer and empty space on one row, that is hidden. Default 4. */
+  run: number
+  /** The largest island of bare base touching both the layer and empty space that is hidden. Default 45. */
+  island: number
+}
+
+export const DEFAULT_TRIM: TrimOptions = { run: 4, island: 45 }
+
+/** One base frame's trim: which of its pixels to hide while the layers are worn. */
+export interface BaseCut {
+  width: number
+  height: number
+  /** One byte per base pixel, 1 where it is hidden. */
+  mask: Uint8Array
+  pixels: number
+}
+
+/** Where a layer canvas's corner falls on its base frame: they share a centre, so a padded layer starts up and to the left. */
+function layerOrigin(base: DecodedPng, layer: DecodedPng): { x: number; y: number } {
+  return { x: Math.round((base.width - layer.width) / 2), y: Math.round((base.height - layer.height) / 2) }
+}
+
+/**
+ * The fringe a layer leaves uncovered. A provider draws a layer's clothes in
+ * nearly the same place on every frame of a sheet, so where the figure sways
+ * a strip of the base one to three pixels wide stays bare along one edge,
+ * with small islands at the shoulders and elbows. Below the neck only:
+ *
+ * 1. on each row, a run of base pixels no layer covers, at most `run` wide,
+ *    with empty space at one end and a layer at the other, is hidden;
+ * 2. then any island of uncovered base pixels left, at most `island` pixels,
+ *    that touches both a layer and empty space is hidden, unless it reaches
+ *    up to the neck row (it is then the neck).
+ *
+ * Nothing is painted, so the silhouette follows the clothes. Hands, the
+ * neck and the face are bigger than either limit and stay.
+ */
+export function trimBase(base: Buffer, layers: Buffer[], options: Partial<TrimOptions> = {}): BaseCut {
+  const image = decodePng(base)
+  const { width, height } = image
+  const run = options.run ?? DEFAULT_TRIM.run
+  const island = options.island ?? DEFAULT_TRIM.island
+  const cloth = new Uint8Array(width * height)
+  for (const png of layers) {
+    const layer = decodePng(png)
+    const origin = layerOrigin(image, layer)
+    for (let y = 0; y < layer.height; y++) {
+      for (let x = 0; x < layer.width; x++) {
+        const bx = x + origin.x
+        const by = y + origin.y
+        if (bx < 0 || by < 0 || bx >= width || by >= height || !opaque(layer, x, y)) continue
+        cloth[by * width + bx] = 1
+      }
+    }
+  }
+  const mask = new Uint8Array(width * height)
+  const neck = neckRow(image)
+  if (neck === null) return { width, height, mask, pixels: 0 }
+  const body = (x: number, y: number) => opaque(image, x, y)
+  const bare = (x: number, y: number) => body(x, y) && !cloth[y * width + x]
+  let pixels = 0
+
+  for (let y = neck; y < height; y++) {
+    for (let x = 0; x < width;) {
+      if (!bare(x, y)) {
+        x++
+        continue
+      }
+      let end = x
+      while (end < width && bare(end, y)) end++
+      const openLeft = x === 0 || !body(x - 1, y)
+      const openRight = end >= width || !body(end, y)
+      const clothLeft = x > 0 && cloth[y * width + x - 1] === 1
+      const clothRight = end < width && cloth[y * width + end] === 1
+      if (end - x <= run && ((openLeft && clothRight) || (openRight && clothLeft))) {
+        for (let k = x; k < end; k++) mask[y * width + k] = 1
+        pixels += end - x
+      }
+      x = end
+    }
+  }
+
+  const left = (x: number, y: number) => bare(x, y) && !mask[y * width + x]
+  const seen = new Uint8Array(width * height)
+  for (let y0 = neck; y0 < height; y0++) {
+    for (let x0 = 0; x0 < width; x0++) {
+      if (seen[y0 * width + x0] || !left(x0, y0)) continue
+      const part: Array<[number, number]> = [[x0, y0]]
+      seen[y0 * width + x0] = 1
+      let air = false
+      let covered = false
+      // An island that reaches the neck row is the neck itself, however small the stretch below that row is.
+      let neckline = false
+      for (let n = 0; n < part.length; n++) {
+        const [px, py] = part[n]!
+        if (py === neck) neckline = true
+        for (const [dx, dy] of STEPS) {
+          const nx = px + dx
+          const ny = py + dy
+          if (nx < 0 || nx >= width || ny < neck || ny >= height) continue
+          if (cloth[ny * width + nx]) covered = true
+          else if (!body(nx, ny) || mask[ny * width + nx]) air = true
+          else if (!seen[ny * width + nx]) {
+            seen[ny * width + nx] = 1
+            part.push([nx, ny])
+          }
+        }
+      }
+      if (air && covered && !neckline && part.length <= island) {
+        for (const [px, py] of part) mask[py * width + px] = 1
+        pixels += part.length
+      }
+    }
+  }
+  return { width, height, mask, pixels }
+}
+
+/** A cut as rows of hidden pixels, `[x, y, length]` in the base frame's own pixels: what an engine applies. */
+export function cutRuns(cut: BaseCut): Array<[number, number, number]> {
+  const runs: Array<[number, number, number]> = []
+  for (let y = 0; y < cut.height; y++) {
+    for (let x = 0; x < cut.width;) {
+      if (!cut.mask[y * cut.width + x]) {
+        x++
+        continue
+      }
+      let end = x
+      while (end < cut.width && cut.mask[y * cut.width + end]) end++
+      runs.push([x, y, end - x])
+      x = end
+    }
+  }
+  return runs
+}
+
+/**
+ * One dressed frame: the base with its cut hidden, then each layer drawn over
+ * it in order. The canvas is the largest of them, every image centred on it,
+ * so a padded layer (a hat above the head) keeps the room it was drawn with.
+ */
+export function dressFrame(base: Buffer, layers: Buffer[], cut?: BaseCut): Buffer {
+  const under = decodePng(base)
+  const over = layers.map((png) => decodePng(png))
+  const width = Math.max(under.width, ...over.map((image) => image.width))
+  const height = Math.max(under.height, ...over.map((image) => image.height))
+  const out: DecodedPng = { width, height, pixels: Buffer.alloc(width * height * 4) }
+  const draw = (image: DecodedPng, hidden?: Uint8Array) => {
+    const ox = Math.round((width - image.width) / 2)
+    const oy = Math.round((height - image.height) / 2)
+    for (let y = 0; y < image.height; y++) {
+      for (let x = 0; x < image.width; x++) {
+        const from = at(image, x, y)
+        const alpha = image.pixels[from + 3]!
+        if (!alpha || hidden?.[y * image.width + x]) continue
+        const to = at(out, x + ox, y + oy)
+        if (alpha === 255 || out.pixels[to + 3] === 0) {
+          image.pixels.copy(out.pixels, to, from, from + 4)
+          continue
+        }
+        // Source-over for the odd soft pixel; pixel art is almost always all or nothing.
+        const a = alpha / 255
+        const b = out.pixels[to + 3]! / 255
+        const total = a + b * (1 - a)
+        for (let c = 0; c < 3; c++) {
+          out.pixels[to + c] = Math.round((image.pixels[from + c]! * a + out.pixels[to + c]! * b * (1 - a)) / total)
+        }
+        out.pixels[to + 3] = Math.round(total * 255)
+      }
+    }
+  }
+  if (cut && (cut.width !== under.width || cut.height !== under.height)) {
+    throw new Error(`the cut is ${cut.width}x${cut.height}; the base frame is ${under.width}x${under.height}`)
+  }
+  draw(under, cut?.mask)
+  for (const image of over) draw(image)
+  return encodeRgbaPng(width, height, out.pixels)
 }

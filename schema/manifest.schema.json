@@ -1812,6 +1812,9 @@
                     "type": "string",
                     "pattern": "^#?[0-9a-f]{6}$"
                   },
+                  "cover": {
+                    "type": "boolean"
+                  },
                   "clean": {
                     "type": "boolean"
                   },
@@ -1874,6 +1877,59 @@
                         "propertyNames": {
                           "minLength": 1
                         }
+                      }
+                    ]
+                  },
+                  "trim": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "run": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 16
+                          },
+                          "island": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 4096
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "anchor": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "layer": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "frames": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "minItems": 1,
+                            "maxItems": 8
+                          }
+                        },
+                        "required": [
+                          "layer"
+                        ],
+                        "additionalProperties": false
                       }
                     ]
                   },

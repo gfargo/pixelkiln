@@ -96,7 +96,6 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   "estimate-skeleton": runEstimateSkeleton,
   anchors: runAnchors,
   redraw: runRedraw,
-  layer: runLayer,
   "skeleton-preview": runSkeletonPreview,
   unzoom: runUnzoom,
   pixelate: runPixelate,
@@ -109,6 +108,7 @@ const RUNNERS: Record<string, (args: Args) => Promise<void>> = {
   asset: runAsset,
   talk: runTalk,
   parallax: runParallax,
+  layer: runLayer,
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {

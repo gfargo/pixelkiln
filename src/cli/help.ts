@@ -62,11 +62,13 @@ Commands
             beside them. Direct and un-budgeted, 10 to 25 generations by sheet
             size. The new frames replace the old in the lockfile. Without
             --frame it lists the names; --dry-run prices the call.
-  layer preview <layer> [--style <id>]
+  layer preview <layer> [--style <id>] [--gif]
             Free and offline: build a paperdoll layer's sheet, keyed sheet and
             mask as gen would send them, write them (and each frame's own) to
             .pixelkiln/layers/<style>/<layer>/preview/, and print each frame's
-            neck row and the inpaint's price. Nothing is submitted.
+            neck row and the inpaint's price. Nothing is submitted. Once the
+            layer is made, --gif also draws it over the frames it dresses,
+            trim applied, into dressed/: a GIF per loop, a strip per still set.
   skeleton-preview <keypoints.json | asset> [--from <image>] [--out <file>]
             Draw every pose of a keypoints file over its source image as one
             PNG, locally and free. Given an animate-skeleton asset id, reads
@@ -154,6 +156,9 @@ Options
                       parallax export: tiled, godot, or ldtk (default: all three)
   --output-role <r>   pack: include only this output role (repeatable)
   --primary-only      pack: include only unambiguous primary/single outputs
+  --flatten           pack: draw the layers onto the frames they go over, trim
+                      applied, and leave their own frames off; --only picks layers
+  --gif               layer preview: also draw the made layer over its frames, a GIF per loop
   --max-distance <n>  audit: maximum palette distance
   --min-transparency <0..1>  audit: minimum transparent canvas share
   --max-colors <n>    audit: maximum distinct opaque colors

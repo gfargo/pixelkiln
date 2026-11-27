@@ -47,6 +47,12 @@ export interface AtlasLayer {
     over: string
     dx: number
     dy: number
+    /**
+     * Pixels of the `over` frame to hide while this layer is worn, as
+     * `[x, y, length]` rows in that frame's own pixels: the bare fringe the
+     * layer's `trim` removes. Present only on a layer with `trim`.
+     */
+    cut?: Array<[number, number, number]>
   }>
 }
 
